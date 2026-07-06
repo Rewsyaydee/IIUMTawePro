@@ -8,7 +8,8 @@ type BadgeKind =
   | Priority
   | WellbeingReport["status"]
   | "live"
-  | "mock";
+  | "mock"
+  | "upcoming";
 
 export function StatusBadge({ value }: { value: BadgeKind }) {
   return <span className={`status-badge status-${value}`}>{value.split("_").join(" ")}</span>;

@@ -1,4 +1,8 @@
 import {
+  useEffect,
+  useState
+} from "react";
+import {
   Activity,
   AlertTriangle,
   BookOpen,
@@ -42,8 +46,13 @@ export function AppShell() {
   const location = useLocation();
   const { user } = useMockUser();
   const { banners, dismissBanner } = useMockData();
+  const [accountOpen, setAccountOpen] = useState(false);
   const visibleNav = navItems.filter((item) => item.roles.includes(user.role));
   const activeBanners = banners.filter((banner) => banner.isActive && !banner.dismissedBy?.includes(user.id));
+
+  useEffect(() => {
+    setAccountOpen(false);
+  }, [location.pathname]);
 
   return (
     <div className="app-shell">
@@ -57,17 +66,39 @@ export function AppShell() {
             <h1>IIUM Ta'aruf Week</h1>
           </div>
         </div>
-        <div className="user-pill" aria-label="Current mock user">
-          <UserRound size={16} aria-hidden="true" />
-          <span>
-            {roleLabels[user.role]}
-            {user.bureau ? ` - ${user.bureau}` : ""}
-          </span>
+        <div className="account-menu-wrap">
+          <button className="user-pill" type="button" aria-expanded={accountOpen} aria-controls="account-menu" onClick={() => setAccountOpen((value) => !value)}>
+            <UserRound size={16} aria-hidden="true" />
+            <span>
+              {roleLabels[user.role]}
+              {user.bureau ? ` - ${user.bureau}` : ""}
+            </span>
+          </button>
+          {accountOpen && (
+            <section className="account-popover" id="account-menu" aria-label="Account and access menu">
+              <div className="account-popover-head">
+                <div>
+                  <p className="eyebrow">Current view</p>
+                  <strong>
+                    {roleLabels[user.role]}
+                    {user.bureau ? ` - ${user.bureau}` : ""}
+                  </strong>
+                </div>
+                <button className="icon-button" type="button" aria-label="Close account menu" onClick={() => setAccountOpen(false)}>
+                  <X size={15} aria-hidden="true" />
+                </button>
+              </div>
+              {user.role === "student" ? (
+                <AccessCodeGate compact />
+              ) : (
+                <p className="account-note">Committee workspace is active. Use the bottom navigation for your operational sections.</p>
+              )}
+            </section>
+          )}
         </div>
       </header>
 
       <RoleSwitcher />
-      <AccessCodeGate />
 
       <div className="banner-stack">
         {activeBanners.map((banner) => (

@@ -9,7 +9,11 @@ import type { Bureau, Role } from "../types";
 
 const allowedRoles: Role[] = ["committee", "head"];
 
-export function AccessCodeGate() {
+type AccessCodeGateProps = {
+  compact?: boolean;
+};
+
+export function AccessCodeGate({ compact = false }: AccessCodeGateProps) {
   const { user, addMockUser, setUserId } = useMockUser();
   const { redeemInviteCode } = useMockData();
   const [form, setForm] = useState({
@@ -74,14 +78,14 @@ export function AccessCodeGate() {
   };
 
   return (
-    <form className="access-card" onSubmit={submitAccessCode}>
+    <form className={compact ? "access-card access-card-compact" : "access-card"} onSubmit={submitAccessCode}>
       <div className="access-card-copy">
         <span className="tile-icon amber">
           <KeyRound size={18} aria-hidden="true" />
         </span>
         <div>
           <strong>Committee access</strong>
-          <p>Students enter as guests. Committee members unlock their workspace with a manual code.</p>
+          <p>{compact ? "Unlock committee workspace with the manual code." : "Students enter as guests. Committee members unlock their workspace with a manual code."}</p>
         </div>
       </div>
       <div className="access-grid">
@@ -97,9 +101,9 @@ export function AccessCodeGate() {
           <span>Access code</span>
           <input
             value={form.code}
-            placeholder="TAWE-COMMITTEE-2026"
+            placeholder="OiAkuNakTaweNi"
             required
-            onChange={(event) => setForm((current) => ({ ...current, code: event.target.value.toUpperCase() }))}
+            onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
           />
         </label>
         <label>

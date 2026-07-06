@@ -450,7 +450,7 @@ export const initialNotifications: MockNotification[] = [
 export const initialInviteCodes: InviteCode[] = [
   {
     id: "inv-committee-shared",
-    code: "TAWE-COMMITTEE-2026",
+    code: "OiAkuNakTaweNi",
     role: "committee",
     createdAt: "2026-02-19T10:00:00.000Z",
     expiresAt: "2026-03-15T23:59:00.000Z",

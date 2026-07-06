@@ -18,7 +18,7 @@ Current app behavior:
 
 - Students enter as guest users and see the public schedule/resources view.
 - Committee/head users redeem a manually shared code.
-- The mock reusable committee code is `TAWE-COMMITTEE-2026`.
+- The reusable committee code should be kept in server-only environment variables for production.
 
 Still needed:
 

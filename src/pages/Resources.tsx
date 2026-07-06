@@ -3,6 +3,36 @@ import { Link } from "react-router-dom";
 import { emergencyContacts } from "../data/mockData";
 import { hapticImpact } from "../lib/telegram";
 
+const brothersDressCode = [
+  "White plain long-sleeve shirt, tucked in",
+  "Black slack",
+  "Black belt with small buckle",
+  "Black or navy blue tie",
+  "Black or navy blue plain long socks",
+  "Black plain leather or PVC shoes",
+  "Matric card",
+  "Short tidy hair with no dyed hair",
+  "No headwear"
+];
+
+const sistersDressCode = [
+  "Traditional knee-length Baju Kurung",
+  "Loose dress for international students only",
+  "Plain white square bawal scarf for local students",
+  "Plain white shawl for international students",
+  "Dark-coloured plain long socks",
+  "Black plain leather or PVC shoes",
+  "No heels, canvas shoes, or sport shoes",
+  "Matric card"
+];
+
+const dressReminders = [
+  "Bring your own umbrella to all sessions in case of rain.",
+  "Jeans and slippers are not allowed during the programme.",
+  "Sisters are advised to bring telekung and prayer mat.",
+  "Students are encouraged to perform ablution before meeting at the assembly point."
+];
+
 function Resources() {
   return (
     <section className="page-stack">
@@ -28,32 +58,44 @@ function Resources() {
         </Link>
       </article>
 
-      <article className="resource-card">
-        <div className="resource-icon amber">
-          <Shirt size={22} aria-hidden="true" />
-        </div>
-        <div className="resource-wide">
-          <h3>Dress Code</h3>
-          <div className="two-column">
-            <div>
-              <h4>Allowed</h4>
-              <ul>
-                <li>Formal dark shoes</li>
-                <li>Institutional blazer</li>
-                <li>Neat headwear in neutral colors</li>
-              </ul>
-            </div>
-            <div>
-              <h4>Prohibited</h4>
-              <ul>
-                <li>Open sandals</li>
-                <li>Graphic outerwear</li>
-                <li>Unapproved event tags</li>
-              </ul>
-            </div>
+      <article className="resource-card stacked dresscode-card">
+        <div className="resource-heading">
+          <div className="resource-icon amber">
+            <Shirt size={22} aria-hidden="true" />
           </div>
-          <p className="muted">Updated 2026-02-19 21:00</p>
+          <div>
+            <h3>Dress Code</h3>
+            <p>Formal attire guideline for Ta'aruf Week sessions.</p>
+          </div>
         </div>
+        <img className="dresscode-image" src="/assets/dresscodetawe.jpg" alt="Formal attire dress code guideline for brothers and sisters during Ta'aruf Week" />
+        <div className="dresscode-grid">
+          <section>
+            <h4>Brothers</h4>
+            <ul>
+              {brothersDressCode.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </section>
+          <section>
+            <h4>Sisters</h4>
+            <ul>
+              {sistersDressCode.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </section>
+        </div>
+        <div className="reminder-box">
+          <strong>Reminder</strong>
+          <ol>
+            {dressReminders.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ol>
+        </div>
+        <p className="muted">Thank you for your kind cooperation.</p>
       </article>
 
       <article className="resource-card stacked">

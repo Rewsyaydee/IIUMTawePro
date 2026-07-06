@@ -3,6 +3,7 @@ import { BookOpen, CalendarDays, Camera, ClipboardList, FileText, Grid3X3, Heart
 import { MenuTile } from "../components/MenuTile";
 import { StatusBadge } from "../components/StatusBadge";
 import { bureauShortLabels, roleLabels } from "../constants";
+import { getCurrentScheduleItem, getScheduleClock, getScheduleStatus, getTaweWeekProgress } from "../lib/scheduleTime";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 
@@ -11,11 +12,16 @@ type TileTone = "blue" | "green" | "amber" | "red" | "violet";
 function Dashboard() {
   const { user } = useMockUser();
   const { attendanceProofs, bureauOperations, schedule, reports, tasks, notifications } = useMockData();
-  const live = schedule.find((item) => item.isLive);
+  const scheduleClock = getScheduleClock(schedule);
+  const currentScheduleItem = getCurrentScheduleItem(schedule, scheduleClock.now);
+  const currentScheduleStatus = currentScheduleItem ? getScheduleStatus(currentScheduleItem, scheduleClock.now) : "upcoming";
+  const live = currentScheduleItem && currentScheduleStatus === "live" ? currentScheduleItem : undefined;
   const bureauTasks = user.role === "mainboard" ? tasks : tasks.filter((task) => task.bureau === user.bureau);
   const openReports = reports.filter((report) => report.status !== "resolved").length;
   const completed = tasks.filter((task) => task.status === "done").length;
-  const completion = Math.round((completed / Math.max(tasks.length, 1)) * 100);
+  const poaCompletion = Math.round((completed / Math.max(tasks.length, 1)) * 100);
+  const taweCompletion = getTaweWeekProgress(schedule, scheduleClock.now);
+  const completion = user.role === "student" ? taweCompletion : poaCompletion;
   const pendingAttendance = attendanceProofs.filter((proof) => proof.status === "pending_review").length;
   const opsIssues =
     user.role === "mainboard"
@@ -29,7 +35,7 @@ function Dashboard() {
       : `${user.bureau ? bureauShortLabels[user.bureau] : "Mainboard"} workspace for today's operations.`;
 
   const tiles: Array<{ to: string; title: string; meta: string; icon: typeof CalendarDays; tone: TileTone }> = [
-    { to: "/schedule", title: "Today's Programme", meta: live ? live.title : "No live slot", icon: CalendarDays, tone: "blue" as const },
+    { to: "/schedule", title: "Today's Programme", meta: live ? `Live: ${live.title}` : currentScheduleItem ? `Next: ${currentScheduleItem.title}` : "No live slot", icon: CalendarDays, tone: "blue" as const },
     { to: "/official-schedule", title: "Official PDF", meta: "IIUM source schedule", icon: FileText, tone: "amber" as const },
     { to: "/attendance", title: "Daily Punch Card", meta: `${pendingAttendance} awaiting review`, icon: Camera, tone: "red" as const },
     { to: "/tasks", title: "Bureau Tasks", meta: `${bureauTasks.length} visible tasks`, icon: ClipboardList, tone: "green" as const },
@@ -54,12 +60,12 @@ function Dashboard() {
         <div className="metric-orbit">
           <ShieldCheck size={20} aria-hidden="true" />
           <strong>{completion}%</strong>
-          <span>POA done</span>
+          <span>{user.role === "student" ? "TAWE done" : "POA done"}</span>
         </div>
       </div>
 
       <div className="confidence-row" aria-label="Current event status">
-        <span>{live ? "Live slot active" : "Official schedule ready"}</span>
+        <span>{live ? "Live now" : scheduleClock.isDemo ? "Schedule preview" : "Official schedule ready"}</span>
         <span>Tawhidic Epistemology</span>
         <span>Ummatic Excellence</span>
         <span>{user.role === "student" ? "Student view" : `${roleLabels[user.role]} access`}</span>

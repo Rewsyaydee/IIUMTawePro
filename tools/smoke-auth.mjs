@@ -54,7 +54,7 @@ assert(guest.status === 200, "Guest auth should succeed in local stub mode.");
 assert(guest.payload.user.role === "student", "Guest auth should return student role.");
 
 const committee = await call(redeemHandler, "POST", {
-  code: "TAWE-COMMITTEE-2026",
+  code: "OiAkuNakTaweNi",
   displayName: "Smoke Committee",
   selectedRole: "head",
   selectedBureau: "Welfare"
@@ -66,13 +66,13 @@ assert(committee.payload.user.bureau === "Welfare", "Committee code should respe
 process.env.VERCEL_ENV = "production";
 process.env.COMMITTEE_ACCESS_CODES = "";
 const blocked = await call(redeemHandler, "POST", {
-  code: "TAWE-COMMITTEE-2026",
+  code: "OiAkuNakTaweNi",
   selectedRole: "committee",
   selectedBureau: "Catering"
 });
 assert(blocked.status === 401, "Production should reject missing Telegram initData before code checks.");
 
-process.env = { ...originalEnv, COMMITTEE_ACCESS_CODES: "TAWE-COMMITTEE-2026" };
+process.env = { ...originalEnv, COMMITTEE_ACCESS_CODES: "OiAkuNakTaweNi" };
 const health = await call(healthHandler, "GET");
 assert(health.status === 200, "Health endpoint should respond.");
 assert(Array.isArray(health.payload.missing), "Health endpoint should include missing list.");

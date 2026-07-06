@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle2, Clock3, Search } from "lucide-react";
 import { StatusBadge } from "../components/StatusBadge";
+import { formatScheduleClock, getCurrentScheduleItem, getItemProgress, getScheduleClock, getScheduleStatus } from "../lib/scheduleTime";
 import { hapticImpact } from "../lib/telegram";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
@@ -23,8 +24,10 @@ function Schedule() {
   const [week, setWeek] = useState<Week | "all">("all");
   const [tag, setTag] = useState("all");
   const [query, setQuery] = useState("");
+  const [clockTick, setClockTick] = useState(0);
 
   const tags = useMemo(() => ["all", ...Array.from(new Set(schedule.map((item) => item.tag)))], [schedule]);
+  const scheduleClock = useMemo(() => getScheduleClock(schedule), [clockTick, schedule]);
   const visibleItems = useMemo(() => {
     return schedule
       .filter((item) => week === "all" || item.week === week)
@@ -37,7 +40,21 @@ function Schedule() {
   }, [query, schedule, tag, week]);
 
   const grouped = groupByDate(visibleItems);
+  const currentItem = useMemo(() => getCurrentScheduleItem(visibleItems, scheduleClock.now), [scheduleClock.now, visibleItems]);
   const canUpdateReadiness = user.role === "head" || user.role === "mainboard";
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockTick((value) => value + 1), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!currentItem) return;
+    const timer = window.setTimeout(() => {
+      document.getElementById(`schedule-${currentItem.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 260);
+    return () => window.clearTimeout(timer);
+  }, [currentItem?.id]);
 
   return (
     <section className="page-stack">
@@ -46,7 +63,7 @@ function Schedule() {
           <p className="eyebrow">Programme</p>
           <h2>Event Schedule</h2>
         </div>
-        <span className="soft-chip">Polls every 30s later</span>
+        <span className="soft-chip">{scheduleClock.isDemo ? `Preview ${formatScheduleClock(scheduleClock.now)}` : `Live ${formatScheduleClock(scheduleClock.now)}`}</span>
       </div>
 
       <div className="filter-bar">
@@ -72,72 +89,86 @@ function Schedule() {
         {Object.entries(grouped).map(([date, items]) => (
           <div className="timeline-day" key={date}>
             <h3>{date}</h3>
-            {items.map((item, index) => (
-              <motion.article
-                key={item.id}
-                className={`schedule-card ${item.isLive ? "is-live" : ""}`}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.035 }}
-              >
-                <div className="time-block">
-                  <Clock3 size={16} aria-hidden="true" />
-                  <strong>{item.scheduledStartTime}</strong>
-                  <span>{item.scheduledEndTime}</span>
-                </div>
-                <div className="schedule-body">
-                  <div className="schedule-title-row">
-                    <div>
-                      <h4>{item.title}</h4>
-                      <p>
-                        {item.venue} - {item.audience}
-                      </p>
-                    </div>
-                    <div className="badge-row">
-                      {item.isLive && <StatusBadge value="live" />}
-                      <span className="soft-chip">{item.tag}</span>
-                    </div>
+            {items.map((item, index) => {
+              const scheduleStatus = getScheduleStatus(item, scheduleClock.now);
+              const isLive = scheduleStatus === "live" || item.isLive;
+              const isCurrent = currentItem?.id === item.id;
+              const progress = getItemProgress(item, scheduleClock.now);
+
+              return (
+                <motion.article
+                  id={`schedule-${item.id}`}
+                  key={item.id}
+                  className={`schedule-card schedule-${scheduleStatus} ${isLive ? "is-live" : ""} ${isCurrent ? "is-current" : ""}`}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.035 }}
+                >
+                  <div className="time-block">
+                    <Clock3 size={16} aria-hidden="true" />
+                    <strong>{item.scheduledStartTime}</strong>
+                    <span>{item.scheduledEndTime}</span>
                   </div>
-                  {item.description && <p className="muted">{item.description}</p>}
-                  {user.role !== "student" && item.responsibleBureau && (
-                    <div className="committee-panel">
+                  <div className="schedule-body">
+                    <div className="schedule-title-row">
                       <div>
-                        <span className="label">Owner</span>
-                        <strong>{item.responsibleBureau}</strong>
+                        <h4>{item.title}</h4>
+                        <p>
+                          {item.venue} - {item.audience}
+                        </p>
                       </div>
-                      <div>
-                        <span className="label">Readiness</span>
-                        {canUpdateReadiness ? (
-                          <select
-                            value={item.readinessStatus}
-                            onChange={(event) => {
-                              hapticImpact("light");
-                              updateReadiness(item.id, event.target.value as ReadinessStatus);
-                            }}
-                          >
-                            {readiness.map((status) => (
-                              <option key={status} value={status}>
-                                {status}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <StatusBadge value={item.readinessStatus || "pending"} />
-                        )}
+                      <div className="badge-row">
+                        {isLive && <StatusBadge value="live" />}
+                        {isCurrent && !isLive && <StatusBadge value="upcoming" />}
+                        <span className="soft-chip">{item.tag}</span>
                       </div>
-                      <ul className="task-list-mini">
-                        {(item.preSessionTasks || []).map((task) => (
-                          <li key={task}>
-                            <CheckCircle2 size={14} aria-hidden="true" />
-                            <span>{task}</span>
-                          </li>
-                        ))}
-                      </ul>
                     </div>
-                  )}
-                </div>
-              </motion.article>
-            ))}
+                    {isLive && (
+                      <div className="schedule-progress" aria-label={`${progress}% of this session completed`}>
+                        <span style={{ width: `${progress}%` }} />
+                      </div>
+                    )}
+                    {item.description && <p className="muted">{item.description}</p>}
+                    {user.role !== "student" && item.responsibleBureau && (
+                      <div className="committee-panel">
+                        <div>
+                          <span className="label">Owner</span>
+                          <strong>{item.responsibleBureau}</strong>
+                        </div>
+                        <div>
+                          <span className="label">Readiness</span>
+                          {canUpdateReadiness ? (
+                            <select
+                              value={item.readinessStatus}
+                              onChange={(event) => {
+                                hapticImpact("light");
+                                updateReadiness(item.id, event.target.value as ReadinessStatus);
+                              }}
+                            >
+                              {readiness.map((status) => (
+                                <option key={status} value={status}>
+                                  {status}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <StatusBadge value={item.readinessStatus || "pending"} />
+                          )}
+                        </div>
+                        <ul className="task-list-mini">
+                          {(item.preSessionTasks || []).map((task) => (
+                            <li key={task}>
+                              <CheckCircle2 size={14} aria-hidden="true" />
+                              <span>{task}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </motion.article>
+              );
+            })}
           </div>
         ))}
       </div>

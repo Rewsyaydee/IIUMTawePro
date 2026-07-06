@@ -96,12 +96,12 @@ function envCodes(name, fallback = []) {
     .map(normaliseCode)
     .filter(Boolean);
   if (configured.length > 0) return configured;
-  return isProductionRuntime() ? [] : fallback;
+  return isProductionRuntime() ? [] : fallback.map(normaliseCode).filter(Boolean);
 }
 
 export function resolveAccessCode({ code, selectedRole, selectedBureau }) {
   const normalized = normaliseCode(code);
-  const staffCodes = envCodes("COMMITTEE_ACCESS_CODES", ["TAWE-COMMITTEE-2026"]);
+  const staffCodes = envCodes("COMMITTEE_ACCESS_CODES", ["OiAkuNakTaweNi"]);
   const headCodes = envCodes("HEAD_ACCESS_CODES", []);
   const mainboardCodes = envCodes("MAINBOARD_ACCESS_CODES", []);
 

@@ -175,6 +175,73 @@ a {
   white-space: nowrap;
 }
 
+.user-pill {
+  cursor: pointer;
+}
+
+button.user-pill {
+  border: 1px solid var(--line);
+}
+
+.account-menu-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.account-popover {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 45;
+  display: grid;
+  gap: 12px;
+  width: min(390px, calc(100vw - 32px));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(145deg, rgba(255, 253, 247, 0.98), rgba(240, 250, 245, 0.94)),
+    var(--tg-section-bg-color);
+  box-shadow: 0 18px 48px rgba(0, 72, 70, 0.2);
+}
+
+.account-popover::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  right: 22px;
+  width: 12px;
+  height: 12px;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  background: var(--tg-section-bg-color);
+  transform: rotate(45deg);
+}
+
+.account-popover-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+
+.account-popover-head strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--primary-deep);
+}
+
+.account-note {
+  margin: 0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(0, 123, 120, 0.08);
+  color: var(--tg-subtitle-text-color);
+  line-height: 1.45;
+}
+
 .launch-ready {
   color: var(--green);
   background: rgba(0, 123, 120, 0.1);
@@ -230,6 +297,22 @@ a {
     linear-gradient(135deg, rgba(0, 123, 120, 0.075), rgba(185, 138, 45, 0.09)),
     var(--tg-section-bg-color);
   box-shadow: var(--shadow);
+}
+
+.access-card-compact {
+  margin-bottom: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.access-card-compact .access-card-copy {
+  padding-top: 2px;
+}
+
+.access-card-compact .access-grid {
+  grid-template-columns: 1fr;
 }
 
 .access-card-copy {
@@ -618,6 +701,8 @@ textarea {
 }
 
 .schedule-card {
+  position: relative;
+  overflow: hidden;
   display: grid;
   grid-template-columns: 82px 1fr;
   gap: 14px;
@@ -628,6 +713,41 @@ textarea {
 .schedule-card.is-live {
   border-color: rgba(0, 123, 120, 0.32);
   animation: pulseBorder 1.8s ease-in-out infinite;
+}
+
+.schedule-card.is-live::before,
+.schedule-card.is-current::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--primary);
+}
+
+.schedule-card.is-current {
+  border-color: rgba(0, 123, 120, 0.34);
+  box-shadow: 0 0 0 4px rgba(0, 123, 120, 0.08), var(--shadow);
+}
+
+.schedule-done {
+  opacity: 0.72;
+}
+
+.schedule-progress {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  margin: 10px 0;
+  background: rgba(0, 123, 120, 0.11);
+}
+
+.schedule-progress span {
+  display: block;
+  height: 100%;
+  min-width: 10px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary), var(--gold));
+  transition: width 260ms ease;
 }
 
 .time-block {
@@ -715,6 +835,62 @@ textarea {
   margin: 6px 0 0;
   padding-left: 18px;
   color: var(--tg-subtitle-text-color);
+}
+
+.dresscode-card {
+  gap: 12px;
+}
+
+.dresscode-image {
+  width: 100%;
+  border: 1px solid rgba(0, 123, 120, 0.14);
+  border-radius: 8px;
+  background: #071123;
+  object-fit: cover;
+}
+
+.dresscode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dresscode-grid section,
+.reminder-box {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(0, 123, 120, 0.045);
+}
+
+.dresscode-grid h4 {
+  margin: 0 0 8px;
+  color: var(--primary-deep);
+}
+
+.dresscode-grid ul,
+.reminder-box ol {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--tg-subtitle-text-color);
+  line-height: 1.45;
+}
+
+.dresscode-grid li + li,
+.reminder-box li + li {
+  margin-top: 4px;
+}
+
+.reminder-box {
+  background:
+    linear-gradient(135deg, rgba(185, 138, 45, 0.08), rgba(0, 123, 120, 0.05)),
+    var(--tg-section-bg-color);
+}
+
+.reminder-box strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--amber);
 }
 
 .contact-list,
@@ -1347,7 +1523,8 @@ textarea {
 .status-active,
 .status-high,
 .status-pending_review,
-.status-responded {
+.status-responded,
+.status-upcoming {
   color: var(--amber);
   background: rgba(185, 138, 45, 0.13);
 }
@@ -1943,11 +2120,20 @@ textarea {
 
   .dashboard-grid,
   .two-column,
+  .dresscode-grid,
   .metric-grid,
   .form-grid,
   .filter-bar,
   .access-grid {
     grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    align-items: flex-start;
+  }
+
+  .account-popover {
+    right: -2px;
   }
 
   .hero-panel,

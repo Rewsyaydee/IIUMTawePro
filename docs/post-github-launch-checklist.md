@@ -51,7 +51,7 @@ Server-only variables in Vercel Project Settings > Environment Variables:
 
 ```env
 TELEGRAM_BOT_TOKEN=from_botfather
-COMMITTEE_ACCESS_CODES=TAWE-COMMITTEE-2026
+COMMITTEE_ACCESS_CODES=<shared-committee-code>
 HEAD_ACCESS_CODES=
 MAINBOARD_ACCESS_CODES=
 SUPABASE_URL=
@@ -142,7 +142,7 @@ SUPABASE_JWT_SECRET=server_only_jwt_secret
 - [ ] Confirm emergency contacts and wellbeing wording are approved.
 - [ ] Confirm committee role names and bureau names are correct.
 - [ ] Confirm the shared committee access code can be safely distributed.
-- [ ] Replace `TAWE-COMMITTEE-2026` before real launch if it has been shown during testing.
+- [ ] Replace any code shown during testing before real launch.
 
 ## 7. Final Test Matrix
 
