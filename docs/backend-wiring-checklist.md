@@ -7,8 +7,9 @@ Use this checklist when moving from the current mock prototype to a real IIUM Ta
 - Telegram bot username.
 - Telegram bot token, stored only in the server environment.
 - Supabase project URL.
-- Supabase anon key.
-- Supabase service role key, stored only in the server environment.
+- Supabase publishable key, stored as the browser-safe `VITE_SUPABASE_ANON_KEY`.
+- Supabase secret or service role key, stored only in the server environment.
+- Supabase JWKS URL if using Supabase signing key discovery.
 - Supabase JWT secret or signing strategy for custom claims.
 - Final event dates, venues, and published programme.
 - Final committee list with name, role, and bureau; Telegram ID can be captured on first Mini App entry.
@@ -53,7 +54,7 @@ Client-safe values:
 VITE_APP_MODE=production
 VITE_ENABLE_MOCKS=false
 VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-public-anon-key
+VITE_SUPABASE_ANON_KEY=your-publishable-key
 VITE_API_BASE_URL=https://your-api-domain.example
 VITE_TELEGRAM_BOT_USERNAME=your_bot_username
 ```
@@ -63,6 +64,8 @@ Server-only values:
 ```env
 TELEGRAM_BOT_TOKEN=server-only
 SUPABASE_SERVICE_ROLE_KEY=server-only
+SUPABASE_SECRET_KEY=server-only
+SUPABASE_JWKS_URL=https://your-project.supabase.co/auth/v1/.well-known/jwks.json
 SUPABASE_JWT_SECRET=server-only
 ```
 

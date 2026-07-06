@@ -54,7 +54,10 @@ TELEGRAM_BOT_TOKEN=from_botfather
 COMMITTEE_ACCESS_CODES=TAWE-COMMITTEE-2026
 HEAD_ACCESS_CODES=
 MAINBOARD_ACCESS_CODES=
+SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_SECRET_KEY=
+SUPABASE_JWKS_URL=
 SUPABASE_JWT_SECRET=
 ```
 
@@ -62,12 +65,17 @@ When Supabase is ready, add:
 
 ```env
 VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your_public_anon_key
+VITE_SUPABASE_ANON_KEY=your_publishable_key
+SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=server_only_service_role_key
+SUPABASE_SECRET_KEY=server_only_secret_key
+SUPABASE_JWKS_URL=https://your-project.supabase.co/auth/v1/.well-known/jwks.json
 SUPABASE_JWT_SECRET=server_only_jwt_secret
 ```
 
 - [ ] Never prefix server secrets with `VITE_`.
+- [ ] If Supabase labels a key `SUPABASE_PUBLISHABLE_KEY`, put that value in `VITE_SUPABASE_ANON_KEY`.
+- [ ] If Supabase labels a key `SUPABASE_SECRET_KEY`, keep it server-only. Do not put it in any `VITE_` variable.
 - [ ] Set variables for Production, Preview, and Development only as needed.
 - [ ] Redeploy after changing environment variables.
 

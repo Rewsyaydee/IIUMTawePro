@@ -20,7 +20,8 @@ export default function handler(req, res) {
   const checks = {
     telegramBotToken: present(process.env.TELEGRAM_BOT_TOKEN),
     supabaseUrl: present(process.env.VITE_SUPABASE_URL) || present(process.env.SUPABASE_URL),
-    supabaseServiceRole: present(process.env.SUPABASE_SERVICE_ROLE_KEY),
+    supabaseServerKey: present(process.env.SUPABASE_SERVICE_ROLE_KEY) || present(process.env.SUPABASE_SECRET_KEY),
+    supabaseJwksUrl: present(process.env.SUPABASE_JWKS_URL),
     supabaseJwtSecret: present(process.env.SUPABASE_JWT_SECRET),
     committeeAccessCodes: codeCount("COMMITTEE_ACCESS_CODES"),
     headAccessCodes: codeCount("HEAD_ACCESS_CODES"),
