@@ -8,4 +8,4 @@ These files are production-prep drafts for the IIUM Ta'aruf Week Mini App.
 
 Review both files inside a real Supabase project before running them. The first backend implementation target should be `/api/auth/telegram`, because the RLS policies depend on trusted `app_user_id`, `app_role`, `bureau`, and `telegram_id` claims.
 
-After running `schema.sql` and `rls-policies.sql` in the Supabase SQL Editor, paste `verify-rls.sql` into the SQL Editor. RLS policies do not create new tables, so they will not appear as extra tables in the Table Editor.
+After running `schema.sql` and `rls-policies.sql` in the Supabase SQL Editor, paste `verify-rls.sql` into the SQL Editor. RLS policies do not create new tables, so they will not appear as extra tables in the Table Editor. The final result table in `verify-rls.sql` gives a simple PASS/FAIL summary for Supabase editors that only show the last query result.
