@@ -1,0 +1,25 @@
+{
+  "name": "twa-event-ops",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -p tsconfig.json --noEmit && vite build --target es2020",
+    "preview": "vite preview --host 127.0.0.1",
+    "smoke:auth": "node tools/smoke-auth.mjs"
+  },
+  "dependencies": {
+    "framer-motion": "^12.23.6",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.23",
+    "@types/react-dom": "^18.3.7",
+    "typescript": "^5.8.3",
+    "vite": "^8.1.3"
+  }
+}
