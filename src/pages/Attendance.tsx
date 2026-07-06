@@ -1,11 +1,18 @@
-import { ChangeEvent, FormEvent, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { BadgeCheck, Camera, Send, ShieldCheck, XCircle } from "lucide-react";
 import { EmptyState } from "../components/EmptyState";
 import { StatusBadge } from "../components/StatusBadge";
+import {
+  listAttendanceProofs,
+  reviewAttendanceProof as reviewAttendanceProofApi,
+  submitAttendanceProof as submitAttendanceProofApi
+} from "../lib/attendanceApi";
+import { authSessionChangedEvent, shouldUseApiAuth } from "../lib/apiAuth";
 import { hapticError, hapticImpact, hapticSuccess } from "../lib/telegram";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
+import type { AttendanceProof } from "../types";
 
 function todayKey() {
   const now = new Date();
@@ -15,19 +22,62 @@ function todayKey() {
 function Attendance() {
   const { user } = useMockUser();
   const { attendanceProofs, submitAttendanceProof, reviewAttendanceProof } = useMockData();
+  const apiMode = shouldUseApiAuth();
+  const [remoteProofs, setRemoteProofs] = useState<AttendanceProof[]>([]);
+  const [loadingProofs, setLoadingProofs] = useState(false);
+  const [authRefreshTick, setAuthRefreshTick] = useState(0);
   const [selfieDataUrl, setSelfieDataUrl] = useState("");
   const [latestStatus, setLatestStatus] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const today = todayKey();
   const isCommittee = user.role === "committee" || user.role === "head";
   const isSpecialTask = user.bureau === "Special Task";
   const isMainboard = user.role === "mainboard";
+  const activeProofs = apiMode ? remoteProofs : attendanceProofs;
+
+  useEffect(() => {
+    const handleSessionChanged = () => setAuthRefreshTick((value) => value + 1);
+    window.addEventListener(authSessionChangedEvent, handleSessionChanged);
+    return () => window.removeEventListener(authSessionChangedEvent, handleSessionChanged);
+  }, []);
+
+  useEffect(() => {
+    if (!apiMode || user.role === "student") return;
+
+    let cancelled = false;
+    setLoadingProofs(true);
+    setErrorMessage("");
+    listAttendanceProofs()
+      .then((proofs) => {
+        if (!cancelled) setRemoteProofs(proofs);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setErrorMessage(error instanceof Error ? error.message : "Unable to load attendance proofs.");
+          hapticError();
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingProofs(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [apiMode, user.id, user.role, user.bureau, authRefreshTick]);
+
+  const mergeRemoteProof = (proof: AttendanceProof) => {
+    setRemoteProofs((items) => [proof, ...items.filter((item) => item.id !== proof.id)]);
+  };
 
   const ownProof = useMemo(
-    () => attendanceProofs.find((proof) => proof.userId === user.id && proof.date === today),
-    [attendanceProofs, today, user.id]
+    () => activeProofs.find((proof) => proof.userId === user.id && proof.date === today),
+    [activeProofs, today, user.id]
   );
-  const pendingReview = attendanceProofs.filter((proof) => proof.status === "pending_review");
-  const sentToMainboard = attendanceProofs.filter((proof) => proof.status === "sent_to_mainboard");
+  const proofLocked = Boolean(ownProof && ownProof.status !== "rejected");
+  const canResubmit = ownProof?.status === "rejected";
+  const pendingReview = activeProofs.filter((proof) => proof.status === "pending_review");
+  const sentToMainboard = activeProofs.filter((proof) => proof.status === "sent_to_mainboard");
 
   const handleSelfieChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -42,22 +92,44 @@ function Attendance() {
     reader.readAsDataURL(file);
   };
 
-  const submitProof = (event: FormEvent) => {
+  const submitProof = async (event: FormEvent) => {
     event.preventDefault();
-    if (!selfieDataUrl || ownProof || !user.bureau) {
+    if (!selfieDataUrl || proofLocked || !user.bureau) {
       hapticError();
       return;
     }
 
-    submitAttendanceProof({ selfieDataUrl });
-    setSelfieDataUrl("");
-    setLatestStatus("Proof sent to Special Task review.");
-    hapticSuccess();
+    try {
+      setErrorMessage("");
+      if (apiMode) {
+        const proof = await submitAttendanceProofApi(selfieDataUrl);
+        mergeRemoteProof(proof);
+      } else {
+        submitAttendanceProof({ selfieDataUrl });
+      }
+      setSelfieDataUrl("");
+      setLatestStatus("Proof sent to Special Task review.");
+      hapticSuccess();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to submit attendance proof.");
+      hapticError();
+    }
   };
 
-  const reviewProof = (id: string, status: "sent_to_mainboard" | "rejected") => {
-    reviewAttendanceProof(id, status);
-    hapticImpact(status === "sent_to_mainboard" ? "medium" : "light");
+  const reviewProof = async (id: string, status: "sent_to_mainboard" | "rejected") => {
+    try {
+      setErrorMessage("");
+      if (apiMode) {
+        const proof = await reviewAttendanceProofApi(id, status);
+        mergeRemoteProof(proof);
+      } else {
+        reviewAttendanceProof(id, status);
+      }
+      hapticImpact(status === "sent_to_mainboard" ? "medium" : "light");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to review attendance proof.");
+      hapticError();
+    }
   };
 
   return (
@@ -75,8 +147,14 @@ function Attendance() {
           <div className="attendance-copy">
             <div>
               <p className="eyebrow">My attendance</p>
-              <h3>{ownProof ? "Submitted today" : "Selfie punch card"}</h3>
-              <p>{ownProof ? "Special Task will review this proof." : "One proof is required for today."}</p>
+              <h3>{proofLocked ? "Submitted today" : canResubmit ? "Submit new proof" : "Selfie punch card"}</h3>
+              <p>
+                {proofLocked
+                  ? "Special Task will review this proof."
+                  : canResubmit
+                    ? "Your previous proof was rejected. Send a fresh selfie."
+                    : "One proof is required for today."}
+              </p>
             </div>
             {ownProof && <StatusBadge value={ownProof.status} />}
           </div>
@@ -90,13 +168,14 @@ function Attendance() {
                 <strong>Selfie proof</strong>
               </span>
             )}
-            <input type="file" accept="image/*" capture="user" required={!ownProof} onChange={handleSelfieChange} disabled={Boolean(ownProof)} />
+            <input type="file" accept="image/*" capture="user" required={!proofLocked} onChange={handleSelfieChange} disabled={proofLocked} />
           </label>
 
-          <button className="punch-button" type="submit" disabled={!selfieDataUrl || Boolean(ownProof)}>
+          <button className="punch-button" type="submit" disabled={!selfieDataUrl || proofLocked}>
             <Send size={20} aria-hidden="true" />
-            <span>{ownProof ? "Proof submitted" : "Send proof"}</span>
+            <span>{proofLocked ? "Proof submitted" : canResubmit ? "Resend proof" : "Send proof"}</span>
           </button>
+          {errorMessage && <p className="access-error">{errorMessage}</p>}
           {latestStatus && <p className="success-note">{latestStatus}</p>}
         </form>
       )}
@@ -105,8 +184,9 @@ function Attendance() {
         <section className="ops-panel">
           <div className="section-heading">
             <h3>Special Task Review</h3>
-            <span>{pendingReview.length} pending</span>
+            <span>{loadingProofs ? "loading" : `${pendingReview.length} pending`}</span>
           </div>
+          {errorMessage && <p className="access-error">{errorMessage}</p>}
           {pendingReview.length === 0 ? (
             <EmptyState icon={BadgeCheck} title="Review queue clear" body="New proof submissions will appear here." />
           ) : (
@@ -150,8 +230,9 @@ function Attendance() {
         <section className="ops-panel">
           <div className="section-heading">
             <h3>Mainboard Attendance</h3>
-            <span>{sentToMainboard.length} verified</span>
+            <span>{loadingProofs ? "loading" : `${sentToMainboard.length} verified`}</span>
           </div>
+          {errorMessage && <p className="access-error">{errorMessage}</p>}
           {sentToMainboard.length === 0 ? (
             <EmptyState icon={BadgeCheck} title="No verified records" body="Special Task approved proofs will appear here." />
           ) : (

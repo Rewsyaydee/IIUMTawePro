@@ -161,7 +161,8 @@ export function signSupabaseJwt(user) {
     app_user_id: user.id,
     app_role: user.role,
     bureau: user.bureau || "",
-    telegram_id: user.telegramId
+    telegram_id: user.telegramId,
+    name: user.name
   };
 
   const encodedHeader = base64Url(JSON.stringify(header));
@@ -172,4 +173,53 @@ export function signSupabaseJwt(user) {
 
 function base64Url(value) {
   return Buffer.from(value).toString("base64url");
+}
+
+export function readBearerToken(req) {
+  const header = req.headers?.authorization || req.headers?.Authorization || "";
+  const match = String(header).match(/^Bearer\s+(.+)$/i);
+  return match?.[1] || "";
+}
+
+export function verifyAppSessionToken(token) {
+  const secret = process.env.SUPABASE_JWT_SECRET;
+  if (!secret) return { ok: false, reason: "Missing SUPABASE_JWT_SECRET." };
+  if (!token) return { ok: false, reason: "Missing app session." };
+
+  const parts = token.split(".");
+  if (parts.length !== 3) return { ok: false, reason: "Invalid app session format." };
+
+  const [encodedHeader, encodedPayload, signature] = parts;
+  let header;
+  let payload;
+  try {
+    header = JSON.parse(Buffer.from(encodedHeader, "base64url").toString("utf8"));
+    payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8"));
+  } catch {
+    return { ok: false, reason: "Invalid app session payload." };
+  }
+
+  if (header.alg !== "HS256") return { ok: false, reason: "Unsupported app session algorithm." };
+
+  const expected = crypto.createHmac("sha256", secret).update(`${encodedHeader}.${encodedPayload}`).digest("base64url");
+  const expectedBuffer = Buffer.from(expected);
+  const signatureBuffer = Buffer.from(signature);
+  if (expectedBuffer.length !== signatureBuffer.length || !crypto.timingSafeEqual(expectedBuffer, signatureBuffer)) {
+    return { ok: false, reason: "Invalid app session signature." };
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  if (typeof payload.exp !== "number" || payload.exp <= now) {
+    return { ok: false, reason: "App session expired." };
+  }
+
+  if (!payload.app_user_id || !payload.app_role) {
+    return { ok: false, reason: "App session missing role claims." };
+  }
+
+  return { ok: true, claims: payload };
+}
+
+export function verifyAppSessionFromRequest(req) {
+  return verifyAppSessionToken(readBearerToken(req));
 }

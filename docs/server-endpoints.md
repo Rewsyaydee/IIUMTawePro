@@ -78,14 +78,15 @@ Security:
 
 ## POST /api/attendance/proofs
 
-Purpose: create a daily punch card proof after a selfie upload.
+Purpose: create a daily punch card proof and upload the selfie to private Supabase Storage. The frontend sends a browser `data:image/...;base64,...` value; the server stores it in `attendance-selfies` and writes the storage path to `attendance_proofs`.
+
+Authorization: `Authorization: Bearer <supabaseJwt>` returned by `/api/auth/telegram` or `/api/invites/redeem`.
 
 Request:
 
 ```json
 {
-  "date": "2026-02-23",
-  "selfiePath": "attendance-selfies/u-123/2026-02-23.jpg"
+  "selfieDataUrl": "data:image/jpeg;base64,..."
 }
 ```
 
@@ -93,27 +94,51 @@ Response:
 
 ```json
 {
-  "id": "uuid",
-  "status": "pending_review"
+  "status": "submitted",
+  "proof": {
+    "id": "uuid",
+    "date": "2026-02-23",
+    "userId": "uuid",
+    "telegramId": "1001002",
+    "committeeName": "Hakim Catering",
+    "bureau": "Catering",
+    "selfieDataUrl": "https://...signed-url...",
+    "submittedAt": "2026-02-23T09:10:00.000Z",
+    "status": "pending_review"
+  }
 }
 ```
 
 Security:
 
 - Only `committee` and `head` roles can submit.
-- Enforce one proof per user per date.
-- Create a notification for Special Task.
+- Enforce one active proof per user per Malaysia date.
+- Let rejected proofs be resubmitted for the same date.
+- Create an `audit_log` row for each submission.
+
+## GET /api/attendance/proofs
+
+Purpose: return attendance records visible to the signed-in app user.
+
+Authorization: `Authorization: Bearer <supabaseJwt>`.
+
+Visibility:
+
+- Committee/head users receive their own records.
+- Special Task receives all records for review.
+- Mainboard receives records already sent to mainboard.
 
 ## POST /api/attendance/proofs/:id/review
 
 Purpose: let Special Task approve or reject a punch card proof.
 
+Authorization: `Authorization: Bearer <supabaseJwt>`.
+
 Request:
 
 ```json
 {
-  "status": "sent_to_mainboard",
-  "reason": "Selfie matches committee identity"
+  "status": "sent_to_mainboard"
 }
 ```
 
@@ -121,16 +146,21 @@ Response:
 
 ```json
 {
-  "id": "uuid",
-  "status": "sent_to_mainboard",
-  "reviewedAt": "2026-02-23T09:10:00.000Z"
+  "status": "reviewed",
+  "proof": {
+    "id": "uuid",
+    "status": "sent_to_mainboard",
+    "reviewedBy": "uuid",
+    "reviewedAt": "2026-02-23T09:10:00.000Z"
+  }
 }
 ```
 
 Security:
 
 - Only Special Task can call this endpoint.
-- Notify mainboard only when status becomes `sent_to_mainboard`.
+- Status must be `sent_to_mainboard` or `rejected`.
+- Create an `audit_log` row for each review.
 
 ## POST /api/notifications/send
 

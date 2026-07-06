@@ -69,6 +69,73 @@ export async function supabaseRequest(path, { method = "GET", body, headers = {}
   return text ? JSON.parse(text) : null;
 }
 
+export async function supabaseStorageRequest(path, { method = "GET", body, headers = {} } = {}) {
+  const config = getSupabaseServerConfig();
+  if (!config) {
+    throw new SupabaseRequestError("Supabase server configuration is missing.");
+  }
+
+  const response = await fetch(`${config.url}/storage/v1${path}`, {
+    method,
+    headers: {
+      ...authorizationHeaders(config.key),
+      ...headers
+    },
+    body
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    let payload;
+    try {
+      payload = text ? JSON.parse(text) : undefined;
+    } catch {
+      payload = text;
+    }
+    throw new SupabaseRequestError("Supabase storage request failed.", {
+      status: response.status,
+      payload
+    });
+  }
+
+  if (response.status === 204) return null;
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+}
+
+function encodeStoragePath(path) {
+  return path.split("/").map(encodeURIComponent).join("/");
+}
+
+export async function uploadStorageObject({ bucket, path, body, contentType }) {
+  return supabaseStorageRequest(`/object/${encodeURIComponent(bucket)}/${encodeStoragePath(path)}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": contentType,
+      "Cache-Control": "3600",
+      "x-upsert": "true"
+    },
+    body
+  });
+}
+
+export async function createSignedStorageUrl({ bucket, path, expiresIn = 60 * 15 }) {
+  const config = getSupabaseServerConfig();
+  const payload = await supabaseStorageRequest(`/object/sign/${encodeURIComponent(bucket)}/${encodeStoragePath(path)}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ expiresIn })
+  });
+  const signedPath = payload?.signedURL || payload?.signedUrl;
+  if (!signedPath) return "";
+  if (signedPath.startsWith("http")) return signedPath;
+  if (signedPath.startsWith("/storage/v1")) return `${config.url}${signedPath}`;
+  if (signedPath.startsWith("/object/")) return `${config.url}/storage/v1${signedPath}`;
+  return `${config.url}/storage/v1/${signedPath.replace(/^\//, "")}`;
+}
+
 export function mapSupabaseUser(row) {
   if (!row) return null;
   return {
@@ -85,6 +152,11 @@ export async function getUserRecordByTelegramId(telegramId) {
     `/users?telegram_id=eq.${encodeURIComponent(telegramId)}&select=id,telegram_id,name,role,bureau,status&limit=1`
   );
   return Array.isArray(rows) ? rows[0] : undefined;
+}
+
+export async function getUserById(id) {
+  const rows = await supabaseRequest(`/users?id=eq.${encodeURIComponent(id)}&status=eq.active&select=id,telegram_id,name,role,bureau&limit=1`);
+  return mapSupabaseUser(Array.isArray(rows) ? rows[0] : undefined);
 }
 
 export async function getUserByTelegramId(telegramId) {

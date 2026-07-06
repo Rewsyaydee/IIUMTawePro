@@ -69,6 +69,13 @@ SUPABASE_JWKS_URL=https://your-project.supabase.co/auth/v1/.well-known/jwks.json
 SUPABASE_JWT_SECRET=server-only
 ```
 
-## First Real Integration Target
+## Current Real Integration Status
 
-Start with `/api/auth/telegram`. It unlocks the rest of production safely because every downstream policy depends on trusted role and bureau claims. Students can start as guests, while committee/head users redeem a manually shared access code.
+Completed first targets:
+
+- `/api/auth/telegram` validates Telegram users, persists `public.users`, and returns the app session.
+- `/api/invites/redeem` upgrades the same Telegram user to committee/head/mainboard-compatible app access.
+- `/api/attendance/proofs` stores daily selfie punch cards in private Supabase Storage and writes `attendance_proofs`.
+- `/api/attendance/proofs/:id/review` lets Special Task approve or reject before mainboard visibility.
+
+Next targets: wellbeing reports, POA tasks, official notices, emergency broadcasts, and schedule publishing.

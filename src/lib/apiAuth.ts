@@ -18,6 +18,7 @@ export type ApiAuthResponse = {
 
 const authUserStorageKey = "tawepro-auth-user";
 const authJwtStorageKey = "tawepro-supabase-jwt";
+export const authSessionChangedEvent = "tawepro-auth-session";
 
 function apiBase() {
   return import.meta.env.VITE_API_BASE_URL || "";
@@ -49,12 +50,14 @@ export function saveAuthSession(session: ApiAuthResponse) {
   } else {
     localStorage.removeItem(authJwtStorageKey);
   }
+  window.dispatchEvent(new Event(authSessionChangedEvent));
 }
 
 export function clearAuthSession() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(authUserStorageKey);
   localStorage.removeItem(authJwtStorageKey);
+  window.dispatchEvent(new Event(authSessionChangedEvent));
 }
 
 export function getStoredSupabaseJwt() {

@@ -2,6 +2,8 @@ import authHandler from "../api/auth/telegram.js";
 import redeemHandler from "../api/invites/redeem.js";
 import healthHandler from "../api/health.js";
 import webhookHandler from "../api/telegram/webhook.js";
+import attendanceHandler from "../api/attendance/proofs.js";
+import attendanceReviewHandler from "../api/attendance/proofs/[id]/review.js";
 
 function makeReq(method, body) {
   return {
@@ -81,5 +83,13 @@ assert(Array.isArray(health.payload.missing), "Health endpoint should include mi
 const webhook = await call(webhookHandler, "GET");
 assert(webhook.status === 200, "Telegram webhook health should respond.");
 assert(webhook.payload.endpoint === "telegram-webhook", "Telegram webhook should identify itself.");
+
+const attendance = await call(attendanceHandler, "GET");
+assert(attendance.status === 401, "Attendance proofs should require an app session.");
+
+const attendanceReview = await call(attendanceReviewHandler, "POST", {
+  status: "sent_to_mainboard"
+});
+assert(attendanceReview.status === 401, "Attendance review should require an app session.");
 
 console.log("Auth smoke checks passed.");
