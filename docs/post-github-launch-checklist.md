@@ -51,7 +51,13 @@ Server-only variables in Vercel Project Settings > Environment Variables:
 
 ```env
 TELEGRAM_BOT_TOKEN=from_botfather
+TELEGRAM_WEB_APP_URL=https://iium-tawe-pro.vercel.app
+TELEGRAM_WEBHOOK_SECRET=
+WELLBEING_SUPPORT_URL=https://iium-tawe-pro.vercel.app/wellbeing
 COMMITTEE_ACCESS_CODES=<shared-committee-code>
+COMMITTEE_TELEGRAM_IDS=
+COMMITTEE_BUREAU_BY_TELEGRAM_ID=
+DEFAULT_COMMITTEE_BUREAU=
 HEAD_ACCESS_CODES=
 MAINBOARD_ACCESS_CODES=
 SUPABASE_URL=
@@ -89,6 +95,7 @@ SUPABASE_JWT_SECRET=server_only_jwt_secret
 - [ ] Choose a short name for the app link, for example `tawe`.
 - [ ] Save the final launch link, usually `https://t.me/<bot_username>/<app_short_name>`.
 - [ ] Optional: set the bot menu button to open the Mini App so users can enter from the chat.
+- [ ] Optional: set the webhook to `https://iium-tawe-pro.vercel.app/api/telegram/webhook` so `/start` replies with the TawePro dashboard buttons.
 - [ ] Test on Telegram mobile, not only desktop:
   - [ ] App opens.
   - [ ] App requests full screen on supported Telegram clients.

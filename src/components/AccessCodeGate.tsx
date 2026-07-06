@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { KeyRound, ShieldCheck } from "lucide-react";
 import { BUREAUS, roleLabels } from "../constants";
 import { redeemAccessCode, shouldUseApiAuth } from "../lib/apiAuth";
@@ -24,6 +24,10 @@ export function AccessCodeGate({ compact = false }: AccessCodeGateProps) {
   });
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
+  const unlockTimer = useRef<number>();
+
+  useEffect(() => () => window.clearTimeout(unlockTimer.current), []);
 
   if (user.role !== "student") {
     return null;
@@ -34,6 +38,14 @@ export function AccessCodeGate({ compact = false }: AccessCodeGateProps) {
     const displayName = form.name.trim() || "Committee User";
     setSubmitting(true);
     setMessage("");
+    let unlockStarted = false;
+
+    const finishUnlock = (nextId: string) => {
+      unlockStarted = true;
+      setUnlocking(true);
+      hapticSuccess();
+      unlockTimer.current = window.setTimeout(() => setUserId(nextId), 1280);
+    };
 
     try {
       if (shouldUseApiAuth()) {
@@ -49,8 +61,7 @@ export function AccessCodeGate({ compact = false }: AccessCodeGateProps) {
           role: result.user.role,
           bureau: result.user.bureau
         });
-        setUserId(next.id);
-        hapticSuccess();
+        finishUnlock(next.id);
         return;
       }
 
@@ -67,13 +78,12 @@ export function AccessCodeGate({ compact = false }: AccessCodeGateProps) {
         role: selectedRole,
         bureau: selectedRole === "mainboard" ? undefined : invite.bureau || form.bureau
       });
-      setUserId(next.id);
-      hapticSuccess();
+      finishUnlock(next.id);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to unlock committee mode.");
       hapticError();
     } finally {
-      setSubmitting(false);
+      if (!unlockStarted) setSubmitting(false);
     }
   };
 
@@ -128,10 +138,26 @@ export function AccessCodeGate({ compact = false }: AccessCodeGateProps) {
         </label>
       </div>
       {message && <p className="access-error">{message}</p>}
-      <button className="primary-button full-width" type="submit" disabled={submitting}>
+      <button className="primary-button full-width" type="submit" disabled={submitting || unlocking}>
         <ShieldCheck size={16} aria-hidden="true" />
-        <span>{submitting ? "Checking code..." : "Unlock committee mode"}</span>
+        <span>{unlocking ? "Access unlocked..." : submitting ? "Checking code..." : "Unlock committee mode"}</span>
       </button>
+      {unlocking && (
+        <div className="unlock-reward" aria-live="polite">
+          <div className="unlock-lock" aria-hidden="true">
+            <span className="unlock-shackle" />
+            <span className="unlock-body">
+              <KeyRound size={24} />
+            </span>
+            <i />
+            <i />
+            <i />
+            <i />
+          </div>
+          <strong>Access unlocked</strong>
+          <span>Opening your committee workspace</span>
+        </div>
+      )}
     </form>
   );
 }

@@ -4,6 +4,7 @@ import { MenuTile } from "../components/MenuTile";
 import { StatusBadge } from "../components/StatusBadge";
 import { bureauShortLabels, roleLabels } from "../constants";
 import { getCurrentScheduleItem, getScheduleClock, getScheduleStatus, getTaweWeekProgress } from "../lib/scheduleTime";
+import { getTelegramWebApp } from "../lib/telegram";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 
@@ -27,7 +28,8 @@ function Dashboard() {
     user.role === "mainboard"
       ? bureauOperations.filter((operation) => operation.status === "issue").length
       : bureauOperations.filter((operation) => operation.bureau === user.bureau && operation.status === "issue").length;
-  const firstName = user.name.split(" ")[0];
+  const telegramUser = getTelegramWebApp()?.initDataUnsafe?.user;
+  const firstName = telegramUser?.first_name || telegramUser?.username || user.name.split(" ")[0];
   const dashboardTitle = user.role === "student" ? `Assalamu'alaikum, ${firstName}` : "Committee command centre";
   const dashboardSubtitle =
     user.role === "student"

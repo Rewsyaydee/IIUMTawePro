@@ -1,6 +1,7 @@
 import authHandler from "../api/auth/telegram.js";
 import redeemHandler from "../api/invites/redeem.js";
 import healthHandler from "../api/health.js";
+import webhookHandler from "../api/telegram/webhook.js";
 
 function makeReq(method, body) {
   return {
@@ -76,5 +77,9 @@ process.env = { ...originalEnv, COMMITTEE_ACCESS_CODES: "OiAkuNakTaweNi" };
 const health = await call(healthHandler, "GET");
 assert(health.status === 200, "Health endpoint should respond.");
 assert(Array.isArray(health.payload.missing), "Health endpoint should include missing list.");
+
+const webhook = await call(webhookHandler, "GET");
+assert(webhook.status === 200, "Telegram webhook health should respond.");
+assert(webhook.payload.endpoint === "telegram-webhook", "Telegram webhook should identify itself.");
 
 console.log("Auth smoke checks passed.");

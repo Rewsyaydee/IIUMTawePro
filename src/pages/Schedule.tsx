@@ -105,7 +105,7 @@ function Schedule() {
                   transition={{ delay: index * 0.035 }}
                 >
                   <div className="time-block">
-                    <Clock3 size={16} aria-hidden="true" />
+                    {scheduleStatus === "done" ? <CheckCircle2 className="done-check" size={17} aria-hidden="true" /> : <Clock3 size={16} aria-hidden="true" />}
                     <strong>{item.scheduledStartTime}</strong>
                     <span>{item.scheduledEndTime}</span>
                   </div>
@@ -119,6 +119,7 @@ function Schedule() {
                       </div>
                       <div className="badge-row">
                         {isLive && <StatusBadge value="live" />}
+                        {scheduleStatus === "done" && <StatusBadge value="done" />}
                         {isCurrent && !isLive && <StatusBadge value="upcoming" />}
                         <span className="soft-chip">{item.tag}</span>
                       </div>
