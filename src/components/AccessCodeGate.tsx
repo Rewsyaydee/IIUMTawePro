@@ -56,6 +56,7 @@ export function AccessCodeGate({ compact = false }: AccessCodeGateProps) {
           selectedBureau: form.bureau
         });
         const next = addMockUser({
+          id: result.user.id,
           name: result.user.name,
           telegramId: result.user.telegramId,
           role: result.user.role,

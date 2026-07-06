@@ -1,8 +1,10 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { mockUsers } from "../data/mockData";
+import { authenticateTelegram, clearAuthSession, loadAuthSession, shouldUseApiAuth } from "../lib/apiAuth";
 import type { MockUser } from "../types";
 
 type NewMockUserInput = Pick<MockUser, "name" | "role" | "bureau"> & {
+  id?: string;
   telegramId?: string;
 };
 
@@ -21,25 +23,60 @@ const MockUserContext = createContext<MockUserContextValue | undefined>(undefine
 
 const storageKey = "twa-event-ops-user";
 
+function upsertUser(items: MockUser[], next: MockUser) {
+  return [next, ...items.filter((item) => item.id !== next.id)];
+}
+
+function initialUsers() {
+  const session = loadAuthSession();
+  if (!session.user) return mockUsers;
+  return upsertUser(mockUsers, session.user);
+}
+
 export function MockUserProvider({ children }: { children: React.ReactNode }) {
-  const [users, setUsers] = useState(mockUsers);
-  const [userId, setUserIdState] = useState(() => localStorage.getItem(storageKey) || mockUsers[0].id);
+  const [users, setUsers] = useState(initialUsers);
+  const [userId, setUserIdState] = useState(() => {
+    const session = loadAuthSession();
+    return localStorage.getItem(storageKey) || session.user?.id || mockUsers[0].id;
+  });
 
   const setUserId = (id: string) => {
     localStorage.setItem(storageKey, id);
     setUserIdState(id);
   };
 
+  useEffect(() => {
+    if (!shouldUseApiAuth()) return;
+
+    let cancelled = false;
+    authenticateTelegram()
+      .then((session) => {
+        if (cancelled) return;
+        setUsers((items) => upsertUser(items, session.user));
+        setUserId(session.user.id);
+      })
+      .catch((error) => {
+        console.warn("Telegram auth bridge failed", error);
+        clearAuthSession();
+        setUsers(mockUsers);
+        setUserId(mockUsers[0].id);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const addMockUser = (input: NewMockUserInput) => {
     const next: MockUser = {
-      id: `u-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+      id: input.id || `u-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
       telegramId: input.telegramId || `tg-${Math.floor(100000 + Math.random() * 900000)}`,
       name: input.name,
       role: input.role,
       bureau: input.role === "student" ? undefined : input.bureau
     };
 
-    setUsers((items) => [next, ...items]);
+    setUsers((items) => upsertUser(items, next));
     return next;
   };
 

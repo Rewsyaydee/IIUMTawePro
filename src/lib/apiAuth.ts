@@ -8,11 +8,16 @@ type RedeemAccessInput = {
   selectedBureau: Bureau;
 };
 
-type ApiAuthResponse = {
+export type ApiAuthResponse = {
   user: MockUser;
   supabaseJwt?: string | null;
+  expiresIn?: number;
+  persistence?: "stub" | "supabase";
   error?: string;
 };
+
+const authUserStorageKey = "tawepro-auth-user";
+const authJwtStorageKey = "tawepro-supabase-jwt";
 
 function apiBase() {
   return import.meta.env.VITE_API_BASE_URL || "";
@@ -20,6 +25,41 @@ function apiBase() {
 
 export function shouldUseApiAuth() {
   return import.meta.env.VITE_ENABLE_MOCKS === "false" || import.meta.env.VITE_API_AUTH_BRIDGE === "true";
+}
+
+export function loadAuthSession() {
+  if (typeof window === "undefined") return {};
+  try {
+    const userText = localStorage.getItem(authUserStorageKey);
+    const user = userText ? (JSON.parse(userText) as MockUser) : undefined;
+    const supabaseJwt = localStorage.getItem(authJwtStorageKey);
+    return { user, supabaseJwt };
+  } catch {
+    return {};
+  }
+}
+
+export function saveAuthSession(session: ApiAuthResponse) {
+  if (typeof window === "undefined") return;
+  if (session.user) {
+    localStorage.setItem(authUserStorageKey, JSON.stringify(session.user));
+  }
+  if (session.supabaseJwt) {
+    localStorage.setItem(authJwtStorageKey, session.supabaseJwt);
+  } else {
+    localStorage.removeItem(authJwtStorageKey);
+  }
+}
+
+export function clearAuthSession() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(authUserStorageKey);
+  localStorage.removeItem(authJwtStorageKey);
+}
+
+export function getStoredSupabaseJwt() {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(authJwtStorageKey);
 }
 
 export async function authenticateTelegram(invite?: RedeemAccessInput) {
@@ -52,5 +92,6 @@ async function postAuth(path: string, body: Record<string, unknown>): Promise<Ap
   if (!response.ok) {
     throw new Error(payload.error || "Authentication failed.");
   }
+  saveAuthSession(payload);
   return payload;
 }

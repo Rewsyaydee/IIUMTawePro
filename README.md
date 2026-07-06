@@ -26,8 +26,8 @@ Phase 6 prototype for the event-only Telegram Mini App.
 - Backend production contract in `docs/production-contract.md`
 - Phase 5 Supabase schema and RLS policy drafts in `supabase/`
 - Server endpoint contracts and backend wiring checklist in `docs/`
-- Phase 6 Telegram auth bridge stubs in `api/`
-- Frontend auth bridge client for guest and access-code login
+- Supabase-backed Telegram auth bridge in `api/`
+- Frontend auth bridge client for guest and access-code login with persisted app session
 - Deployment health endpoint and local auth smoke check
 - Deployment guidance in `docs/deployment-plan.md`
 - IIUM branding notes in `docs/branding-notes.md`
@@ -36,14 +36,14 @@ Phase 6 prototype for the event-only Telegram Mini App.
 
 ## Next production phase
 
-- Replace mock user provider with Telegram `initData` validation
-- Add Supabase tables, RLS policies, and custom JWT claims
+- Finish replacing mock operational data with Supabase reads/writes
+- Keep Supabase tables, RLS policies, and custom JWT claims reviewed before launch
 - Wire real serverless API routes for reports, invites, notifications, schedule publishing, and audit logs
 - Replace mock notification records with Telegram Bot API sends
 - Split each bureau operation record into its production Supabase table
 - Add mainboard-only production authorization checks for admin endpoints
 - Move attendance selfie proof to private storage with signed review URLs
-- Replace auth bridge stubs with Supabase-backed invite redemption and user persistence
+- Replace environment-code lookup with Supabase `invite_codes` records
 - Replace the bundled official PDF if IIUM publishes a newer schedule revision
 
 ## Commands

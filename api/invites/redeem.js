@@ -1,4 +1,19 @@
-import { readJson, resolveAccessCode, sendJson, userFromTelegram, verifyTelegramInitData } from "../_lib/auth-utils.js";
+import {
+  isProductionRuntime,
+  readJson,
+  resolveAccessCode,
+  sendJson,
+  signSupabaseJwt,
+  userFromTelegram,
+  verifyTelegramInitData
+} from "../_lib/auth-utils.js";
+import {
+  createAuditLog,
+  getUserRecordByTelegramId,
+  hasSupabaseServerConfig,
+  SupabaseRequestError,
+  upsertUserProfile
+} from "../_lib/supabase.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -20,19 +35,56 @@ export default async function handler(req, res) {
     });
     if (!invite.ok) return sendJson(res, 403, { error: invite.reason });
 
-    const user = userFromTelegram({
+    let user = userFromTelegram({
       telegramUser: verification.user,
       role: invite.role,
       bureau: invite.bureau,
       displayName: body.displayName
     });
+    let persistence = "stub";
+
+    if (isProductionRuntime() && !hasSupabaseServerConfig()) {
+      return sendJson(res, 503, { error: "Supabase server configuration is missing." });
+    }
+
+    if (hasSupabaseServerConfig() && verification.user?.id) {
+      const telegramId = String(verification.user.id);
+      const existingRow = await getUserRecordByTelegramId(telegramId);
+      if (existingRow?.status === "revoked") {
+        return sendJson(res, 403, { error: "This account has been revoked." });
+      }
+
+      user = await upsertUserProfile({
+        telegramId,
+        name: user.name,
+        role: invite.role,
+        bureau: invite.bureau
+      });
+      persistence = "supabase";
+
+      await createAuditLog({
+        actor: user,
+        action: "redeem_access_code",
+        tableName: "users",
+        recordId: user.id,
+        details: `Telegram user ${telegramId} unlocked ${invite.role}${invite.bureau ? ` / ${invite.bureau}` : ""}.`
+      });
+    }
 
     return sendJson(res, 200, {
       status: "redeemed",
+      persistence,
       reusable: invite.reusable,
-      user
+      user,
+      supabaseJwt: signSupabaseJwt(user),
+      expiresIn: 3600
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof SupabaseRequestError) {
+      console.error("Supabase invite persistence failed", error.status, error.payload);
+      return sendJson(res, 502, { error: "Supabase persistence failed." });
+    }
+    console.error("Invite redemption failed", error);
     return sendJson(res, 400, { error: "Invalid invite redemption request." });
   }
 }
