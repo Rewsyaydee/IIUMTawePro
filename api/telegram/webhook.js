@@ -53,9 +53,9 @@ function resolveAccess(from) {
 function startText(from) {
   const firstName = from?.first_name || "there";
   const telegramId = from?.id ? String(from.id) : "unknown";
-  const username = from?.username ? `&bull; <b>Username:</b> @${html(from.username)}` : null;
+  const username = from?.username ? `• <b>Username:</b> @${html(from.username)}` : null;
   const access = resolveAccess(from);
-  const bureau = access.bureau ? `&bull; <b>Bureau:</b> ${html(access.bureau)}` : null;
+  const bureau = access.bureau ? `• <b>Bureau:</b> ${html(access.bureau)}` : null;
 
   return [
     `✨ <b>TawePro One-Stop Centre</b> — welcome, ${html(firstName)}!`,
@@ -63,12 +63,12 @@ function startText(from) {
     "Your ultimate hub for event coordination.",
     "",
     "👤 <b>Account Details</b>",
-    `&bull; <b>ID:</b> <code>${html(telegramId)}</code>`,
+    `• <b>ID:</b> <code>${html(telegramId)}</code>`,
     username,
-    `&bull; <b>Name:</b> ${html(firstName)}`,
+    `• <b>Name:</b> ${html(firstName)}`,
     "",
     "🏷 <b>Access Level</b>",
-    `&bull; <b>Role:</b> ${html(access.role)}`,
+    `• <b>Role:</b> ${html(access.role)}`,
     bureau,
     "",
     "Pick an option below to begin."

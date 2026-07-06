@@ -56,3 +56,18 @@ curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
 ```
 
 Keep the bot token out of GitHub and browser code.
+
+## Debug No Reply
+
+Check whether Telegram is actually pointing to Vercel:
+
+```bash
+curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
+```
+
+Confirm:
+
+- `url` is `https://iium-tawe-pro.vercel.app/api/telegram/webhook`
+- `last_error_message` is empty
+- Vercel has been redeployed after adding `TELEGRAM_BOT_TOKEN`
+- Opening `https://iium-tawe-pro.vercel.app/api/telegram/webhook` returns `{"ok":true,"endpoint":"telegram-webhook"}`
