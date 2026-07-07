@@ -15,6 +15,7 @@ const Mainboard = lazy(() => import("./pages/Mainboard"));
 const LaunchReadiness = lazy(() => import("./pages/LaunchReadiness"));
 const OfficialSchedulePdf = lazy(() => import("./pages/OfficialSchedulePdf"));
 const Announcements = lazy(() => import("./pages/Announcements"));
+const CampusMap = lazy(() => import("./features/navigation/components/CampusMapPage"));
 
 function App() {
   const [booting, setBooting] = useState(true);
@@ -59,6 +60,14 @@ function App() {
             element={
               <Suspense fallback={<LoadingScreen compact />}>
                 <Announcements />
+              </Suspense>
+            }
+          />
+          <Route
+            path="map"
+            element={
+              <Suspense fallback={<LoadingScreen compact />}>
+                <CampusMap />
               </Suspense>
             }
           />

@@ -222,3 +222,34 @@ create index if not exists audit_log_timestamp_idx on public.audit_log (timestam
 insert into storage.buckets (id, name, public)
 values ('attendance-selfies', 'attendance-selfies', false)
 on conflict (id) do nothing;
+
+-- Smart Schedule Navigator: static venue registry
+create table if not exists public.static_locations (
+  id uuid primary key default gen_random_uuid(),
+  code text unique not null,
+  name text not null,
+  short_name text not null,
+  description text not null,
+  category text not null check (category in ('hall','mosque','clinic','mahallah','admin','open_area')),
+  created_at timestamptz not null default now()
+);
+
+-- Smart Schedule Navigator: pre-computed routes between venues
+create table if not exists public.static_routes (
+  id uuid primary key default gen_random_uuid(),
+  from_venue_code text not null references public.static_locations(code),
+  to_venue_code text not null,
+  map_asset_url text not null,
+  duration_minutes int not null,
+  distance_meters int not null,
+  steps jsonb not null default '[]',
+  transition_notes text,
+  created_at timestamptz not null default now(),
+  unique (from_venue_code, to_venue_code)
+);
+
+-- Extend schedule_items with venue code for navigation
+alter table public.schedule_items add column if not exists venue_code text;
+
+create index if not exists static_locations_code_idx on public.static_locations (code);
+create index if not exists static_routes_from_to_idx on public.static_routes (from_venue_code, to_venue_code);

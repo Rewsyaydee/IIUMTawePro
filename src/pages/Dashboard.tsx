@@ -1,9 +1,16 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { BookOpen, CalendarDays, Camera, ClipboardList, FileText, Grid3X3, HeartPulse, Bell, Rocket, ShieldCheck, ShieldAlert } from "lucide-react";
 import { Link } from "react-router-dom";
 import { MenuTile } from "../components/MenuTile";
 import { StatusBadge } from "../components/StatusBadge";
 import { bureauShortLabels, roleLabels } from "../constants";
+import {
+  TransitionReminderBanner,
+  RoutePlannerModal,
+  useRoutePlanner,
+  useScheduleTransition
+} from "../features/navigation";
 import { getCurrentScheduleItem, getScheduleClock, getScheduleStatus, getTaweWeekProgress } from "../lib/scheduleTime";
 import { getTelegramWebApp } from "../lib/telegram";
 import { useMockData } from "../state/MockDataContext";
@@ -13,7 +20,7 @@ type TileTone = "blue" | "green" | "amber" | "red" | "violet";
 
 function Dashboard() {
   const { user } = useMockUser();
-  const { attendanceProofs, announcements, bureauOperations, schedule, reports, tasks, notifications, dismissAnnouncement } = useMockData();
+  const { announcements, attendanceProofs, bureauOperations, schedule, reports, tasks, notifications, dismissAnnouncement } = useMockData();
   const scheduleClock = getScheduleClock(schedule);
   const currentScheduleItem = getCurrentScheduleItem(schedule, scheduleClock.now);
   const currentScheduleStatus = currentScheduleItem ? getScheduleStatus(currentScheduleItem, scheduleClock.now) : "upcoming";
@@ -32,9 +39,15 @@ function Dashboard() {
   const telegramUser = getTelegramWebApp()?.initDataUnsafe?.user;
   const firstName = telegramUser?.first_name || telegramUser?.username || user.name.split(" ")[0];
 
+  const transition = useScheduleTransition(schedule);
+  const { lookup } = useRoutePlanner();
+  const [navReminderDismissed, setNavReminderDismissed] = useState(false);
+  const [navModalRoute, setNavModalRoute] = useState<{ fromCode: string; toCode: string } | null>(null);
+
   const latestUrgent = announcements
     .filter((a) => a.isActive && (a.type === "urgent" || a.type === "emergency") && !a.dismissedBy?.includes(user.id))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+
   const dashboardTitle = user.role === "student" ? `Assalamu'alaikum, ${firstName}` : "Committee command centre";
   const dashboardSubtitle =
     user.role === "student"
@@ -80,6 +93,14 @@ function Dashboard() {
         </motion.article>
       )}
 
+      {user.role === "student" && transition && transition.shouldRemind && !navReminderDismissed && (
+        <TransitionReminderBanner
+          transition={transition}
+          onNavigate={() => setNavModalRoute({ fromCode: transition.fromCode, toCode: transition.toCode })}
+          onDismiss={() => setNavReminderDismissed(true)}
+        />
+      )}
+
       <div className="hero-panel">
         <div>
           <p className="eyebrow">Garden of Knowledge and Virtue</p>
@@ -120,6 +141,11 @@ function Dashboard() {
           </motion.div>
         ))}
       </div>
+
+      {navModalRoute && (() => {
+        const navRoute = lookup(navModalRoute.fromCode, navModalRoute.toCode);
+        return navRoute ? <RoutePlannerModal route={navRoute} onClose={() => setNavModalRoute(null)} /> : null;
+      })()}
     </section>
   );
 }

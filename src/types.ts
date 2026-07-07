@@ -72,6 +72,7 @@ export interface ScheduleItem {
   responsibleBureau?: Bureau;
   preSessionTasks?: string[];
   readinessStatus?: ReadinessStatus;
+  venueCode?: string;
 }
 
 export interface EmergencyContact {

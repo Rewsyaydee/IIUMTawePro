@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle2, Clock3, Search } from "lucide-react";
 import { StatusBadge } from "../components/StatusBadge";
+import { NavigateButton, RoutePlannerModal, useRoutePlanner } from "../features/navigation";
 import { formatScheduleClock, getCurrentScheduleItem, getItemProgress, getScheduleClock, getScheduleStatus } from "../lib/scheduleTime";
 import { hapticImpact } from "../lib/telegram";
 import { useMockData } from "../state/MockDataContext";
@@ -25,6 +26,8 @@ function Schedule() {
   const [tag, setTag] = useState("all");
   const [query, setQuery] = useState("");
   const [clockTick, setClockTick] = useState(0);
+  const [activeRoute, setActiveRoute] = useState<{ fromCode: string; toCode: string } | null>(null);
+  const { lookup } = useRoutePlanner();
 
   const tags = useMemo(() => ["all", ...Array.from(new Set(schedule.map((item) => item.tag)))], [schedule]);
   const scheduleClock = useMemo(() => getScheduleClock(schedule), [clockTick, schedule]);
@@ -42,6 +45,19 @@ function Schedule() {
   const grouped = groupByDate(visibleItems);
   const currentItem = useMemo(() => getCurrentScheduleItem(visibleItems, scheduleClock.now), [scheduleClock.now, visibleItems]);
   const canUpdateReadiness = user.role === "head" || user.role === "mainboard";
+
+  const isStudent = user.role === "student";
+
+  const getNextItem = useCallback(
+    (currentId: string): ScheduleItem | undefined => {
+      const sorted = [...schedule].sort((a, b) => `${a.date}${a.scheduledStartTime}`.localeCompare(`${b.date}${b.scheduledStartTime}`));
+      const idx = sorted.findIndex((i) => i.id === currentId);
+      return idx >= 0 ? sorted[idx + 1] : undefined;
+    },
+    [schedule]
+  );
+
+  const route = activeRoute ? lookup(activeRoute.fromCode, activeRoute.toCode) : undefined;
 
   useEffect(() => {
     const timer = window.setInterval(() => setClockTick((value) => value + 1), 30000);
@@ -130,6 +146,20 @@ function Schedule() {
                       </div>
                     )}
                     {item.description && <p className="muted">{item.description}</p>}
+                    {isStudent && (() => {
+                      const nextItem = getNextItem(item.id);
+                      if (nextItem && item.venueCode && nextItem.venueCode && item.venueCode !== nextItem.venueCode) {
+                        const navRoute = lookup(item.venueCode, nextItem.venueCode);
+                        if (navRoute) {
+                          return (
+                            <div style={{ marginTop: "10px" }}>
+                              <NavigateButton onClick={() => setActiveRoute({ fromCode: item.venueCode!, toCode: nextItem.venueCode! })} />
+                            </div>
+                          );
+                        }
+                      }
+                      return null;
+                    })()}
                     {user.role !== "student" && item.responsibleBureau && (
                       <div className="committee-panel">
                         <div>
@@ -173,6 +203,10 @@ function Schedule() {
           </div>
         ))}
       </div>
+
+      {route && (
+        <RoutePlannerModal route={route} onClose={() => setActiveRoute(null)} />
+      )}
     </section>
   );
 }

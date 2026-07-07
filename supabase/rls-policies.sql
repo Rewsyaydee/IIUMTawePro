@@ -236,3 +236,29 @@ with check (
   bucket_id = 'attendance-selfies'
   and app_private.claim_role() in ('committee', 'head')
 );
+
+-- Smart Schedule Navigator RLS
+alter table public.static_locations enable row level security;
+alter table public.static_routes enable row level security;
+
+create policy "anyone can read locations"
+on public.static_locations
+for select
+using (true);
+
+create policy "anyone can read routes"
+on public.static_routes
+for select
+using (true);
+
+create policy "mainboard can administer locations"
+on public.static_locations
+for all
+using (app_private.is_mainboard())
+with check (app_private.is_mainboard());
+
+create policy "mainboard can administer routes"
+on public.static_routes
+for all
+using (app_private.is_mainboard())
+with check (app_private.is_mainboard());
