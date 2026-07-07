@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { KeyRound, ShieldCheck } from "lucide-react";
 import { BUREAUS, roleLabels } from "../constants";
-import { redeemAccessCode, shouldUseApiAuth } from "../lib/apiAuth";
+import { isTelegramAvailable, redeemAccessCode, shouldUseApiAuth } from "../lib/apiAuth";
 import { hapticError, hapticSuccess } from "../lib/telegram";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
@@ -48,7 +48,9 @@ export function AccessCodeGate({ compact = false }: AccessCodeGateProps) {
     };
 
     try {
-      if (shouldUseApiAuth()) {
+      const useApiPath = shouldUseApiAuth() && isTelegramAvailable();
+
+      if (useApiPath) {
         const result = await redeemAccessCode({
           code: form.code,
           displayName,
@@ -144,19 +146,25 @@ export function AccessCodeGate({ compact = false }: AccessCodeGateProps) {
         <span>{unlocking ? "Access unlocked..." : submitting ? "Checking code..." : "Unlock committee mode"}</span>
       </button>
       {unlocking && (
-        <div className="unlock-reward" aria-live="polite">
-          <div className="unlock-lock" aria-hidden="true">
-            <span className="unlock-shackle" />
-            <span className="unlock-body">
-              <KeyRound size={24} />
-            </span>
-            <i />
-            <i />
-            <i />
-            <i />
+        <div className="unlock-overlay" aria-live="polite">
+          <div className="unlock-overlay-content">
+            <div className="unlock-lock" aria-hidden="true">
+              <span className="unlock-shackle" />
+              <span className="unlock-body">
+                <KeyRound size={24} />
+              </span>
+              <i />
+              <i />
+              <i />
+              <i />
+            </div>
+            <div className="unlock-overlay-copy">
+              <strong>Access unlocked</strong>
+              <span>
+                {roleLabels[form.role]} {form.bureau ? `- ${form.bureau}` : ""} workspace
+              </span>
+            </div>
           </div>
-          <strong>Access unlocked</strong>
-          <span>Opening your committee workspace</span>
         </div>
       )}
     </form>

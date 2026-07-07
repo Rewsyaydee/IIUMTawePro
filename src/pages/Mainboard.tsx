@@ -9,12 +9,14 @@ import {
   ClipboardList,
   KeyRound,
   Megaphone,
+  PlusCircle,
   Send,
   ShieldAlert,
   Trash2,
   UserCog,
   UserPlus,
-  UsersRound
+  UsersRound,
+  X
 } from "lucide-react";
 import { BUREAUS, ROLES, roleLabels } from "../constants";
 import { confirmNative, hapticSuccess } from "../lib/telegram";
@@ -28,6 +30,7 @@ const ADMIN_TABS = [
   { id: "users", label: "Users", icon: UsersRound },
   { id: "schedule", label: "Schedule", icon: CalendarDays },
   { id: "notices", label: "Notices", icon: BellRing },
+  { id: "announcements", label: "News", icon: Megaphone },
   { id: "audit", label: "Audit", icon: ClipboardList }
 ] as const;
 
@@ -62,12 +65,15 @@ function formatDateTime(value: string) {
 function Mainboard() {
   const { user, users, addMockUser, updateMockUser, revokeMockUser } = useMockUser();
   const {
+    announcements,
     attendanceProofs,
     auditLog,
     banners,
     bureauOperations,
+    createAnnouncement,
     createEmergencyBroadcast,
     createScheduleItem,
+    deactivateAnnouncement,
     deactivateBanner,
     deleteScheduleItem,
     generateInviteCode,
@@ -106,6 +112,13 @@ function Mainboard() {
     bureau: "Catering" as Bureau
   });
   const [scheduleForm, setScheduleForm] = useState(defaultScheduleForm);
+  const [announcementForm, setAnnouncementForm] = useState({
+    title: "",
+    body: "",
+    type: "info" as "info" | "urgent" | "emergency",
+    tags: "",
+    links: ""
+  });
 
   const metrics = useMemo(() => {
     const done = tasks.filter((task) => task.status === "done").length;
@@ -237,6 +250,33 @@ function Mainboard() {
       recordId: id,
       details: `${name} was removed from local mock access.`
     });
+    hapticSuccess();
+  };
+
+  const submitAnnouncement = (event: FormEvent) => {
+    event.preventDefault();
+    const links = announcementForm.links
+      .split("\n")
+      .map((line) => {
+        const [label, ...urlParts] = line.split("|");
+        const url = urlParts.join("|").trim();
+        return label.trim() && url ? { label: label.trim(), url: url.trim() } : null;
+      })
+      .filter(Boolean) as { label: string; url: string }[];
+
+    const tags = announcementForm.tags
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    createAnnouncement({
+      title: announcementForm.title,
+      body: announcementForm.body,
+      type: announcementForm.type,
+      links: links.length > 0 ? links : undefined,
+      tags: tags.length > 0 ? tags : undefined
+    });
+    setAnnouncementForm({ title: "", body: "", type: "info", tags: "", links: "" });
     hapticSuccess();
   };
 
@@ -839,6 +879,110 @@ function Mainboard() {
     </section>
   );
 
+  const renderAnnouncements = () => (
+    <>
+      <form className="form-card" onSubmit={submitAnnouncement}>
+        <div className="form-title">
+          <Megaphone size={20} aria-hidden="true" />
+          <h3>Create announcement</h3>
+        </div>
+        <label>
+          <span>Title</span>
+          <input
+            value={announcementForm.title}
+            required
+            placeholder="ANNOUNCEMENT FOR WAKE UP CALL"
+            onChange={(event) => setAnnouncementForm((c) => ({ ...c, title: event.target.value }))}
+          />
+        </label>
+        <label>
+          <span>Body</span>
+          <textarea
+            value={announcementForm.body}
+            required
+            rows={8}
+            placeholder="Assalamualaikum w.b.t.&#10;&#10;Your announcement content here...&#10;&#10;Best regards,&#10;Ta'aruf Week Student Committee"
+            onChange={(event) => setAnnouncementForm((c) => ({ ...c, body: event.target.value }))}
+          />
+        </label>
+        <div className="form-grid">
+          <label>
+            <span>Type</span>
+            <select
+              value={announcementForm.type}
+              onChange={(event) => setAnnouncementForm((c) => ({ ...c, type: event.target.value as "info" | "urgent" | "emergency" }))}
+            >
+              <option value="info">Info</option>
+              <option value="urgent">Urgent</option>
+              <option value="emergency">Emergency</option>
+            </select>
+          </label>
+          <label>
+            <span>Tags (comma-separated)</span>
+            <input
+              value={announcementForm.tags}
+              placeholder="wake-up, reminder"
+              onChange={(event) => setAnnouncementForm((c) => ({ ...c, tags: event.target.value }))}
+            />
+          </label>
+        </div>
+        <label>
+          <span>Links (one per line: Label | URL)</span>
+          <textarea
+            value={announcementForm.links}
+            rows={3}
+            placeholder="Lost & Found Form | https://docs.google.com/forms/..."
+            onChange={(event) => setAnnouncementForm((c) => ({ ...c, links: event.target.value }))}
+          />
+        </label>
+        <button className="primary-button full-width" type="submit">
+          <PlusCircle size={16} aria-hidden="true" />
+          <span>Publish announcement</span>
+        </button>
+      </form>
+
+      <section className="ops-panel">
+        <div className="section-heading">
+          <h3>Published announcements</h3>
+          <span>{announcements.filter((a) => a.isActive).length} active</span>
+        </div>
+        <div style={{ display: "grid", gap: "10px" }}>
+          {[...announcements]
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            .map((announcement) => (
+              <article
+                key={announcement.id}
+                className={announcement.type === "emergency" ? "announcement-card announcement-emergency" : announcement.type === "urgent" ? "announcement-card announcement-urgent" : "announcement-card"}
+                style={{ opacity: announcement.isActive ? 1 : 0.55 }}
+              >
+                <div className="announcement-header">
+                  <div className="announcement-badge-row">
+                    <span className={announcement.type === "emergency" ? "announcement-badge emergency" : announcement.type === "urgent" ? "announcement-badge urgent" : "announcement-badge info"}>
+                      {announcement.type}
+                    </span>
+                    <span className="announcement-time">{formatDateTime(announcement.createdAt)}</span>
+                  </div>
+                  {announcement.isActive && (
+                    <button className="danger-outline-button" type="button" onClick={() => deactivateAnnouncement(announcement.id)}>
+                      <X size={14} />
+                      <span>Deactivate</span>
+                    </button>
+                  )}
+                </div>
+                <h3 className="announcement-title">{announcement.title}</h3>
+                <div className="announcement-body">
+                  {announcement.body.split("\n").slice(0, 4).map((line, i) => (
+                    <p key={i}>{line || "\u00A0"}</p>
+                  ))}
+                  {announcement.body.split("\n").length > 4 && <p className="muted">... (truncated)</p>}
+                </div>
+              </article>
+            ))}
+        </div>
+      </section>
+    </>
+  );
+
   return (
     <section className="page-stack">
       <div className="page-heading">
@@ -872,6 +1016,7 @@ function Mainboard() {
       {activeTab === "users" && renderUsers()}
       {activeTab === "schedule" && renderSchedule()}
       {activeTab === "notices" && renderNotices()}
+      {activeTab === "announcements" && renderAnnouncements()}
       {activeTab === "audit" && renderAudit()}
     </section>
   );

@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import { BookOpen, CalendarDays, Camera, ClipboardList, FileText, Grid3X3, HeartPulse, Rocket, ShieldCheck, ShieldAlert } from "lucide-react";
+import { BookOpen, CalendarDays, Camera, ClipboardList, FileText, Grid3X3, HeartPulse, Bell, Rocket, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Link } from "react-router-dom";
 import { MenuTile } from "../components/MenuTile";
 import { StatusBadge } from "../components/StatusBadge";
 import { bureauShortLabels, roleLabels } from "../constants";
@@ -12,7 +13,7 @@ type TileTone = "blue" | "green" | "amber" | "red" | "violet";
 
 function Dashboard() {
   const { user } = useMockUser();
-  const { attendanceProofs, bureauOperations, schedule, reports, tasks, notifications } = useMockData();
+  const { attendanceProofs, announcements, bureauOperations, schedule, reports, tasks, notifications, dismissAnnouncement } = useMockData();
   const scheduleClock = getScheduleClock(schedule);
   const currentScheduleItem = getCurrentScheduleItem(schedule, scheduleClock.now);
   const currentScheduleStatus = currentScheduleItem ? getScheduleStatus(currentScheduleItem, scheduleClock.now) : "upcoming";
@@ -30,6 +31,10 @@ function Dashboard() {
       : bureauOperations.filter((operation) => operation.bureau === user.bureau && operation.status === "issue").length;
   const telegramUser = getTelegramWebApp()?.initDataUnsafe?.user;
   const firstName = telegramUser?.first_name || telegramUser?.username || user.name.split(" ")[0];
+
+  const latestUrgent = announcements
+    .filter((a) => a.isActive && (a.type === "urgent" || a.type === "emergency") && !a.dismissedBy?.includes(user.id))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
   const dashboardTitle = user.role === "student" ? `Assalamu'alaikum, ${firstName}` : "Committee command centre";
   const dashboardSubtitle =
     user.role === "student"
@@ -53,6 +58,28 @@ function Dashboard() {
 
   return (
     <section className="page-stack">
+      {latestUrgent && (
+        <motion.article
+          className={latestUrgent.type === "emergency" ? "urgent-banner emergency" : "urgent-banner"}
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="urgent-banner-content">
+            <Bell size={18} />
+            <div>
+              <strong>{latestUrgent.title}</strong>
+              <p>{latestUrgent.body.split("\n")[0]}</p>
+            </div>
+          </div>
+          <div className="urgent-banner-actions">
+            <Link className="primary-button" to="/announcements">View all</Link>
+            <button className="icon-button" type="button" onClick={() => dismissAnnouncement(latestUrgent.id, user.id)} aria-label="Dismiss">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            </button>
+          </div>
+        </motion.article>
+      )}
+
       <div className="hero-panel">
         <div>
           <p className="eyebrow">Garden of Knowledge and Virtue</p>

@@ -1,0 +1,135 @@
+import { Megaphone, ExternalLink, X, AlertTriangle, Bell } from "lucide-react";
+import { EmptyState } from "../components/EmptyState";
+import { useMockData } from "../state/MockDataContext";
+import { useMockUser } from "../state/MockUserContext";
+
+function formatRelativeTime(iso: string) {
+  const now = Date.now();
+  const then = new Date(iso).getTime();
+  const diffMs = now - then;
+  const diffMin = Math.floor(diffMs / 60000);
+
+  if (diffMin < 1) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay === 1) return "Yesterday";
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return new Date(iso).toLocaleDateString("en-MY", { month: "short", day: "numeric" });
+}
+
+function Announcements() {
+  const { user } = useMockUser();
+  const { announcements, dismissAnnouncement, deactivateAnnouncement } = useMockData();
+
+  const active = announcements.filter((a) => a.isActive && !a.dismissedBy?.includes(user.id));
+  const sorted = [...active].sort((a, b) => {
+    if (a.type === "emergency" && b.type !== "emergency") return -1;
+    if (b.type === "emergency" && a.type !== "emergency") return 1;
+    if (a.type === "urgent" && b.type === "info") return -1;
+    if (b.type === "urgent" && a.type === "info") return 1;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
+  const isMainboard = user.role === "mainboard";
+
+  return (
+    <section className="page-stack">
+      <div className="page-heading">
+        <div>
+          <p className="eyebrow">Updates</p>
+          <h2>Announcements</h2>
+        </div>
+        <span className="soft-chip">{active.length} active</span>
+      </div>
+
+      {sorted.length === 0 ? (
+        <EmptyState icon={Bell} title="No announcements" body="Important updates from the committee will appear here." />
+      ) : (
+        <div style={{ display: "grid", gap: "14px" }}>
+          {sorted.map((announcement) => (
+            <article
+              key={announcement.id}
+              className={announcement.type === "emergency" ? "announcement-card announcement-emergency" : announcement.type === "urgent" ? "announcement-card announcement-urgent" : "announcement-card"}
+            >
+              <div className="announcement-header">
+                <div className="announcement-badge-row">
+                  {announcement.type === "emergency" && (
+                    <span className="announcement-badge emergency">
+                      <AlertTriangle size={14} />
+                      Emergency
+                    </span>
+                  )}
+                  {announcement.type === "urgent" && (
+                    <span className="announcement-badge urgent">
+                      <Bell size={14} />
+                      Urgent
+                    </span>
+                  )}
+                  {announcement.type === "info" && (
+                    <span className="announcement-badge info">
+                      <Megaphone size={14} />
+                      Info
+                    </span>
+                  )}
+                  <span className="announcement-time">{formatRelativeTime(announcement.createdAt)}</span>
+                </div>
+                {announcement.type !== "emergency" && (
+                  <button
+                    className="icon-button"
+                    type="button"
+                    onClick={() => dismissAnnouncement(announcement.id, user.id)}
+                    aria-label="Dismiss announcement"
+                  >
+                    <X size={15} />
+                  </button>
+                )}
+              </div>
+
+              <h3 className="announcement-title">{announcement.title}</h3>
+
+              <div className="announcement-body">
+                {announcement.body.split("\n").map((line, i) => (
+                  <p key={i}>{line || "\u00A0"}</p>
+                ))}
+              </div>
+
+              {announcement.tags && announcement.tags.length > 0 && (
+                <div className="announcement-tags">
+                  {announcement.tags.map((tag) => (
+                    <span key={tag} className="announcement-tag">#{tag}</span>
+                  ))}
+                </div>
+              )}
+
+              {announcement.links && announcement.links.length > 0 && (
+                <div className="announcement-links">
+                  {announcement.links.map((link) => (
+                    <a key={link.label} className="announcement-link-btn" href={link.url} target="_blank" rel="noreferrer">
+                      <ExternalLink size={14} />
+                      <span>{link.label}</span>
+                    </a>
+                  ))}
+                </div>
+              )}
+
+              {isMainboard && (
+                <button
+                  className="danger-outline-button"
+                  style={{ marginTop: "10px" }}
+                  type="button"
+                  onClick={() => deactivateAnnouncement(announcement.id)}
+                >
+                  Deactivate
+                </button>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+export default Announcements;

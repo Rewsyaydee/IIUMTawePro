@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useState } from "react";
 import {
+  initialAnnouncements,
   initialAuditLog,
   initialAttendanceProofs,
   initialBanners,
@@ -11,6 +12,7 @@ import {
   initialTasks
 } from "../data/mockData";
 import type {
+  Announcement,
   AuditLogEntry,
   AttendanceProof,
   AttendanceStatus,
@@ -44,6 +46,8 @@ type GlobalNotificationInput = EmergencyInput & {
   createBanner: boolean;
 };
 
+type AnnouncementInput = Pick<Announcement, "title" | "body" | "type" | "links" | "tags">;
+
 type AttendanceInput = Pick<AttendanceProof, "selfieDataUrl">;
 
 type InviteInput = Pick<InviteCode, "role" | "bureau" | "expiresAt">;
@@ -62,6 +66,7 @@ type MockDataContextValue = {
   notifications: MockNotification[];
   inviteCodes: InviteCode[];
   auditLog: AuditLogEntry[];
+  announcements: Announcement[];
   updateReadiness: (id: string, status: ReadinessStatus) => void;
   updateScheduleItem: (id: string, patch: Partial<ScheduleItem>) => void;
   createScheduleItem: (input: ScheduleInput) => ScheduleItem;
@@ -81,6 +86,9 @@ type MockDataContextValue = {
   generateInviteCode: (input: InviteInput) => InviteCode;
   redeemInviteCode: (code: string, usedBy: string) => InviteCode | undefined;
   recordAuditLog: (input: AuditInput) => AuditLogEntry;
+  createAnnouncement: (input: AnnouncementInput) => Announcement;
+  dismissAnnouncement: (id: string, userId: string) => void;
+  deactivateAnnouncement: (id: string) => void;
 };
 
 const MockDataContext = createContext<MockDataContextValue | undefined>(undefined);
@@ -100,6 +108,7 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState(initialNotifications);
   const [inviteCodes, setInviteCodes] = useState(initialInviteCodes);
   const [auditLog, setAuditLog] = useState(initialAuditLog);
+  const [announcements, setAnnouncements] = useState(initialAnnouncements);
 
   const value = useMemo<MockDataContextValue>(() => {
     const recordAuditLog = (input: AuditInput) => {
@@ -511,6 +520,44 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
       return invite;
     };
 
+    const createAnnouncement = (input: AnnouncementInput) => {
+      const next: Announcement = {
+        id: stampId("ann"),
+        ...input,
+        isActive: true,
+        createdAt: new Date().toISOString()
+      };
+
+      setAnnouncements((items) => [next, ...items]);
+      recordAuditLog({
+        action: "Created announcement",
+        table: "announcements",
+        recordId: next.id,
+        details: `${input.type === "emergency" ? "EMERGENCY: " : ""}${input.title}`
+      });
+      return next;
+    };
+
+    const dismissAnnouncement = (id: string, userId: string) => {
+      setAnnouncements((items) =>
+        items.map((item) =>
+          item.id === id
+            ? { ...item, dismissedBy: [...(item.dismissedBy || []), userId] }
+            : item
+        )
+      );
+    };
+
+    const deactivateAnnouncement = (id: string) => {
+      setAnnouncements((items) => items.map((item) => (item.id === id ? { ...item, isActive: false } : item)));
+      recordAuditLog({
+        action: "Deactivated announcement",
+        table: "announcements",
+        recordId: id,
+        details: "Announcement was deactivated."
+      });
+    };
+
     return {
       schedule,
       reports,
@@ -521,6 +568,7 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
       notifications,
       inviteCodes,
       auditLog,
+      announcements,
       updateReadiness,
       updateScheduleItem,
       createScheduleItem,
@@ -539,9 +587,13 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
       sendGlobalNotification,
       generateInviteCode,
       redeemInviteCode,
-      recordAuditLog
-    };
-  }, [attendanceProofs, auditLog, banners, bureauOperations, inviteCodes, notifications, reports, schedule, tasks, user]);
+      recordAuditLog,
+      createAnnouncement,
+      dismissAnnouncement,
+      deactivateAnnouncement
+    };},
+    [attendanceProofs, auditLog, banners, bureauOperations, inviteCodes, notifications, reports, schedule, tasks, announcements, user]
+  );
 
   return <MockDataContext.Provider value={value}>{children}</MockDataContext.Provider>;
 }

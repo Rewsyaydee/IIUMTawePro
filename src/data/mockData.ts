@@ -1,4 +1,5 @@
 import type {
+  Announcement,
   AuditLogEntry,
   AttendanceProof,
   Banner,
@@ -517,5 +518,56 @@ export const initialAuditLog: AuditLogEntry[] = [
     recordId: "inv-001",
     details: "Created unused mainboard invite for event operations.",
     timestamp: "2026-02-19T10:00:00.000Z"
+  }
+];
+
+export const initialAnnouncements: Announcement[] = [
+  {
+    id: "ann-001",
+    title: "ANNOUNCEMENT FOR WAKE UP CALL",
+    body: "Assalamualaikum w.b.t.\n\nA friendly reminder to all new intake students of Ta'aruf Week Semester 2, 2025/2026 Intake.\n\nHere is the schedule of wake-up calls on 24th February 2026 (Tuesday) to make sure the programme goes smoothly.\n\n5:00 AM\nFirst siren for wake-up\n\n5:30 AM\nSecond siren for wake-up\n\n6:00 AM\nThird siren for wake-up\n\n6:45 AM\nLast siren and announcement\n\n7:00 AM\nDepart to bus stop\n\nREMINDER\n1. Please follow the dress code.\n2. Bring along your own UMBRELLA for all sessions IN CASE OF RAINING and POWERBANK\n3. NO JEANS, SANDALS and SLIPPERS are allowed during the program.\n4. For sisters, you are advised to bring along your telekung and prayer mat.\n\nThank you for your kind cooperation.\n\nBest regards,\nTa'aruf Week Student Committee,\nSemester 2, 2025/2026.",
+    type: "urgent",
+    isActive: true,
+    createdAt: "2026-02-23T20:00:00.000Z",
+    tags: ["wake-up", "schedule", "reminder"]
+  },
+  {
+    id: "ann-002",
+    title: "ANNOUNCEMENT FOR LOST & FOUND ITEMS",
+    body: "Assalamualaikum w.b.t.\n\nAttention to all new intake students for Ta'aruf Week Semester 2, 2025/2026, who have lost their items.\n\nPlease fill up this form if you have any concerns about your lost belongings.\n\nThank you for your attention and cooperation.\n\nBest regards,\nTa'aruf Week Student Committee,\nSemester 2, 2025/2026.",
+    type: "info",
+    isActive: true,
+    createdAt: "2026-02-24T14:00:00.000Z",
+    links: [
+      { label: "Lost & Found Form", url: "https://docs.google.com/forms/d/1DnPSncw0VCGm7vQhBSQn-q0z5Ol6p8HuK0wkE9P2kFk/edit" }
+    ],
+    tags: ["lost-found", "form"]
+  },
+  {
+    id: "ann-003",
+    title: "ANNOUNCEMENT FOR NIGHT SESSION TA'ARUF WEEK SEMESTER 2, 2025/2026",
+    body: "Assalamualaikum w.b.t.\n\nReminder to all new intake students to attend the night session on 23rd February 2026 at your respective mahallah. Your attendance is COMPULSORY. Hereby are the details for the session:\n\nSlot: My Mahallah My Second Home\nVenue: Respective Mahallah\nTime: Based on respective Mahallah\nDresscode: Shariah Compliance\n\nThank you for your kind cooperation.\n\nBest regards,\nTa'aruf Week Student Committee,\nSemester 2, 2025/2026.",
+    type: "urgent",
+    isActive: true,
+    createdAt: "2026-02-22T18:00:00.000Z",
+    tags: ["night-session", "compulsory", "mahallah"]
+  },
+  {
+    id: "ann-004",
+    title: "KULLIYYAH GROUP LINKS FOR GOMBAK CAMPUS NEW INTAKE STUDENTS SEMESTER 2, 2025/2026",
+    body: "Assalamualaikum w.b.t.\n\nDear Brothers and Sisters,\n\nThis is the group link of each Kulliyyah in the Gombak campus for your reference. Do enter your respective kulliyyah's group for more information on the Ihsan Madani session and related matters.\n\nDo follow our social media accounts for more updates on Ta'aruf Week.\n\nBest regards,\nTa'aruf Week Student Committee\nSemester 2, 2025/2026.",
+    type: "info",
+    isActive: true,
+    createdAt: "2026-02-21T10:00:00.000Z",
+    links: [
+      { label: "KICT Group", url: "https://chat.whatsapp.com/JXbSUV7VBaN4O4npHEkKvP" },
+      { label: "KOE Group", url: "https://chat.whatsapp.com/EYM80Ik3Xk02QRIFqxH9zj" },
+      { label: "KENMS Group", url: "https://chat.whatsapp.com/BIdTmnh3cBp0NK21MQMxuw" },
+      { label: "KOED Group", url: "https://chat.whatsapp.com/JGM2xHgO5K8GxxPHkxyfb2" },
+      { label: "AIKOL Group", url: "https://chat.whatsapp.com/E368MgBhX2JL7tj4UHvz5j" },
+      { label: "KAED Group", url: "https://chat.whatsapp.com/GH4ERekX4qOIWnG9HyY6y5" },
+      { label: "AHAS KIRKHS Group", url: "https://chat.whatsapp.com/HO0lnrIxGCi2xL4qLM6Ymb" }
+    ],
+    tags: ["kulliyyah", "whatsapp", "links"]
   }
 ];

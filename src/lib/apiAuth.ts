@@ -28,6 +28,15 @@ export function shouldUseApiAuth() {
   return import.meta.env.VITE_ENABLE_MOCKS === "false" || import.meta.env.VITE_API_AUTH_BRIDGE === "true";
 }
 
+export function isTelegramAvailable() {
+  try {
+    const webApp = getTelegramWebApp();
+    return Boolean(webApp?.initData && webApp.initData.length > 0);
+  } catch {
+    return false;
+  }
+}
+
 export function loadAuthSession() {
   if (typeof window === "undefined") return {};
   try {

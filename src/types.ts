@@ -165,6 +165,24 @@ export interface Banner {
   dismissedBy?: string[];
 }
 
+export interface AnnouncementLink {
+  label: string;
+  url: string;
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  body: string;
+  type: "info" | "urgent" | "emergency";
+  isActive: boolean;
+  createdAt: string;
+  expiresAt?: string;
+  dismissedBy?: string[];
+  links?: AnnouncementLink[];
+  tags?: string[];
+}
+
 export interface MockNotification {
   id: string;
   targetRole: Role | "all";
