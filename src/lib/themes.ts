@@ -52,8 +52,6 @@ export function applyRoleTheme(role: Role) {
   root.style.setProperty("--primary-deep", theme.primaryDeep);
   root.style.setProperty("--gold", theme.accent);
   root.style.setProperty("--gold-soft", theme.accentSoft);
-  root.style.setProperty("--tg-bg-color", theme.surface);
-  root.style.setProperty("--tg-subtitle-text-color", theme.muted);
   root.style.setProperty("--tg-link-color", theme.primary);
   root.style.setProperty("--tg-button-color", theme.primary);
   root.setAttribute("data-role", role);

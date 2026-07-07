@@ -42,22 +42,16 @@ const navItems: NavItem[] = [
   { to: "/mainboard", label: "Control", icon: ShieldAlert, roles: ["mainboard"] }
 ];
 
-const MAX_VISIBLE_NAV = 4;
-
 export function AppShell() {
   const location = useLocation();
   const { user } = useMockUser();
   const { banners, dismissBanner } = useMockData();
   const [accountOpen, setAccountOpen] = useState(false);
-  const [navOverflowOpen, setNavOverflowOpen] = useState(false);
   const visibleNav = navItems.filter((item) => item.roles.includes(user.role));
   const activeBanners = banners.filter((banner) => banner.isActive && !banner.dismissedBy?.includes(user.id));
-  const primaryNav = visibleNav.slice(0, MAX_VISIBLE_NAV);
-  const overflowNav = visibleNav.slice(MAX_VISIBLE_NAV);
 
   useEffect(() => {
     setAccountOpen(false);
-    setNavOverflowOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -134,7 +128,7 @@ export function AppShell() {
       </main>
 
       <nav className="bottom-nav" aria-label="Primary navigation">
-        {primaryNav.map((item) => {
+        {visibleNav.map((item) => {
           const Icon = item.icon;
           return (
             <NavLink
@@ -149,45 +143,6 @@ export function AppShell() {
             </NavLink>
           );
         })}
-        {overflowNav.length > 0 && (
-          <div style={{ position: "relative", flex: "0 0 auto" }}>
-            <button
-              className="nav-more-btn"
-              type="button"
-              aria-label="More navigation"
-              aria-expanded={navOverflowOpen}
-              onClick={() => setNavOverflowOpen((v) => !v)}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <circle cx="12" cy="5" r="1.2" />
-                <circle cx="12" cy="12" r="1.2" />
-                <circle cx="12" cy="19" r="1.2" />
-              </svg>
-            </button>
-            {navOverflowOpen && (
-              <div className="nav-overflow-menu">
-                {overflowNav.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      end={item.to === "/"}
-                      onClick={() => {
-                        hapticImpact("light");
-                        setNavOverflowOpen(false);
-                      }}
-                      className={({ isActive }) => (isActive ? "nav-item active" : "nav-item")}
-                    >
-                      <Icon size={18} aria-hidden="true" />
-                      <span>{item.label}</span>
-                    </NavLink>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
       </nav>
     </div>
   );

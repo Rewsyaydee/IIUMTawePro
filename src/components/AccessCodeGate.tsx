@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { KeyRound, ShieldCheck } from "lucide-react";
 import { BUREAUS, roleLabels } from "../constants";
 import { isTelegramAvailable, redeemAccessCode, shouldUseApiAuth } from "../lib/apiAuth";
@@ -145,28 +146,30 @@ export function AccessCodeGate({ compact = false }: AccessCodeGateProps) {
         <ShieldCheck size={16} aria-hidden="true" />
         <span>{unlocking ? "Access unlocked..." : submitting ? "Checking code..." : "Unlock committee mode"}</span>
       </button>
-      {unlocking && (
-        <div className="unlock-overlay" aria-live="polite">
-          <div className="unlock-overlay-content">
-            <div className="unlock-lock" aria-hidden="true">
-              <span className="unlock-shackle" />
-              <span className="unlock-body">
-                <KeyRound size={24} />
-              </span>
-              <i />
-              <i />
-              <i />
-              <i />
+      {unlocking &&
+        createPortal(
+          <div className="unlock-overlay" aria-live="polite">
+            <div className="unlock-overlay-content">
+              <div className="unlock-lock" aria-hidden="true">
+                <span className="unlock-shackle" />
+                <span className="unlock-body">
+                  <KeyRound size={24} />
+                </span>
+                <i />
+                <i />
+                <i />
+                <i />
+              </div>
+              <div className="unlock-overlay-copy">
+                <strong>Access unlocked</strong>
+                <span>
+                  {roleLabels[form.role]} {form.bureau ? `- ${form.bureau}` : ""} workspace
+                </span>
+              </div>
             </div>
-            <div className="unlock-overlay-copy">
-              <strong>Access unlocked</strong>
-              <span>
-                {roleLabels[form.role]} {form.bureau ? `- ${form.bureau}` : ""} workspace
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </form>
   );
 }

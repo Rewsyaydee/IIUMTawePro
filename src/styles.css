@@ -754,77 +754,6 @@ textarea {
   box-shadow: none;
 }
 
-.nav-more-btn {
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  min-width: 44px;
-  height: 44px;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  color: var(--tg-hint-color);
-  cursor: pointer;
-  transition: all 140ms ease;
-}
-
-.nav-more-btn:hover,
-.nav-more-btn:focus-visible {
-  background: rgba(0, 0, 0, 0.05);
-}
-
-.nav-overflow-menu {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  right: 6px;
-  display: grid;
-  gap: 4px;
-  min-width: 160px;
-  padding: 6px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--tg-section-bg-color);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14);
-  animation: navOverflowIn 160ms ease both;
-}
-
-.nav-overflow-menu .nav-item {
-  justify-items: start;
-  grid-template-columns: auto 1fr;
-  gap: 8px;
-  padding: 10px 12px;
-  width: 100%;
-  font-size: 0.78rem;
-  color: var(--tg-text-color);
-}
-
-.nav-overflow-menu .nav-item.active {
-  background: rgba(0, 145, 142, 0.1);
-  color: var(--primary);
-  box-shadow: none;
-}
-
-.nav-overflow-menu .nav-item span {
-  text-align: left;
-}
-
-.nav-badge {
-  position: absolute;
-  top: 2px;
-  right: -2px;
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--red);
-  border: 2px solid var(--tg-section-bg-color);
-}
-
-@media (max-width: 640px) {
-  .nav-item {
-    padding: 8px 10px;
-  }
-}
-
 .filter-bar {
   display: grid;
   grid-template-columns: 1fr 150px 132px;
@@ -2502,18 +2431,6 @@ textarea {
   to {
     opacity: 1;
     transform: scale(1);
-  }
-}
-
-@keyframes navOverflowIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.96);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
   }
 }
 
