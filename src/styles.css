@@ -14,8 +14,8 @@
   --tg-section-header-text-color: #476158;
   --tg-subtitle-text-color: #69756f;
   --tg-destructive-text-color: #c93d37;
-  --line: rgba(0, 145, 142, 0.14);
-  --shadow: 0 4px 16px rgba(0, 72, 70, 0.06);
+  --line: rgba(0, 145, 142, 0.16);
+  --shadow: 0 12px 34px rgba(0, 72, 70, 0.1);
   --primary: #00918e;
   --primary-deep: #006c69;
   --mint: #22a879;
@@ -42,8 +42,11 @@ body,
 }
 
 body {
-  background: var(--tg-bg-color);
-  line-height: 1.55;
+  background:
+    linear-gradient(180deg, rgba(0, 123, 120, 0.13), transparent 310px),
+    repeating-linear-gradient(45deg, transparent 0 26px, rgba(185, 138, 45, 0.055) 26px 27px),
+    repeating-linear-gradient(-45deg, transparent 0 26px, rgba(0, 123, 120, 0.045) 26px 27px),
+    var(--tg-bg-color);
 }
 
 button,
@@ -53,20 +56,16 @@ textarea {
   font: inherit;
 }
 
-p {
-  line-height: 1.55;
-}
-
 button,
 a,
 select {
   -webkit-tap-highlight-color: transparent;
   transition:
-    transform 140ms ease,
-    box-shadow 140ms ease,
-    border-color 140ms ease,
-    background-color 140ms ease,
-    color 140ms ease;
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
 }
 
 a {
@@ -411,8 +410,10 @@ textarea {
 .empty-state,
 .metric-grid article {
   border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--tg-section-bg-color);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(0, 123, 120, 0.052), transparent 48%),
+    color-mix(in srgb, var(--tg-section-bg-color) 94%, transparent);
   box-shadow: var(--shadow);
 }
 
@@ -424,7 +425,24 @@ textarea {
   justify-content: space-between;
   gap: 18px;
   padding: 18px;
-  border-color: var(--gold-soft);
+}
+
+.hero-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background:
+    linear-gradient(45deg, transparent 48%, rgba(185, 138, 45, 0.12) 49%, rgba(185, 138, 45, 0.12) 51%, transparent 52%),
+    linear-gradient(-45deg, transparent 48%, rgba(0, 123, 120, 0.09) 49%, rgba(0, 123, 120, 0.09) 51%, transparent 52%);
+  background-size: 34px 34px;
+  mask-image: linear-gradient(90deg, transparent, black 60%);
+}
+
+.hero-panel > * {
+  position: relative;
+  z-index: 1;
 }
 
 .hero-panel p {
@@ -565,8 +583,6 @@ textarea {
   font-size: 0.8rem;
 }
 
-.confidence-row {
-
 .confidence-row span {
   display: inline-flex;
   align-items: center;
@@ -581,43 +597,21 @@ textarea {
 }
 
 .menu-tile {
-  position: relative;
   display: grid;
   min-height: 132px;
   align-content: space-between;
-  padding: 16px;
+  padding: 15px;
   border: 1px solid var(--line);
-  border-radius: 10px;
-  border-left: 3px solid var(--primary);
-  background: var(--tg-section-bg-color);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(255, 253, 247, 0.98), rgba(237, 248, 242, 0.86)),
+    var(--tg-section-bg-color);
   box-shadow: var(--shadow);
-  cursor: pointer;
-}
-
-.menu-tile.tile-green {
-  border-left-color: var(--green);
-}
-
-.menu-tile.tile-amber {
-  border-left-color: var(--amber);
-}
-
-.menu-tile.tile-red {
-  border-left-color: var(--red);
-}
-
-.menu-tile.tile-violet {
-  border-left-color: var(--violet);
-}
-
-.menu-tile.tile-blue {
-  border-left-color: var(--blue);
 }
 
 .menu-tile:hover {
-  border-color: rgba(0, 123, 120, 0.22);
-  box-shadow: 0 6px 20px rgba(0, 72, 70, 0.08);
-  transform: translateY(-1px);
+  border-color: rgba(0, 123, 120, 0.28);
+  box-shadow: 0 14px 34px rgba(0, 72, 70, 0.12);
 }
 
 .menu-tile:active,
@@ -752,9 +746,12 @@ textarea {
 }
 
 .nav-item.active {
-  background: var(--primary);
-  color: #ffffff;
-  box-shadow: 0 2px 10px rgba(0, 145, 142, 0.28);
+  border-color: rgba(0, 123, 120, 0.2);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(0, 123, 120, 0.1)),
+    rgba(0, 123, 120, 0.1);
+  color: var(--tg-link-color);
+  box-shadow: none;
 }
 
 .nav-more-btn {
@@ -891,12 +888,14 @@ textarea {
 }
 
 .schedule-card.schedule-done {
-  border-color: rgba(0, 123, 120, 0.18);
-  opacity: 0.75;
+  border-color: rgba(0, 123, 120, 0.24);
+  background:
+    linear-gradient(135deg, rgba(0, 145, 142, 0.075), rgba(185, 138, 45, 0.035)),
+    color-mix(in srgb, var(--tg-section-bg-color) 94%, transparent);
 }
 
 .schedule-card.schedule-done::before {
-  background: linear-gradient(180deg, var(--green), var(--gold));
+  background: linear-gradient(180deg, var(--green), rgba(185, 138, 45, 0.72));
 }
 
 .schedule-card.schedule-done h4 {
@@ -1461,15 +1460,37 @@ textarea {
 }
 
 .admin-hero {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  border: 1px solid rgba(0, 123, 120, 0.18);
+  border-radius: 8px;
   padding: 18px;
-  background: var(--tg-section-bg-color);
+  background:
+    linear-gradient(135deg, rgba(0, 123, 120, 0.14), rgba(185, 138, 45, 0.08)),
+    var(--tg-section-bg-color);
   box-shadow: var(--shadow);
+}
+
+.admin-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.42;
+  background:
+    linear-gradient(45deg, transparent 48%, rgba(185, 138, 45, 0.16) 49%, rgba(185, 138, 45, 0.16) 51%, transparent 52%),
+    linear-gradient(-45deg, transparent 48%, rgba(0, 123, 120, 0.1) 49%, rgba(0, 123, 120, 0.1) 51%, transparent 52%);
+  background-size: 34px 34px;
+  mask-image: linear-gradient(90deg, transparent, black 58%);
+}
+
+.admin-hero > * {
+  position: relative;
+  z-index: 1;
 }
 
 .admin-hero h3 {
@@ -1635,15 +1656,37 @@ textarea {
 }
 
 .launch-hero {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  border: 1px solid rgba(0, 123, 120, 0.2);
+  border-radius: 8px;
   padding: 18px;
-  background: var(--tg-section-bg-color);
+  background:
+    linear-gradient(135deg, rgba(0, 123, 120, 0.13), rgba(185, 138, 45, 0.09)),
+    var(--tg-section-bg-color);
   box-shadow: var(--shadow);
+}
+
+.launch-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.42;
+  background:
+    linear-gradient(45deg, transparent 48%, rgba(185, 138, 45, 0.14) 49%, rgba(185, 138, 45, 0.14) 51%, transparent 52%),
+    linear-gradient(-45deg, transparent 48%, rgba(0, 123, 120, 0.09) 49%, rgba(0, 123, 120, 0.09) 51%, transparent 52%);
+  background-size: 34px 34px;
+  mask-image: linear-gradient(90deg, transparent, black 58%);
+}
+
+.launch-hero > * {
+  position: relative;
+  z-index: 1;
 }
 
 .launch-hero h3 {
@@ -2629,12 +2672,13 @@ textarea {
   }
 
   .menu-tile {
-    background: var(--tg-section-bg-color);
+    background:
+      linear-gradient(145deg, rgba(18, 31, 26, 0.98), rgba(18, 43, 35, 0.86)),
+      var(--tg-section-bg-color);
   }
 
-  .nav-item.active {
-    background: var(--primary);
-    color: #0d1713;
+  .confidence-row span {
+    background: rgba(18, 31, 26, 0.7);
   }
 
   .announcement-body {
@@ -2643,11 +2687,6 @@ textarea {
 
   .announcement-link-btn {
     background: rgba(255, 255, 255, 0.04);
-  }
-}
-
-  .confidence-row span {
-    background: rgba(18, 31, 26, 0.7);
   }
 }
 
