@@ -1,12 +1,14 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ClipboardCheck, Plus } from "lucide-react";
 import { BUREAUS } from "../constants";
-import { hapticImpact } from "../lib/telegram";
+import { authSessionChangedEvent, shouldUseApiAuth } from "../lib/apiAuth";
+import { hapticError, hapticImpact } from "../lib/telegram";
+import { createTask as createTaskApi, listTasks, updateTaskStatus as updateTaskStatusApi } from "../lib/tasksApi";
 import { StatusBadge } from "../components/StatusBadge";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
-import type { Bureau, Priority, TaskStatus } from "../types";
+import type { Bureau, PoaTask, Priority, TaskStatus } from "../types";
 
 const statuses: TaskStatus[] = ["todo", "in_progress", "blocked", "done"];
 const priorities: Priority[] = ["low", "medium", "high", "critical"];
@@ -14,6 +16,11 @@ const priorities: Priority[] = ["low", "medium", "high", "critical"];
 function Tasks() {
   const { user } = useMockUser();
   const { tasks, updateTaskStatus, addTask } = useMockData();
+  const apiMode = shouldUseApiAuth();
+  const [remoteTasks, setRemoteTasks] = useState<PoaTask[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+  const [authRefreshTick, setAuthRefreshTick] = useState(0);
+  const [errorMessage, setErrorMessage] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState({
     bureau: user.bureau || "Welfare",
@@ -27,10 +34,41 @@ function Tasks() {
 
   const canSeeTasks = user.role !== "student";
   const canCreate = user.role === "head" || user.role === "mainboard";
+  const activeTasks = apiMode ? remoteTasks : tasks;
+
+  useEffect(() => {
+    const handleSessionChanged = () => setAuthRefreshTick((value) => value + 1);
+    window.addEventListener(authSessionChangedEvent, handleSessionChanged);
+    return () => window.removeEventListener(authSessionChangedEvent, handleSessionChanged);
+  }, []);
+
+  useEffect(() => {
+    if (!apiMode || user.role === "student") return;
+
+    let cancelled = false;
+    setLoadingTasks(true);
+    setErrorMessage("");
+    listTasks()
+      .then((loaded) => {
+        if (!cancelled) setRemoteTasks(loaded);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setErrorMessage(error instanceof Error ? error.message : "Unable to load tasks.");
+          hapticError();
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingTasks(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [apiMode, authRefreshTick, user.role]);
+
   const visibleTasks = useMemo(() => {
-    if (user.role === "mainboard") return tasks;
-    return tasks.filter((task) => task.bureau === user.bureau);
-  }, [tasks, user.bureau, user.role]);
+    if (user.role === "mainboard") return activeTasks;
+    return activeTasks.filter((task) => task.bureau === user.bureau);
+  }, [activeTasks, user.bureau, user.role]);
 
   if (!canSeeTasks) {
     return (
@@ -44,20 +82,56 @@ function Tasks() {
     );
   }
 
-  const submitTask = (event: FormEvent) => {
+  const submitTask = async (event: FormEvent) => {
     event.preventDefault();
-    addTask({
-      bureau: form.bureau as Bureau,
-      title: form.title,
-      description: form.description,
-      dueDate: form.dueDate,
-      dueTime: form.dueTime,
-      assignedTo: form.assignedTo || user.name,
-      priority: form.priority as Priority
-    });
-    setForm((current) => ({ ...current, title: "", description: "", assignedTo: "" }));
-    setFormOpen(false);
-    hapticImpact("medium");
+    setErrorMessage("");
+
+    try {
+      if (apiMode) {
+        const task = await createTaskApi({
+          bureau: form.bureau as Bureau,
+          title: form.title,
+          description: form.description,
+          dueDate: form.dueDate,
+          dueTime: form.dueTime,
+          assignedTo: form.assignedTo || user.name,
+          priority: form.priority as Priority
+        });
+        setRemoteTasks((items) => [task, ...items]);
+      } else {
+        addTask({
+          bureau: form.bureau as Bureau,
+          title: form.title,
+          description: form.description,
+          dueDate: form.dueDate,
+          dueTime: form.dueTime,
+          assignedTo: form.assignedTo || user.name,
+          priority: form.priority as Priority
+        });
+      }
+
+      setForm((current) => ({ ...current, title: "", description: "", assignedTo: "" }));
+      setFormOpen(false);
+      hapticImpact("medium");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to create task.");
+      hapticError();
+    }
+  };
+
+  const handleStatusUpdate = async (id: string, status: TaskStatus) => {
+    try {
+      if (apiMode) {
+        const updated = await updateTaskStatusApi(id, status);
+        setRemoteTasks((items) => items.map((item) => (item.id === id ? updated : item)));
+      } else {
+        updateTaskStatus(id, status);
+      }
+      hapticImpact("light");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to update task.");
+      hapticError();
+    }
   };
 
   return (
@@ -67,13 +141,28 @@ function Tasks() {
           <p className="eyebrow">Plan of action</p>
           <h2>{user.role === "mainboard" ? "Masterplan" : "Bureau Tasks"}</h2>
         </div>
-        {canCreate && (
-          <button className="icon-text-button" onClick={() => setFormOpen((value) => !value)}>
-            <Plus size={16} aria-hidden="true" />
-            <span>Add</span>
-          </button>
-        )}
+        <span className="soft-chip">{apiMode ? "Supabase" : "Mock"}</span>
       </div>
+
+      {errorMessage && (
+        <div className="banner banner-emergency">
+          <ClipboardCheck size={18} />
+          <div>
+            <strong>Error</strong>
+            <p>{errorMessage}</p>
+          </div>
+          <button className="icon-button" onClick={() => setErrorMessage("")} aria-label="Dismiss error">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          </button>
+        </div>
+      )}
+
+      {canCreate && (
+        <button className="icon-text-button" style={{ justifySelf: "start" }} onClick={() => setFormOpen((value) => !value)}>
+          <Plus size={16} aria-hidden="true" />
+          <span>Add task</span>
+        </button>
+      )}
 
       {formOpen && (
         <motion.form className="form-card compact" onSubmit={submitTask} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
@@ -143,47 +232,54 @@ function Tasks() {
         </motion.form>
       )}
 
-      <div className="task-board">
-        {visibleTasks.map((task, index) => (
-          <motion.article
-            key={task.id}
-            className={`task-card priority-${task.priority}`}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.03 }}
-          >
-            <div className="task-card-header">
-              <div>
-                <h3>{task.title}</h3>
-                <p>
-                  {task.dueDate} at {task.dueTime}
-                </p>
+      {loadingTasks ? (
+        <div className="skeleton-page" />
+      ) : visibleTasks.length === 0 ? (
+        <div className="empty-state">
+          <ClipboardCheck size={24} aria-hidden="true" />
+          <strong>No tasks yet</strong>
+          <p>Tasks for {user.bureau || "all bureaus"} will appear here.</p>
+        </div>
+      ) : (
+        <div className="task-board">
+          {visibleTasks.map((task, index) => (
+            <motion.article
+              key={task.id}
+              className={`task-card priority-${task.priority}`}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.03 }}
+            >
+              <div className="task-card-header">
+                <div>
+                  <h3>{task.title}</h3>
+                  <p>
+                    {task.dueDate} at {task.dueTime}
+                  </p>
+                </div>
+                <StatusBadge value={task.priority} />
               </div>
-              <StatusBadge value={task.priority} />
-            </div>
-            <p className="muted">{task.description}</p>
-            <div className="task-meta">
-              <span>{task.bureau}</span>
-              <span>{task.assignedTo}</span>
-            </div>
-            <div className="segmented-actions">
-              {statuses.map((status) => (
-                <button
-                  key={status}
-                  className={task.status === status ? "selected" : ""}
-                  type="button"
-                  onClick={() => {
-                    hapticImpact("light");
-                    updateTaskStatus(task.id, status);
-                  }}
-                >
-                  {status.replace("_", " ")}
-                </button>
-              ))}
-            </div>
-          </motion.article>
-        ))}
-      </div>
+              <p className="muted">{task.description}</p>
+              <div className="task-meta">
+                <span>{task.bureau}</span>
+                <span>{task.assignedTo}</span>
+              </div>
+              <div className="segmented-actions">
+                {statuses.map((status) => (
+                  <button
+                    key={status}
+                    className={task.status === status ? "selected" : ""}
+                    type="button"
+                    onClick={() => handleStatusUpdate(task.id, status)}
+                  >
+                    {status.replace("_", " ")}
+                  </button>
+                ))}
+              </div>
+            </motion.article>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
