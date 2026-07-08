@@ -2831,12 +2831,12 @@ textarea {
 .map-viewer {
   position: relative;
   width: 100%;
-  height: clamp(200px, 38vh, 340px);
-  overflow: auto;
+  min-height: 260px;
+  max-height: 340px;
+  overflow: hidden;
   border-radius: 10px;
   border: 1px solid var(--line);
   background: rgba(0, 145, 142, 0.04);
-  touch-action: pan-x pan-y pinch-zoom;
 }
 
 .map-viewer-zoomed {
