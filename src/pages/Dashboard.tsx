@@ -18,12 +18,6 @@ import { useMockUser } from "../state/MockUserContext";
 
 type TileTone = "blue" | "green" | "amber" | "red" | "violet";
 
-function simplifyTitle(title: string): string {
-  const m = title.match(/^Video Presentation with relevant KCDIO:\s*(.+)$/);
-  if (m) return `Video Presentation (${m[1]})`;
-  return title;
-}
-
 function Dashboard() {
   const { user } = useMockUser();
   const { announcements, attendanceProofs, bureauOperations, schedule, reports, tasks, notifications, dismissAnnouncement } = useMockData();
@@ -61,7 +55,7 @@ function Dashboard() {
       : `${user.bureau ? bureauShortLabels[user.bureau] : "Mainboard"} workspace for today's operations.`;
 
   const tiles: Array<{ to: string; title: string; meta: string; icon: typeof CalendarDays; tone: TileTone }> = [
-    { to: "/schedule", title: "Today's Programme", meta: live ? `Live: ${simplifyTitle(live.title)}` : currentScheduleItem ? `Next: ${simplifyTitle(currentScheduleItem.title)}` : "No live slot", icon: CalendarDays, tone: "blue" as const },
+    { to: "/schedule", title: "Today's Programme", meta: live ? `Live: ${live.title}` : currentScheduleItem ? `Next: ${currentScheduleItem.title}` : "No live slot", icon: CalendarDays, tone: "blue" as const },
     { to: "/official-schedule", title: "Official PDF", meta: "IIUM source schedule", icon: FileText, tone: "amber" as const },
     { to: "/attendance", title: "Daily Punch Card", meta: `${pendingAttendance} awaiting review`, icon: Camera, tone: "red" as const },
     { to: "/tasks", title: "Bureau Tasks", meta: `${bureauTasks.length} visible tasks`, icon: ClipboardList, tone: "green" as const },
@@ -137,12 +131,12 @@ function Dashboard() {
         <motion.article className="live-card" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
           <div>
             <StatusBadge value="live" />
-            <h3>{simplifyTitle(live.title)}</h3>
+            <h3>{live.title}</h3>
             <p>
               {live.scheduledStartTime}-{live.scheduledEndTime} at {live.venue}
             </p>
           </div>
-          {live.responsibleBureau && <span className="soft-chip">{live.responsibleBureau}</span>}
+          {user.role !== "student" && live.responsibleBureau && <span className="soft-chip">{live.responsibleBureau}</span>}
         </motion.article>
       )}
 
