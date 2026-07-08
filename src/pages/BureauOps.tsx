@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BellRing, ClipboardCheck, ExternalLink, Grid3X3, ShieldCheck } from "lucide-react";
 import { EmptyState } from "../components/EmptyState";
 import { StatusBadge } from "../components/StatusBadge";
 import { BUREAUS, bureauShortLabels } from "../constants";
-import { hapticImpact, hapticSuccess } from "../lib/telegram";
+import { authSessionChangedEvent, shouldUseApiAuth } from "../lib/apiAuth";
+import { listBureauOperations, updateBureauOperationStatus as updateOpsStatusApi } from "../lib/bureauOpsApi";
+import { hapticError, hapticImpact, hapticSuccess } from "../lib/telegram";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 import type { Bureau, BureauOperation, BureauOperationStatus } from "../types";
@@ -40,28 +42,74 @@ function qrLinkFor(operation: BureauOperation) {
 function BureauOps() {
   const { user } = useMockUser();
   const { bureauOperations, sendBureauOperationAlert, updateBureauOperationStatus } = useMockData();
+  const apiMode = shouldUseApiAuth();
+  const [remoteOperations, setRemoteOperations] = useState<BureauOperation[]>([]);
+  const [loadingOps, setLoadingOps] = useState(false);
+  const [authRefreshTick, setAuthRefreshTick] = useState(0);
+  const [errorMessage, setErrorMessage] = useState("");
   const [selectedBureau, setSelectedBureau] = useState<Bureau | "all">(user.role === "mainboard" ? "all" : user.bureau || "Catering");
+
+  const activeOps = apiMode ? remoteOperations : bureauOperations;
+
+  useEffect(() => {
+    const handleSessionChanged = () => setAuthRefreshTick((value) => value + 1);
+    window.addEventListener(authSessionChangedEvent, handleSessionChanged);
+    return () => window.removeEventListener(authSessionChangedEvent, handleSessionChanged);
+  }, []);
+
+  useEffect(() => {
+    if (!apiMode || user.role === "student") return;
+
+    let cancelled = false;
+    setLoadingOps(true);
+    setErrorMessage("");
+    listBureauOperations()
+      .then((loaded) => {
+        if (!cancelled) setRemoteOperations(loaded);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setErrorMessage(error instanceof Error ? error.message : "Unable to load bureau operations.");
+          hapticError();
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingOps(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [apiMode, authRefreshTick, user.role]);
 
   const hasOpsAccess = user.role === "mainboard" || Boolean(user.bureau);
   const visibleOperations = useMemo(() => {
     if (user.role === "mainboard") {
-      return selectedBureau === "all" ? bureauOperations : bureauOperations.filter((item) => item.bureau === selectedBureau);
+      return selectedBureau === "all" ? activeOps : activeOps.filter((item) => item.bureau === selectedBureau);
     }
-    return bureauOperations.filter((item) => item.bureau === user.bureau);
-  }, [bureauOperations, selectedBureau, user.bureau, user.role]);
+    return activeOps.filter((item) => item.bureau === user.bureau);
+  }, [activeOps, selectedBureau, user.bureau, user.role]);
 
   const summary = useMemo(() => {
-    const items = user.role === "mainboard" ? bureauOperations : visibleOperations;
+    const items = user.role === "mainboard" ? activeOps : visibleOperations;
     return {
       active: items.filter((item) => item.status === "active").length,
       issues: items.filter((item) => item.status === "issue").length,
       ready: items.filter((item) => item.status === "ready" || item.status === "done").length
     };
-  }, [bureauOperations, user.role, visibleOperations]);
+  }, [activeOps, user.role, visibleOperations]);
 
-  const updateStatus = (id: string, status: BureauOperationStatus) => {
-    updateBureauOperationStatus(id, status);
-    hapticImpact(status === "issue" ? "heavy" : "light");
+  const updateStatus = async (id: string, status: BureauOperationStatus) => {
+    try {
+      if (apiMode) {
+        const updated = await updateOpsStatusApi(id, status);
+        setRemoteOperations((items) => items.map((item) => (item.id === id ? updated : item)));
+      } else {
+        updateBureauOperationStatus(id, status);
+      }
+      hapticImpact(status === "issue" ? "heavy" : "light");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to update operation.");
+      hapticError();
+    }
   };
 
   const sendAlert = (id: string) => {
@@ -84,8 +132,21 @@ function BureauOps() {
           <p className="eyebrow">Phase 2</p>
           <h2>Bureau Operations</h2>
         </div>
-        <span className="soft-chip">{user.role === "mainboard" ? "All bureaus" : user.bureau}</span>
+        <span className="soft-chip">{user.role === "mainboard" ? "All bureaus" : user.bureau} · {apiMode ? "Supabase" : "Mock"}</span>
       </div>
+
+      {errorMessage && (
+        <div className="banner banner-emergency">
+          <Grid3X3 size={18} />
+          <div>
+            <strong>Error</strong>
+            <p>{errorMessage}</p>
+          </div>
+          <button className="icon-button" onClick={() => setErrorMessage("")} aria-label="Dismiss error">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          </button>
+        </div>
+      )}
 
       <div className="metric-grid">
         <article>
