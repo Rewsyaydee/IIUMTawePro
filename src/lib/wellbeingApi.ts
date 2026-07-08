@@ -20,14 +20,24 @@ function sessionHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-export async function listWellbeingReports() {
-  const response = await fetch(`${apiBase()}/api/wellbeing/reports`, {
-    headers: sessionHeaders()
+async function rpc(action: string, data: Record<string, unknown> = {}) {
+  const response = await fetch(`${apiBase()}/api/rpc`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...sessionHeaders()
+    },
+    body: JSON.stringify({ action, ...data })
   });
-  const payload = (await response.json()) as ReportListResponse;
+  const payload = await response.json();
   if (!response.ok) {
-    throw new Error(payload.error || "Unable to load wellbeing reports.");
+    throw new Error(payload.error || "RPC request failed.");
   }
+  return payload;
+}
+
+export async function listWellbeingReports() {
+  const payload = (await rpc("wellbeing.list")) as ReportListResponse;
   return payload.reports;
 }
 
@@ -37,33 +47,11 @@ export async function submitWellbeingReport(input: {
   category: string;
   notes: string;
 }) {
-  const response = await fetch(`${apiBase()}/api/wellbeing/reports`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...sessionHeaders()
-    },
-    body: JSON.stringify(input)
-  });
-  const payload = (await response.json()) as ReportResponse;
-  if (!response.ok) {
-    throw new Error(payload.error || "Unable to submit wellbeing report.");
-  }
+  const payload = (await rpc("wellbeing.submit", input)) as ReportResponse;
   return payload.report;
 }
 
 export async function updateWellbeingReportStatus(id: string, status: WellbeingReport["status"]) {
-  const response = await fetch(`${apiBase()}/api/wellbeing/reports`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      ...sessionHeaders()
-    },
-    body: JSON.stringify({ id, status })
-  });
-  const payload = (await response.json()) as ReportResponse;
-  if (!response.ok) {
-    throw new Error(payload.error || "Unable to update report status.");
-  }
+  const payload = (await rpc("wellbeing.update", { id, status })) as ReportResponse;
   return payload.report;
 }

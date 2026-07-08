@@ -20,29 +20,28 @@ function sessionHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-export async function listBureauOperations() {
-  const response = await fetch(`${apiBase()}/api/bureau-ops`, {
-    headers: sessionHeaders()
-  });
-  const payload = (await response.json()) as OpsListResponse;
-  if (!response.ok) {
-    throw new Error(payload.error || "Unable to load bureau operations.");
-  }
-  return payload.operations;
-}
-
-export async function updateBureauOperationStatus(id: string, status: BureauOperationStatus) {
-  const response = await fetch(`${apiBase()}/api/bureau-ops`, {
-    method: "PATCH",
+async function rpc(action: string, data: Record<string, unknown> = {}) {
+  const response = await fetch(`${apiBase()}/api/rpc`, {
+    method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...sessionHeaders()
     },
-    body: JSON.stringify({ id, status })
+    body: JSON.stringify({ action, ...data })
   });
-  const payload = (await response.json()) as OpsResponse;
+  const payload = await response.json();
   if (!response.ok) {
-    throw new Error(payload.error || "Unable to update operation status.");
+    throw new Error(payload.error || "RPC request failed.");
   }
+  return payload;
+}
+
+export async function listBureauOperations() {
+  const payload = (await rpc("ops.list")) as OpsListResponse;
+  return payload.operations;
+}
+
+export async function updateBureauOperationStatus(id: string, status: BureauOperationStatus) {
+  const payload = (await rpc("ops.update", { id, status })) as OpsResponse;
   return payload.operation;
 }

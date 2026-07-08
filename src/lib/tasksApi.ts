@@ -20,45 +20,33 @@ function sessionHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-export async function listTasks() {
-  const response = await fetch(`${apiBase()}/api/tasks`, {
-    headers: sessionHeaders()
-  });
-  const payload = (await response.json()) as TaskListResponse;
-  if (!response.ok) {
-    throw new Error(payload.error || "Unable to load tasks.");
-  }
-  return payload.tasks;
-}
-
-export async function createTask(input: Partial<PoaTask>) {
-  const response = await fetch(`${apiBase()}/api/tasks`, {
+async function rpc(action: string, data: Record<string, unknown> = {}) {
+  const response = await fetch(`${apiBase()}/api/rpc`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...sessionHeaders()
     },
-    body: JSON.stringify(input)
+    body: JSON.stringify({ action, ...data })
   });
-  const payload = (await response.json()) as TaskResponse;
+  const payload = await response.json();
   if (!response.ok) {
-    throw new Error(payload.error || "Unable to create task.");
+    throw new Error(payload.error || "RPC request failed.");
   }
+  return payload;
+}
+
+export async function listTasks() {
+  const payload = (await rpc("tasks.list")) as TaskListResponse;
+  return payload.tasks;
+}
+
+export async function createTask(input: Partial<PoaTask>) {
+  const payload = (await rpc("tasks.create", input as Record<string, unknown>)) as TaskResponse;
   return payload.task;
 }
 
 export async function updateTaskStatus(id: string, status: TaskStatus) {
-  const response = await fetch(`${apiBase()}/api/tasks`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      ...sessionHeaders()
-    },
-    body: JSON.stringify({ id, status })
-  });
-  const payload = (await response.json()) as TaskResponse;
-  if (!response.ok) {
-    throw new Error(payload.error || "Unable to update task.");
-  }
+  const payload = (await rpc("tasks.update", { id, status })) as TaskResponse;
   return payload.task;
 }
