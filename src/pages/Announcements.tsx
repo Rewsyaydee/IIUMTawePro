@@ -62,12 +62,12 @@ function Announcements() {
               <motion.div
                 key={announcement.id}
                 drag={announcement.type !== "emergency" ? "x" : false}
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.08}
+                dragConstraints={{ left: -200, right: 0 }}
+                dragElastic={0.7}
                 onDragEnd={(_, info) => {
-                  if (info.offset.x < -70) dismissAnnouncement(announcement.id, user.id);
+                  if (info.offset.x < -120) dismissAnnouncement(announcement.id, user.id);
                 }}
-                whileDrag={{ scale: 0.98 }}
+                whileDrag={{ scale: 0.98, transition: { type: "spring", stiffness: 300, damping: 20 } }}
                 className="swipeable-card"
               >
                 {announcement.type !== "emergency" && (
@@ -77,11 +77,11 @@ function Announcements() {
                 )}
                 <article
                   className={`announcement-card${announcement.type === "emergency" ? " announcement-emergency" : announcement.type === "urgent" ? " announcement-urgent" : ""}`}
+                  onClick={() => { if (announcement.type !== "emergency") toggleExpand(announcement.id); }}
+                  style={{ cursor: announcement.type !== "emergency" ? "pointer" : "default" }}
                 >
                   <div
                     className="announcement-header"
-                    onClick={() => { if (announcement.type !== "emergency") toggleExpand(announcement.id); }}
-                    style={{ cursor: announcement.type !== "emergency" ? "pointer" : "default" }}
                   >
                     <div className="announcement-badge-row">
                       {announcement.type === "emergency" && (
