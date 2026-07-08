@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import {
   Activity,
   AlertTriangle,
@@ -108,18 +109,33 @@ export function AppShell() {
 
       <div className="banner-stack">
         {activeBanners.map((banner) => (
-          <div className={`banner banner-${banner.type}`} key={banner.id}>
-            <AlertTriangle size={18} aria-hidden="true" />
-            <div>
-              <strong>{banner.title}</strong>
-              <p>{banner.body}</p>
+          <motion.div
+            key={banner.id}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.08}
+            onDragEnd={(_, info) => {
+              if (info.offset.x < -70) dismissBanner(banner.id, user.id);
+            }}
+            whileDrag={{ scale: 0.98 }}
+            className="swipeable-card"
+          >
+            <div className="swipe-delete-bg">
+              <svg className="swipeable-delete-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
             </div>
-            {banner.type !== "emergency" && (
-              <button className="icon-button" onClick={() => dismissBanner(banner.id, user.id)} aria-label="Dismiss banner">
-                <X size={15} aria-hidden="true" />
-              </button>
-            )}
-          </div>
+            <div className={`banner banner-${banner.type}`}>
+              <AlertTriangle size={18} aria-hidden="true" />
+              <div>
+                <strong>{banner.title}</strong>
+                <p>{banner.body}</p>
+              </div>
+              {banner.type !== "emergency" && (
+                <button className="icon-button" onClick={() => dismissBanner(banner.id, user.id)} aria-label="Dismiss banner">
+                  <X size={15} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          </motion.div>
         ))}
       </div>
 

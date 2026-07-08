@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 type RouteMapViewerProps = {
   mapAssetUrl: string;
@@ -8,6 +7,7 @@ type RouteMapViewerProps = {
 
 export function RouteMapViewer({ mapAssetUrl, altText }: RouteMapViewerProps) {
   const [imageError, setImageError] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
 
   if (imageError) {
     return (
@@ -19,28 +19,25 @@ export function RouteMapViewer({ mapAssetUrl, altText }: RouteMapViewerProps) {
   }
 
   return (
-    <div className="map-viewer">
-      <TransformWrapper
-        initialScale={1}
-        minScale={0.8}
-        maxScale={4}
-        centerOnInit
-        wheel={{ step: 0.5 }}
-        panning={{ velocityDisabled: true }}
+    <div className={`map-viewer ${zoomed ? "map-viewer-zoomed" : ""}`}>
+      <img
+        src={mapAssetUrl}
+        alt={altText}
+        className="map-image"
+        draggable={false}
+        onError={() => setImageError(true)}
+        onClick={() => setZoomed(!zoomed)}
+      />
+      <button
+        className="map-zoom-toggle"
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setZoomed(!zoomed);
+        }}
       >
-        <TransformComponent
-          wrapperStyle={{ width: "100%", height: "100%" }}
-          contentStyle={{ display: "flex", alignItems: "center", justifyContent: "center" }}
-        >
-          <img
-            src={mapAssetUrl}
-            alt={altText}
-            style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
-            draggable={false}
-            onError={() => setImageError(true)}
-          />
-        </TransformComponent>
-      </TransformWrapper>
+        {zoomed ? "Fit" : "Zoom"}
+      </button>
     </div>
   );
 }
