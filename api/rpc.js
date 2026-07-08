@@ -9,6 +9,31 @@ import { broadcastToTargets } from "./_lib/telegram-bot.js";
 
 const SCHEDULE_SELECT = "id,date,day,week,scheduled_start_time,scheduled_end_time,title,venue,tag,audience,description,is_live,notify_minutes_before,responsible_bureau,readiness_status,pre_session_tasks,venue_code";
 
+function mapBannerRow(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    body: row.body,
+    type: row.type,
+    isActive: row.is_active,
+    createdAt: row.created_at,
+    expiresAt: row.expires_at || undefined
+  };
+}
+
+function mapAuditRow(row) {
+  return {
+    id: row.id,
+    actorId: row.actor_id,
+    actorName: row.actor_name,
+    action: row.action,
+    table: row.table_name,
+    recordId: row.record_id || undefined,
+    details: row.details,
+    timestamp: row.timestamp
+  };
+}
+
 function mapScheduleItem(row) {
   return {
     id: row.id,
@@ -51,7 +76,7 @@ export default async function handler(req, res) {
   const { action } = body;
   if (!action) return sendJson(res, 400, { error: "Missing action field." });
 
-  const publicActions = new Set(["schedule.list"]);
+  const publicActions = new Set(["schedule.list", "announcements.list"]);
   let user;
   if (!publicActions.has(action)) {
     user = await resolveUser(req);
@@ -157,6 +182,57 @@ export default async function handler(req, res) {
         if (!item) return sendJson(res, 404, { error: "Schedule item not found." });
         await createAuditLog({ actor: user, action: body.isLive ? "published_schedule_item" : "updated_schedule_item", tableName: "schedule_items", recordId: body.id, details: `Schedule item "${item.title}" ${body.isLive ? "published" : "updated"}.` });
         return sendJson(res, 200, { item: mapScheduleItem(item) });
+      }
+
+      // ── BUREAU OPS ALERT ──
+      case "ops.alert": {
+        const opRows = await supabaseRequest(`/bureau_operations?id=eq.${encodeURIComponent(body.id)}&select=id,bureau,title,metric&limit=1`);
+        const operation = Array.isArray(opRows) ? opRows[0] : undefined;
+        if (!operation) return sendJson(res, 404, { error: "Operation not found." });
+
+        if (user.role !== "mainboard" && user.bureau !== operation.bureau) {
+          return sendJson(res, 403, { error: "You can only alert your own bureau." });
+        }
+
+        const alertText = `<b>${operation.bureau} Update</b>\n\n<b>${operation.title}</b>: ${operation.metric}\n\n${body.message || "Please check the operations board."}`;
+        const { sent, failed, queued } = await broadcastToTargets({ targetRole: "committee", targetBureau: operation.bureau, text: alertText });
+
+        await createAuditLog({ actor: user, action: "sent_bureau_alert", tableName: "bureau_operations", recordId: operation.id, details: `Alert sent to ${operation.bureau} (${sent} delivered, ${failed} failed).` });
+
+        return sendJson(res, 200, { sent, failed, queued });
+      }
+
+      // ── ANNOUNCEMENTS ──
+      case "announcements.list": {
+        const rows = await supabaseRequest("/banners?select=id,title,body,type,is_active,created_at,expires_at&order=created_at.desc");
+        const items = (Array.isArray(rows) ? rows : []).map(mapBannerRow);
+        return sendJson(res, 200, { items });
+      }
+      case "announcements.create": {
+        if (!user || user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
+        if (!body.title || !body.body) return sendJson(res, 400, { error: "Title and body are required." });
+        const rows = await supabaseRequest("/banners?select=id,title,body,type,is_active,created_at,expires_at", { method: "POST", headers: { Prefer: "return=representation" }, body: [{ title: body.title, body: body.body, type: body.type || "info", is_active: true }] });
+        const item = Array.isArray(rows) ? rows[0] : undefined;
+        if (!item) return sendJson(res, 500, { error: "Failed to create announcement." });
+        await createAuditLog({ actor: user, action: "created_announcement", tableName: "banners", recordId: item.id, details: `Announcement "${item.title}" created.` });
+        return sendJson(res, 201, { item: mapBannerRow(item) });
+      }
+      case "announcements.deactivate": {
+        if (!user || user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
+        if (!body.id) return sendJson(res, 400, { error: "Announcement ID is required." });
+        const rows = await supabaseRequest(`/banners?id=eq.${encodeURIComponent(body.id)}&select=id,title,body,type,is_active,created_at,expires_at`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: { is_active: false } });
+        const item = Array.isArray(rows) ? rows[0] : undefined;
+        if (!item) return sendJson(res, 404, { error: "Announcement not found." });
+        await createAuditLog({ actor: user, action: "deactivated_announcement", tableName: "banners", recordId: body.id, details: `Announcement "${item.title}" deactivated.` });
+        return sendJson(res, 200, { item: mapBannerRow(item) });
+      }
+
+      // ── AUDIT ──
+      case "audit.list": {
+        if (!user || user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
+        const rows = await supabaseRequest("/audit_log?select=id,actor_id,actor_name,action,table_name,record_id,details,timestamp&order=timestamp.desc&limit=100");
+        const items = (Array.isArray(rows) ? rows : []).map(mapAuditRow);
+        return sendJson(res, 200, { items });
       }
 
       default:

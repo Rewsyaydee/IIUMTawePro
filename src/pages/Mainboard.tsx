@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -19,11 +19,14 @@ import {
   X
 } from "lucide-react";
 import { BUREAUS, ROLES, roleLabels } from "../constants";
-import { confirmNative, hapticSuccess } from "../lib/telegram";
+import { authSessionChangedEvent, shouldUseApiAuth } from "../lib/apiAuth";
+import { createAnnouncement as createAnnouncementApi, deactivateAnnouncementApi, listAnnouncements, listAuditLog } from "../lib/announcementsApi";
+import { createScheduleItem as createScheduleItemApi, listSchedule, publishScheduleItem } from "../lib/scheduleApi";
+import { confirmNative, hapticError, hapticSuccess } from "../lib/telegram";
 import { StatusBadge } from "../components/StatusBadge";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
-import type { AdminRole, Bureau, Role, ScheduleItem } from "../types";
+import type { AdminRole, Announcement, AuditLogEntry, Bureau, Role, ScheduleItem } from "../types";
 
 const ADMIN_TABS = [
   { id: "overview", label: "Overview", icon: BarChart3 },
@@ -86,6 +89,38 @@ function Mainboard() {
     tasks,
     updateScheduleItem
   } = useMockData();
+  const apiMode = shouldUseApiAuth();
+  const [remoteSchedule, setRemoteSchedule] = useState<ScheduleItem[]>([]);
+  const [remoteAnnouncements, setRemoteAnnouncements] = useState<Announcement[]>([]);
+  const [remoteAudit, setRemoteAudit] = useState<AuditLogEntry[]>([]);
+  const [authRefreshTick, setAuthRefreshTick] = useState(0);
+
+  useEffect(() => {
+    const handleSessionChanged = () => setAuthRefreshTick((value) => value + 1);
+    window.addEventListener(authSessionChangedEvent, handleSessionChanged);
+    return () => window.removeEventListener(authSessionChangedEvent, handleSessionChanged);
+  }, []);
+
+  useEffect(() => {
+    if (!apiMode) return;
+    let cancelled = false;
+    Promise.all([
+      listSchedule().catch(() => []),
+      listAnnouncements().catch(() => []),
+      listAuditLog().catch(() => [])
+    ]).then(([s, a, aud]) => {
+      if (!cancelled) {
+        setRemoteSchedule(s);
+        setRemoteAnnouncements(a as Announcement[]);
+        setRemoteAudit(aud as AuditLogEntry[]);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [apiMode, authRefreshTick]);
+
+  const activeSchedule = apiMode ? remoteSchedule : schedule;
+  const activeAnnouncements = apiMode ? remoteAnnouncements : announcements;
+  const activeAudit = apiMode ? remoteAudit : auditLog;
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [emergencyForm, setEmergencyForm] = useState({
     title: "Emergency update",
@@ -128,7 +163,7 @@ function Mainboard() {
     const pendingAttendance = attendanceProofs.filter((proof) => proof.status === "pending_review").length;
     const taskCompletion = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
     const operationIssues = bureauOperations.filter((operation) => operation.status === "issue").length;
-    const liveItems = schedule.filter((item) => item.isLive).length;
+    const liveItems = activeSchedule.filter((item) => item.isLive).length;
     const pendingInvites = inviteCodes.filter((invite) => !invite.isUsed).length;
     return {
       blocked,
@@ -142,7 +177,7 @@ function Mainboard() {
       unresolved,
       verifiedAttendance
     };
-  }, [attendanceProofs, bureauOperations, inviteCodes, reports, schedule, tasks]);
+  }, [attendanceProofs, bureauOperations, inviteCodes, reports, activeSchedule, tasks]);
 
   if (user.role !== "mainboard") {
     return (
@@ -212,9 +247,9 @@ function Mainboard() {
     hapticSuccess();
   };
 
-  const submitSchedule = (event: FormEvent) => {
+  const submitSchedule = async (event: FormEvent) => {
     event.preventDefault();
-    createScheduleItem({
+    const input = {
       date: scheduleForm.date,
       day: scheduleForm.day,
       week: scheduleForm.week,
@@ -225,17 +260,26 @@ function Mainboard() {
       tag: scheduleForm.tag,
       audience: scheduleForm.audience,
       description: scheduleForm.description,
-      isLive: false,
       notifyMinutesBefore: Number(scheduleForm.notifyMinutesBefore) || 0,
       responsibleBureau: scheduleForm.responsibleBureau,
       readinessStatus: scheduleForm.readinessStatus,
-      preSessionTasks: scheduleForm.preSessionTasks
-        .split(",")
-        .map((task) => task.trim())
-        .filter(Boolean)
-    });
-    setScheduleForm(defaultScheduleForm);
-    hapticSuccess();
+      preSessionTasks: scheduleForm.preSessionTasks.split(",").map((task) => task.trim()).filter(Boolean),
+      isLive: false,
+      venueCode: undefined
+    };
+
+    try {
+      if (apiMode) {
+        const item = await createScheduleItemApi(input);
+        setRemoteSchedule((items) => [...items, item]);
+      } else {
+        createScheduleItem(input);
+      }
+      setScheduleForm(defaultScheduleForm);
+      hapticSuccess();
+    } catch (error) {
+      hapticError();
+    }
   };
 
   const revokeUser = async (id: string, name: string) => {
@@ -253,7 +297,7 @@ function Mainboard() {
     hapticSuccess();
   };
 
-  const submitAnnouncement = (event: FormEvent) => {
+  const submitAnnouncement = async (event: FormEvent) => {
     event.preventDefault();
     const links = announcementForm.links
       .split("\n")
@@ -269,15 +313,33 @@ function Mainboard() {
       .map((t) => t.trim())
       .filter(Boolean);
 
-    createAnnouncement({
-      title: announcementForm.title,
-      body: announcementForm.body,
-      type: announcementForm.type,
-      links: links.length > 0 ? links : undefined,
-      tags: tags.length > 0 ? tags : undefined
-    });
-    setAnnouncementForm({ title: "", body: "", type: "info", tags: "", links: "" });
-    hapticSuccess();
+    try {
+      if (apiMode) {
+        let body = announcementForm.body;
+        if (links.length > 0) {
+          body += "\n\nLinks:\n" + links.map((l) => `${l.label}: ${l.url}`).join("\n");
+        }
+        await createAnnouncementApi({
+          title: announcementForm.title,
+          body,
+          type: announcementForm.type
+        });
+        const items = await listAnnouncements();
+        setRemoteAnnouncements(items);
+      } else {
+        createAnnouncement({
+          title: announcementForm.title,
+          body: announcementForm.body,
+          type: announcementForm.type,
+          links: links.length > 0 ? links : undefined,
+          tags: tags.length > 0 ? tags : undefined
+        });
+      }
+      setAnnouncementForm({ title: "", body: "", type: "info", tags: "", links: "" });
+      hapticSuccess();
+    } catch {
+      hapticError();
+    }
   };
 
   const removeScheduleItem = async (item: ScheduleItem) => {
@@ -286,6 +348,33 @@ function Mainboard() {
 
     deleteScheduleItem(item.id);
     hapticSuccess();
+  };
+
+  const handlePublishToggle = async (item: ScheduleItem) => {
+    try {
+      if (apiMode) {
+        const updated = await publishScheduleItem(item.id, !item.isLive);
+        setRemoteSchedule((items) => items.map((i) => (i.id === updated.id ? updated : i)));
+      } else {
+        updateScheduleItem(item.id, { isLive: !item.isLive });
+      }
+      hapticSuccess();
+    } catch {
+      hapticError();
+    }
+  };
+
+  const handleReadinessChange = async (item: ScheduleItem, readinessStatus: string) => {
+    try {
+      if (apiMode) {
+        const updated = await publishScheduleItem(item.id, item.isLive, readinessStatus);
+        setRemoteSchedule((items) => items.map((i) => (i.id === updated.id ? updated : i)));
+      } else {
+        updateScheduleItem(item.id, { readinessStatus: readinessStatus as NonNullable<ScheduleItem["readinessStatus"]> });
+      }
+    } catch {
+      hapticError();
+    }
   };
 
   const renderOverview = () => (
@@ -647,10 +736,10 @@ function Mainboard() {
       <section className="ops-panel">
         <div className="section-heading">
           <h3>Schedule publishing</h3>
-          <span>{schedule.length} items</span>
+          <span>{activeSchedule.length} items</span>
         </div>
         <div className="schedule-admin-list">
-          {[...schedule]
+          {[...activeSchedule]
             .sort((a, b) => `${a.date} ${a.scheduledStartTime}`.localeCompare(`${b.date} ${b.scheduledStartTime}`))
             .map((item) => (
               <article className={item.isLive ? "schedule-admin-row is-live" : "schedule-admin-row"} key={item.id}>
@@ -675,14 +764,14 @@ function Mainboard() {
                     <button
                       className={item.isLive ? "danger-outline-button" : "verify-button"}
                       type="button"
-                      onClick={() => updateScheduleItem(item.id, { isLive: !item.isLive })}
+                       onClick={() => handlePublishToggle(item)}
                     >
                       <Send size={15} aria-hidden="true" />
                       <span>{item.isLive ? "Unpublish" : "Publish"}</span>
                     </button>
                     <select
                       value={item.readinessStatus || "pending"}
-                      onChange={(event) => updateScheduleItem(item.id, { readinessStatus: event.target.value as NonNullable<ScheduleItem["readinessStatus"]> })}
+                       onChange={(event) => handleReadinessChange(item, event.target.value)}
                     >
                       <option value="pending">Pending</option>
                       <option value="ready">Ready</option>
@@ -860,10 +949,10 @@ function Mainboard() {
     <section className="ops-panel">
       <div className="section-heading">
         <h3>Admin audit trail</h3>
-        <span>{auditLog.length} records</span>
+        <span>{activeAudit.length} records</span>
       </div>
       <div className="audit-list">
-        {auditLog.map((entry) => (
+        {activeAudit.map((entry) => (
           <article key={entry.id}>
             <div className="audit-marker" aria-hidden="true" />
             <div>
@@ -944,10 +1033,10 @@ function Mainboard() {
       <section className="ops-panel">
         <div className="section-heading">
           <h3>Published announcements</h3>
-          <span>{announcements.filter((a) => a.isActive).length} active</span>
+          <span>{activeAnnouncements.filter((a) => a.isActive).length} active</span>
         </div>
         <div style={{ display: "grid", gap: "10px" }}>
-          {[...announcements]
+          {[...activeAnnouncements]
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
             .map((announcement) => (
               <article
@@ -963,7 +1052,17 @@ function Mainboard() {
                     <span className="announcement-time">{formatDateTime(announcement.createdAt)}</span>
                   </div>
                   {announcement.isActive && (
-                    <button className="danger-outline-button" type="button" onClick={() => deactivateAnnouncement(announcement.id)}>
+                    <button className="danger-outline-button" type="button" onClick={async () => {
+                      try {
+                        if (apiMode) {
+                          await deactivateAnnouncementApi(announcement.id);
+                          setRemoteAnnouncements((items) => items.map((a) => (a.id === announcement.id ? { ...a, isActive: false } : a)));
+                        } else {
+                          deactivateAnnouncement(announcement.id);
+                        }
+                        hapticSuccess();
+                      } catch { hapticError(); }
+                    }}>
                       <X size={14} />
                       <span>Deactivate</span>
                     </button>

@@ -71,11 +71,25 @@ SUPABASE_JWT_SECRET=server-only
 
 ## Current Real Integration Status
 
-Completed first targets:
+All targets completed:
 
-- `/api/auth/telegram` validates Telegram users, persists `public.users`, and returns the app session.
-- `/api/invites/redeem` upgrades the same Telegram user to committee/head/mainboard-compatible app access.
+- `/api/auth/telegram` validates Telegram users, persists `public.users`, and returns the app session + Supabase JWT.
+- `/api/invites/redeem` upgrades the same Telegram user to committee/head/mainboard-compatible app access. Supports Supabase `invite_codes` table with env-code fallback.
 - `/api/attendance/proofs` stores daily selfie punch cards in private Supabase Storage and writes `attendance_proofs`.
 - `/api/attendance/proofs/:id/review` lets Special Task approve or reject before mainboard visibility.
+- `/api/rpc` consolidated router (Vercel Hobby plan — 7 functions total):
+  - `wellbeing.*` — wellbeing report CRUD with Welfare/mainboard auth
+  - `tasks.*` — POA task CRUD with bureau-scoped visibility
+  - `ops.*` — bureau operations with status tracking + bureau alerts via Telegram Bot
+  - `notify.*` — official notices and emergency broadcasts via Telegram Bot API
+  - `schedule.*` — schedule publishing with mainboard-only auth
+  - `announcements.*` — public read + mainboard create/deactivate
+  - `audit.list` — mainboard audit trail view
+- `/api/health` deployment readiness endpoint.
 
-Next targets: wellbeing reports, POA tasks, official notices, emergency broadcasts, and schedule publishing.
+## Production Checklist
+
+- [ ] Mainboard admin suite API integration (notices, schedule, announcements wired)
+- [ ] Disable mock mode: `VITE_ENABLE_MOCKS=false`
+- [ ] Remove role switcher from production
+- [ ] Final rehearsal with all 4 roles (student, committee, head, mainboard)
