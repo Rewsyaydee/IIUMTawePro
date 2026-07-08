@@ -30,12 +30,12 @@ export function RouteMapViewer({ mapAssetUrl, altText }: RouteMapViewerProps) {
       >
         <TransformComponent
           wrapperStyle={{ width: "100%", height: "100%" }}
-          contentStyle={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}
+          contentStyle={{ display: "flex", alignItems: "center", justifyContent: "center" }}
         >
           <img
             src={mapAssetUrl}
             alt={altText}
-            className="map-image"
+            style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
             draggable={false}
             onError={() => setImageError(true)}
           />
