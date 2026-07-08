@@ -5,7 +5,8 @@ import { useMockUser } from "../state/MockUserContext";
 
 export function RoleSwitcher() {
   const { user, users, setUserId } = useMockUser();
-  if (import.meta.env.VITE_ENABLE_MOCKS === "false") return null;
+
+  if (import.meta.env.VITE_ENABLE_MOCKS !== "true") return null;
 
   const shouldShow =
     import.meta.env.DEV ||

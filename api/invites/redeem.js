@@ -14,6 +14,7 @@ import {
   SupabaseRequestError,
   upsertUserProfile
 } from "../_lib/supabase.js";
+import { findInviteCodeByCode, isInviteValid, markInviteCodeUsed } from "../_lib/invite-code-utils.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -28,11 +29,21 @@ export default async function handler(req, res) {
       return sendJson(res, 401, { error: verification.reason });
     }
 
-    const invite = resolveAccessCode({
-      code: body.code,
-      selectedRole: body.selectedRole,
-      selectedBureau: body.selectedBureau
-    });
+    let invite;
+    if (hasSupabaseServerConfig()) {
+      const row = await findInviteCodeByCode(body.code);
+      const supabaseResult = isInviteValid(row);
+      if (!supabaseResult.ok) {
+        return sendJson(res, 403, { error: supabaseResult.reason });
+      }
+      invite = { ok: true, role: supabaseResult.role, bureau: supabaseResult.bureau, reusable: supabaseResult.reusable, id: supabaseResult.id };
+    } else {
+      invite = resolveAccessCode({
+        code: body.code,
+        selectedRole: body.selectedRole,
+        selectedBureau: body.selectedBureau
+      });
+    }
     if (!invite.ok) return sendJson(res, 403, { error: invite.reason });
 
     let user = userFromTelegram({
@@ -61,6 +72,10 @@ export default async function handler(req, res) {
         bureau: invite.bureau
       });
       persistence = "supabase";
+
+      if (invite.id) {
+        await markInviteCodeUsed({ id: invite.id, userId: user.id });
+      }
 
       await createAuditLog({
         actor: user,
