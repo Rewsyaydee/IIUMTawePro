@@ -10,3 +10,4 @@ export { RouteMapViewer } from "./components/RouteMapViewer";
 export { RouteStepsList } from "./components/RouteStepsList";
 export { RouteSummaryBar } from "./components/RouteSummaryBar";
 export { TransitionReminderBanner } from "./components/TransitionReminderBanner";
+export { googleMapsWalkingUrl, wazeUrl, appleMapsUrl, openExternalMap } from "./utils/mapLinks";

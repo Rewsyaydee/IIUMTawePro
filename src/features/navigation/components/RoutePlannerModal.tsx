@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { MapPin, Navigation, X } from "lucide-react";
 import type { Route } from "../types";
+import { getVenue } from "../data/venues";
+import { appleMapsUrl, googleMapsWalkingUrl, openExternalMap, wazeUrl } from "../utils/mapLinks";
 import { RouteMapViewer } from "./RouteMapViewer";
 import { RouteStepsList } from "./RouteStepsList";
 import { RouteSummaryBar } from "./RouteSummaryBar";
@@ -42,8 +44,37 @@ export function RoutePlannerModal({ route, onClose }: RoutePlannerModalProps) {
         />
 
         <RouteStepsList route={route} />
+
+        <DirectionsSection route={route} />
       </div>
     </div>,
     document.body
+  );
+}
+
+function DirectionsSection({ route }: { route: Route }) {
+  const from = getVenue(route.fromCode);
+  const to = getVenue(route.toCode);
+  const fromName = from?.name || route.fromCode;
+  const toName = to?.name || route.toCode;
+
+  return (
+    <div className="directions-section">
+      <h3>Get Directions</h3>
+      <div className="directions-buttons">
+        <button className="directions-btn" onClick={() => openExternalMap(googleMapsWalkingUrl(fromName, toName))}>
+          <MapPin size={15} />
+          <span>Google Maps</span>
+        </button>
+        <button className="directions-btn" onClick={() => openExternalMap(wazeUrl(toName))}>
+          <Navigation size={15} />
+          <span>Waze</span>
+        </button>
+        <button className="directions-btn" onClick={() => openExternalMap(appleMapsUrl(fromName, toName))}>
+          <span style={{ fontSize: "16px", fontWeight: 900 }}>&#x2318;</span>
+          <span>Apple Maps</span>
+        </button>
+      </div>
+    </div>
   );
 }
