@@ -143,6 +143,9 @@ export default async function handler(req, res) {
         if (!body.title || !body.body) return sendJson(res, 400, { error: "Title and body are required." });
         const text = `<b>${body.title}</b>\n\n${body.body}`;
         const { sent, failed, queued } = await broadcastToTargets({ targetRole: body.targetRole || "all", targetBureau: body.targetBureau || "all", text });
+        if (body.createBanner) {
+          await supabaseRequest("/banners", { method: "POST", headers: { Prefer: "return=minimal" }, body: [{ title: body.title, body: body.body, type: "info", is_active: true }] });
+        }
         await createAuditLog({ actor: user, action: "sent_official_notice", tableName: "notifications", recordId: "", details: `Notice "${body.title}" sent to ${queued} users (${sent} delivered, ${failed} failed).` });
         return sendJson(res, 200, { queued, sent, failed });
       }

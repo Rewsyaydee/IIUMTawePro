@@ -3011,6 +3011,53 @@ textarea {
   background: rgba(0, 145, 142, 0.06);
 }
 
+.kulliyyah-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--tg-section-bg-color);
+  box-shadow: var(--shadow);
+}
+
+.kulliyyah-info {
+  min-width: 0;
+}
+
+.kulliyyah-short {
+  display: inline-block;
+  margin-bottom: 3px;
+  border-radius: 6px;
+  padding: 2px 8px;
+  background: rgba(0, 145, 142, 0.1);
+  color: var(--primary);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.kulliyyah-info p {
+  margin: 0;
+  color: var(--tg-text-color);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.kulliyyah-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.kulliyyah-actions .directions-btn {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 0.75rem;
+}
+
 .transition-reminder {
   display: flex;
   align-items: center;

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle2, Clock3, Search } from "lucide-react";
 import { StatusBadge } from "../components/StatusBadge";
-import { NavigateButton, RoutePlannerModal, useRoutePlanner } from "../features/navigation";
+import { KulliyyahPicker, NavigateButton, RoutePlannerModal, useRoutePlanner } from "../features/navigation";
 import { formatScheduleClock, getCurrentScheduleItem, getItemProgress, getScheduleClock, getScheduleStatus } from "../lib/scheduleTime";
 import { hapticImpact } from "../lib/telegram";
 import { useMockData } from "../state/MockDataContext";
@@ -27,6 +27,7 @@ function Schedule() {
   const [query, setQuery] = useState("");
   const [clockTick, setClockTick] = useState(0);
   const [activeRoute, setActiveRoute] = useState<{ fromCode: string; toCode: string } | null>(null);
+  const [kulliyyahPickerFrom, setKulliyyahPickerFrom] = useState<string | null>(null);
   const { lookup } = useRoutePlanner();
 
   const tags = useMemo(() => ["all", ...Array.from(new Set(schedule.map((item) => item.tag)))], [schedule]);
@@ -149,6 +150,15 @@ function Schedule() {
                     {isStudent && (() => {
                       const nextItem = getNextItem(item.id);
                       if (nextItem && item.venueCode && nextItem.venueCode && item.venueCode !== nextItem.venueCode) {
+                        if (nextItem.venueCode === "kulliyyah-zone") {
+                          return (
+                            <div style={{ marginTop: "10px" }}>
+                              <button className="navigate-btn" type="button" onClick={() => setKulliyyahPickerFrom(item.venueCode!)}>
+                                <span>Select Kulliyyah →</span>
+                              </button>
+                            </div>
+                          );
+                        }
                         const navRoute = lookup(item.venueCode, nextItem.venueCode);
                         if (navRoute) {
                           return (
@@ -206,6 +216,9 @@ function Schedule() {
 
       {route && (
         <RoutePlannerModal route={route} onClose={() => setActiveRoute(null)} />
+      )}
+      {kulliyyahPickerFrom && (
+        <KulliyyahPicker fromCode={kulliyyahPickerFrom} onClose={() => setKulliyyahPickerFrom(null)} />
       )}
     </section>
   );

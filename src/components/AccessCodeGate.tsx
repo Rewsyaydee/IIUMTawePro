@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { KeyRound, ShieldCheck } from "lucide-react";
 import { BUREAUS, roleLabels } from "../constants";
-import { isTelegramAvailable, redeemAccessCode, shouldUseApiAuth } from "../lib/apiAuth";
+import { redeemAccessCode, shouldUseApiAuth } from "../lib/apiAuth";
 import { hapticError, hapticSuccess } from "../lib/telegram";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
@@ -49,7 +49,7 @@ export function AccessCodeGate({ compact = false }: AccessCodeGateProps) {
     };
 
     try {
-      const useApiPath = shouldUseApiAuth() && isTelegramAvailable();
+      const useApiPath = shouldUseApiAuth();
 
       if (useApiPath) {
         const result = await redeemAccessCode({

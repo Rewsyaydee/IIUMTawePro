@@ -24,8 +24,9 @@ export default async function handler(req, res) {
 
   try {
     const body = await readJson(req);
+    const hasCode = Boolean(body.code && String(body.code).trim());
     const verification = verifyTelegramInitData(body.initData || "");
-    if (!verification.ok) {
+    if (!verification.ok && !hasCode) {
       return sendJson(res, 401, { error: verification.reason });
     }
 

@@ -29,7 +29,7 @@ export async function sendTelegramMessage(telegramId, text) {
 }
 
 export async function getTargetTelegramIds({ targetRole, targetBureau }) {
-  let path = "/users?select=telegram_id&status=eq.active";
+  let path = "/users?select=telegram_id,bureau&status=eq.active";
   if (targetRole && targetRole !== "all") {
     path += `&role=eq.${encodeURIComponent(targetRole)}`;
   }
