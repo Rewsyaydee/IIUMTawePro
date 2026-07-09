@@ -22,6 +22,7 @@ import { BUREAUS, ROLES, roleLabels } from "../constants";
 import { authSessionChangedEvent, shouldUseApiAuth } from "../lib/apiAuth";
 import { createAnnouncement as createAnnouncementApi, deactivateAnnouncementApi, listAnnouncements, listAuditLog } from "../lib/announcementsApi";
 import { createScheduleItem as createScheduleItemApi, listSchedule, publishScheduleItem } from "../lib/scheduleApi";
+import { sendBureauAlert, sendEmergency as sendEmergencyApi, sendNotification } from "../lib/notifyApi";
 import { confirmNative, hapticError, hapticSuccess } from "../lib/telegram";
 import { StatusBadge } from "../components/StatusBadge";
 import { useMockData } from "../state/MockDataContext";
@@ -193,30 +194,57 @@ function Mainboard() {
 
   const submitEmergency = async (event: FormEvent) => {
     event.preventDefault();
-    const confirmed = await confirmNative("Send mock emergency broadcast?");
+    const confirmed = await confirmNative("Send emergency broadcast?");
     if (!confirmed) return;
 
-    createEmergencyBroadcast({
-      title: emergencyForm.title,
-      body: emergencyForm.body,
-      targetRole: emergencyForm.targetRole as Role | "all",
-      targetBureau: emergencyForm.targetBureau as Bureau | "all"
-    });
-    setEmergencyForm((current) => ({ ...current, body: "" }));
-    hapticSuccess();
+    try {
+      if (apiMode) {
+        await sendEmergencyApi({
+          title: emergencyForm.title,
+          body: emergencyForm.body,
+          targetRole: emergencyForm.targetRole,
+          targetBureau: emergencyForm.targetBureau
+        });
+      } else {
+        createEmergencyBroadcast({
+          title: emergencyForm.title,
+          body: emergencyForm.body,
+          targetRole: emergencyForm.targetRole as Role | "all",
+          targetBureau: emergencyForm.targetBureau as Bureau | "all"
+        });
+      }
+      setEmergencyForm((current) => ({ ...current, body: "" }));
+      hapticSuccess();
+    } catch {
+      hapticError();
+    }
   };
 
-  const submitNotice = (event: FormEvent) => {
+  const submitNotice = async (event: FormEvent) => {
     event.preventDefault();
-    sendGlobalNotification({
-      title: noticeForm.title,
-      body: noticeForm.body,
-      targetRole: noticeForm.targetRole as Role | "all",
-      targetBureau: noticeForm.targetBureau as Bureau | "all",
-      createBanner: noticeForm.createBanner
-    });
-    setNoticeForm((current) => ({ ...current, body: "" }));
-    hapticSuccess();
+    try {
+      if (apiMode) {
+        await sendNotification({
+          title: noticeForm.title,
+          body: noticeForm.body,
+          targetRole: noticeForm.targetRole,
+          targetBureau: noticeForm.targetBureau,
+          createBanner: noticeForm.createBanner
+        });
+      } else {
+        sendGlobalNotification({
+          title: noticeForm.title,
+          body: noticeForm.body,
+          targetRole: noticeForm.targetRole as Role | "all",
+          targetBureau: noticeForm.targetBureau as Bureau | "all",
+          createBanner: noticeForm.createBanner
+        });
+      }
+      setNoticeForm((current) => ({ ...current, body: "" }));
+      hapticSuccess();
+    } catch {
+      hapticError();
+    }
   };
 
   const submitInvite = (event: FormEvent) => {

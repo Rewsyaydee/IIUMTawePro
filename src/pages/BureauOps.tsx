@@ -5,6 +5,7 @@ import { StatusBadge } from "../components/StatusBadge";
 import { BUREAUS, bureauShortLabels } from "../constants";
 import { authSessionChangedEvent, shouldUseApiAuth } from "../lib/apiAuth";
 import { listBureauOperations, updateBureauOperationStatus as updateOpsStatusApi } from "../lib/bureauOpsApi";
+import { sendBureauAlert } from "../lib/notifyApi";
 import { hapticError, hapticImpact, hapticSuccess } from "../lib/telegram";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
@@ -112,9 +113,17 @@ function BureauOps() {
     }
   };
 
-  const sendAlert = (id: string) => {
-    sendBureauOperationAlert(id);
-    hapticSuccess();
+  const sendAlert = async (id: string) => {
+    try {
+      if (apiMode) {
+        await sendBureauAlert({ id });
+      } else {
+        sendBureauOperationAlert(id);
+      }
+      hapticSuccess();
+    } catch {
+      hapticError();
+    }
   };
 
   if (!hasOpsAccess) {
@@ -231,7 +240,7 @@ function BureauOps() {
 
               <button className="icon-text-button full-width" type="button" onClick={() => sendAlert(operation.id)}>
                 <BellRing size={16} aria-hidden="true" />
-                <span>Mock group alert</span>
+                <span>{apiMode ? "Send alert" : "Mock group alert"}</span>
               </button>
             </article>
           ))}
