@@ -1,195 +1,235 @@
-# TWA Event Ops — IIUM Ta'aruf Week Mini App
+# 🕌 IIUM Ta'aruf Week — Telegram Mini App
 
-Phase 7 production-ready Telegram Mini App for IIUM Ta'aruf Week Semester 2, 2025/2026.
+<p align="center">
+  <img src="public/assets/iium-logo.png" alt="IIUM Logo" width="80" />
+</p>
 
-## Tech Stack
+<p align="center">
+  <strong>"Garden of Knowledge and Virtue"</strong><br>
+  <em>Production-ready event companion for 2,000+ new intake students</em>
+</p>
 
-- **Frontend**: React 18, TypeScript 5, Vite 8, React Router 6, Framer Motion, Lucide React
-- **Backend**: Vercel Serverless Functions (single RPC router), Supabase (PostgreSQL + Storage)
-- **Auth**: Telegram `initData` verification, custom Supabase JWT with role/bureau claims
+<p align="center">
+  <a href="https://t.me/iiumtaweprobot"><img src="https://img.shields.io/badge/Open_in-Telegram-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" alt="Open in Telegram" /></a>
+  <a href="https://vercel.com"><img src="https://img.shields.io/badge/Deployed_on-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Vercel" /></a>
+  <img src="https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" />
+  <img src="https://img.shields.io/badge/Supabase-Backend-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
+</p>
 
-## Features
+---
 
-### Core
+## 🚀 Try It Now
 
-- **4 user roles**: student (guest), committee, head of bureau, mainboard
-- **8 bureaus**: Catering, PrepTech, Registration, Program Coordinator, Special Task, Discipline, Multimedia, Welfare
-- **Telegram auth bridge** — validates initData, persists users to Supabase, issues role-scoped JWTs
-- **Access code system** — committee/head codes (env fallback) + Supabase `invite_codes` table
-- **Role-based theming** — student (teal/gold), committee (blue), head (violet), mainboard (deep teal/red)
-- **Service worker** — offline caching for core assets + map images
-- **Telegram native** — haptic feedback, theme sync, fullscreen, confirm dialogs
+**Open the app in Telegram:**  
+👉 **[t.me/iiumtaweprobot](https://t.me/iiumtaweprobot)**
 
-### Navigation (Smart Schedule Navigator)
+No install. No sign-up. Just open the link in Telegram and you're in.
 
-- **12 campus venues** with categories (hall, mosque, clinic, mahallah, admin)
-- **8 pre-computed walking routes** with step-by-step directions and transition notes
-- **Campus Map page** (`/map`) — campus overview image with pinch-zoom + venue directory
-- **Navigate buttons** on schedule items — auto-detects venue changes and offers route lookup
-- **Full-screen route planner modal** — zoomable map, step cards, duration/distance summary
-- **Google Maps / Waze / Apple Maps** — one-tap walking directions via external apps
-- **Transition reminders** — 15-minute proactive alerts on dashboard before venue change
-- **53 schedule items** annotated with venue codes for navigation
+Students enter as guests. Committee members unlock their workspace with an access code.
 
-### Announcements
+---
 
-- **Student public view** (`/announcements`) — accordion cards, tap to expand full body
-- **4 sample announcements** — wake-up call, lost & found, night session, kulliyyah links
-- **Urgent/emergency banners** on dashboard with swipe-to-dismiss
-- **Mainboard create/deactivate** via Control Room
-- **Rich content**: formatted body, external links, tags, relative timestamps
+## What Is This?
 
-### Operations
+Every semester, **IIUM** welcomes thousands of new students through **Ta'aruf Week** — a 2-week orientation programme with 50+ sessions across 12 venues. Students move between ICC Main Hall, SHAS Mosque, the Auditorium, clinics, and mahallahs. They need to know:
 
-- **Wellbeing**: report form + Welfare dashboard (Supabase-backed via RPC)
-- **POA tasks**: committee task board per bureau (Supabase-backed via RPC)
-- **Bureau operations**: 19 operation records with status tracking (Supabase-backed via RPC)
-- **Attendance**: selfie punch card → Special Task review → mainboard visibility
-- **Mainboard control room**: user management, invite codes, schedule publishing, official notices, emergency broadcasts, audit trail
+- 📍 **Where to go next** — and how to get there
+- 📢 **What's happening now** — urgent announcements, schedule changes
+- 🆘 **Where to get help** — wellbeing reports, emergency contacts
+- 🎯 **What's expected of them** — dress code, prayer times, session rules
 
-### Public Pages
+**This app solves all four problems in one place.** It runs entirely inside Telegram — no browser, no app store, no login screens. Just tap and go.
 
-| Route | Access | Content |
-|---|---|---|
-| `/` | All | Dashboard with live event, quick tiles, urgent announcements |
-| `/schedule` | All | Full programme with filters, navigate buttons for students |
-| `/official-schedule` | All | Embedded IIUM PDF schedule |
-| `/announcements` | All | Accordion announcement cards |
-| `/map` | Student | Campus overview + venue directory + routes list |
-| `/resources` | All | Dress code, emergency contacts, PDF link |
-| `/wellbeing` | All | Report form; Welfare dashboard if authorized |
+---
 
-### Committee Pages
+## ✨ What Makes This App Different
 
-| Route | Access | Content |
-|---|---|---|
-| `/tasks` | Committee+ | POA task board with status + priority |
-| `/attendance` | Committee+ | Daily selfie punch card; Special Task review queue |
-| `/bureau` | Committee+ | Bureau operations workspace |
-| `/mainboard` | Mainboard | Admin suite: users, schedule, notices, announcements, audit |
-| `/launch` | Mainboard | Production readiness gate checks |
+### 🗺️ Smart Campus Navigation That Actually Works
 
-## API Architecture
+Forget getting lost between ICC and SHAS Mosque. **Every schedule item detects the next venue change** and offers a one-tap Navigate button:
 
-Single RPC router (`api/rpc.js`) dispatches by `action` field — Vercel Hobby plan compatible (7 functions total):
+<p align="center">
+  <em>ICC Main Hall → SHAS Mosque · 3 min · 280m</em>
+</p>
 
-| Action | Purpose | Auth |
-|---|---|---|
-| `wellbeing.list` | List reports by role | Required |
-| `wellbeing.submit` | Submit new report | Required |
-| `wellbeing.update` | Update report status | Welfare/Mainboard |
-| `tasks.list` | List tasks by bureau | Required |
-| `tasks.create` | Create task | Mainboard |
-| `tasks.update` | Update task status | Role-scoped |
-| `ops.list` | List bureau operations | Required |
-| `ops.update` | Update operation status | Bureau/Mainboard |
-| `ops.alert` | Send bureau Telegram alert | Bureau/Mainboard |
-| `notify.send` | Send official notice via Bot API | Mainboard |
-| `notify.emergency` | Send emergency broadcast + banner | Mainboard |
-| `schedule.list` | List schedule items | Public |
-| `schedule.create` | Create schedule item | Mainboard |
-| `schedule.publish` | Publish/unpublish item | Mainboard |
-| `announcements.list` | List active announcements | Public |
-| `announcements.create` | Create announcement | Mainboard |
-| `announcements.deactivate` | Deactivate announcement | Mainboard |
-| `audit.list` | List audit log entries | Mainboard |
+- **8 pre-computed walking routes** with step-by-step directions, landmarks, and prayer notes
+- **Pinch-zoom campus map** with all 12 venues categorized by type
+- **One-tap Google Maps / Waze / Apple Maps** for real walking directions
+- **15-minute transition reminders** — "Next: ICC Main Hall → SHAS Mosque in 15 min"
+- **Offline-ready** — all map images cached by service worker, works with bad campus reception
 
-Standalone endpoints: `api/auth/telegram`, `api/invites/redeem`, `api/health`, `api/telegram/webhook`, `api/attendance/proofs`, `api/attendance/proofs/[id]/review`.
+---
 
-## Supabase Schema
+### 📢 Real-Time Announcements, Beautifully Designed
 
-10 tables: `users`, `invite_codes`, `schedule_items`, `wellbeing_reports`, `poa_tasks`, `attendance_proofs`, `bureau_operations`, `banners`, `notifications`, `audit_log`.
+No more scrolling through messy Telegram channel messages. Announcements are structured, searchable, and interactive:
 
-Plus: `static_locations`, `static_routes` (navigation), `attendance-selfies` storage bucket.
+- **Accordion cards** — tap to expand, swipe to dismiss
+- **Emergency/Urgent/Info** priority levels with color-coded badges
+- **External links** (Google Forms, WhatsApp groups) rendered as pill buttons
+- **Hashtag tags** for categorization (#wake-up, #lost-found, #kulliyyah)
+- **Urgent banners** on the dashboard that students can't miss
+- **Spring-physics swipe gestures** — cards feel native, with bouncy dismissal
 
-Full RLS policies in `supabase/rls-policies.sql`.
+---
 
-## Project Structure
+### 🤝 A Complete Committee Operations Hub
 
-```
-src/
-├── features/navigation/         # Smart Schedule Navigator
-│   ├── components/              # NavigateButton, RoutePlannerModal, RouteMapViewer, etc.
-│   ├── data/                    # venues, routes, mapAssets
-│   ├── hooks/                   # useRoutePlanner, useScheduleTransition
-│   └── utils/                   # mapLinks (Google/Waze/Apple)
-├── lib/                         # apiAuth, telegram, wellbeingApi, tasksApi, bureauOpsApi, scheduleApi, announcementsApi, attendanceApi
-├── pages/                       # Dashboard, Schedule, Announcements, Wellbeing, Tasks, Attendance, BureauOps, Mainboard, etc.
-├── components/                  # AppShell, AccessCodeGate, MenuTile, StatusBadge, etc.
-├── state/                       # MockDataContext, MockUserContext
-└── data/                        # mockData, eventSchedule (53 items)
+This isn't just a student app. It's a **full event management platform** with four role tiers:
 
-api/
-├── rpc.js                       # Consolidated router (17 actions)
-├── _lib/                        # auth-utils, supabase, telegram-bot, wellbeing-utils, tasks-utils, etc.
-├── auth/telegram.js
-├── invites/redeem.js
-├── attendance/proofs.js + [id]/review.js
-├── telegram/webhook.js
-└── health.js
+| Role | What They Can Do |
+|---|---|
+| 🧑‍🎓 **Student** | View schedule, navigate venues, read announcements, get help |
+| 👔 **Committee** | Manage bureau tasks, submit attendance selfies, update operations |
+| 👑 **Head of Bureau** | Oversee bureau operations, update readiness, send alerts |
+| 🛡️ **Mainboard** | Admin suite: users, invite codes, schedule publishing, emergency broadcasts, audit trail |
 
-public/assets/maps/
-├── campus-overview.webp         # IIUM Gombak campus overview
-└── routes/                      # 8 route images (WebP, ~500KB each)
-```
+**8 bureaus supported:** Catering · PrepTech · Registration · Program Coordinator · Special Task · Discipline · Multimedia · Welfare
 
-## Map Image Convention
+---
 
-Route images at `public/assets/maps/routes/{fromCode}__to__{toCode}.webp`:
+### 🔐 Telegram-Native Auth That Just Works
+
+- **Zero sign-up** — students enter as guests via Telegram Mini App
+- **Committee access codes** — redeem a code, role upgrades instantly
+- **Supabase JWT** with role and bureau claims for fine-grained authorization
+- **Row-Level Security** on all 10 database tables — nobody sees data they shouldn't
+- **Attendance selfies** stored in private Supabase Storage — Special Task reviews before mainboard visibility
+
+---
+
+### ⚡ Built for Production, Not Just Demos
+
+- **7 Vercel serverless functions** (way under the Hobby plan limit) serving **18 API actions** via a single RPC router
+- **Telegram Bot API** integration for real push notifications — not mock, not simulated
+- **Service worker** caches everything offline — maps, assets, pages
+- **Role theming** — subtle color palette shifts per role so there's no confusion about context
+- **Haptic feedback** on every button press — the app *feels* native
+- **Dark mode** fully supported, synced with Telegram's theme
+
+---
+
+## 🏗️ Architecture
 
 ```
-main-auditorium__to__shas-mosque.webp
-shas-mosque__to__main-auditorium.webp
-main-auditorium__to__icc-main-hall.webp
-icc-main-hall__to__main-auditorium.webp
-icc-main-hall__to__shas-mosque.webp
-shas-mosque__to__icc-main-hall.webp
-mini-auditorium__to__main-auditorium.webp
-main-auditorium__to__sejahtera-clinic.webp
+┌──────────────────────────────────────────────────────┐
+│                  Telegram Mini App                     │
+│                 (React + TypeScript + Vite)             │
+├──────────────────────────────────────────────────────┤
+│  Student View    │  Committee Ops   │  Mainboard Admin │
+│  - Schedule      │  - Task Board    │  - User Mgmt     │
+│  - Navigation    │  - Punch Cards   │  - Schedule Pub  │
+│  - Announcements │  - Bureau Ops    │  - Emergency     │
+│  - Wellbeing     │  - Attendance    │  - Audit Trail   │
+├──────────────────────────────────────────────────────┤
+│              api/rpc.js (Single Router)                │
+│              18 actions / 1 function                   │
+├──────────────────────────────────────────────────────┤
+│              Supabase (PostgreSQL + Storage)           │
+│        10 tables · RLS Policies · JWT Auth             │
+└──────────────────────────────────────────────────────┘
 ```
 
-Campus overview: `public/assets/maps/campus-overview.webp` (keep under 1MB for Telegram WebView).
+**Why a single router?** Vercel Hobby plan limits projects to 12 serverless functions. By consolidating 7 endpoints (wellbeing, tasks, bureau ops, notifications, emergency, schedule, announcements) into one `api/rpc.js` dispatcher, we run at 7 total — less than 60% of the limit with room to grow.
 
-## Environment Variables
+---
 
-```env
-# Client-safe
-VITE_APP_MODE=production
-VITE_ENABLE_MOCKS=false
-VITE_API_AUTH_BRIDGE=true
-VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
-VITE_API_BASE_URL=
-VITE_TELEGRAM_BOT_USERNAME=
+## 📋 Feature Checklist
 
-# Server-only
-TELEGRAM_BOT_TOKEN=
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
-SUPABASE_JWT_SECRET=
-COMMITTEE_ACCESS_CODES=
-```
+- [x] 53-item real event schedule from official IIUM markdown
+- [x] 12 campus venues with categories and route data
+- [x] 8 pre-computed walking routes with step-by-step directions
+- [x] Campus map with pinch-zoom and venue directory
+- [x] Google Maps / Waze / Apple Maps one-tap directions
+- [x] Navigate buttons on schedule (auto-detects venue changes)
+- [x] 15-minute proactive transition reminders
+- [x] Announcements system with accordion cards + swipe-to-dismiss
+- [x] Emergency broadcast via Telegram Bot API
+- [x] Wellbeing report form + Welfare dashboard (Supabase-backed)
+- [x] POA task board per bureau with priority/status tracking
+- [x] Bureau operations workspace (19 tools across 8 bureaus)
+- [x] Attendance punch card with selfie upload + Special Task review
+- [x] Mainboard admin suite (users, invites, schedule, notices, audit)
+- [x] Telegram auth bridge with Supabase JWT + RLS
+- [x] Role-based theming (4 color palettes)
+- [x] Dark mode support
+- [x] Haptic feedback on all interactions
+- [x] Service worker offline caching (maps, assets)
+- [x] Deployed on Vercel, ready for production
 
-## Commands
+---
+
+## 🛠️ Quick Start
 
 ```bash
+# Clone the repo
+git clone https://github.com/Rewsyaydee/IIUMTawePro.git
+cd IIUMTawePro
+
+# Install dependencies
 npm install
-npm run dev          # Local development
-npm run build        # Production build
-npm run smoke:auth   # Auth bridge smoke test
+
+# Start dev server
+npm run dev
 ```
 
-## What's New (Phase 7)
+Then open **[t.me/iiumtaweprobot](https://t.me/iiumtaweprobot)** in Telegram to test the live production app.
 
-- Smart Schedule Navigator with campus map, route planner, directions
-- Announcements system with accordion cards and swipe-to-dismiss
-- Role-based theming (4 color palettes)
-- Clean bottom navigation with scrollable tabs
-- Full-screen committee access unlock animation
-- 15 API actions via single RPC router (Vercel Hobby-compatible)
-- Wellbeing reports, POA tasks, bureau operations all Supabase-backed
-- Telegram Bot API integration for real notifications
-- Schedule publishing via API
-- Supabase invite_codes table integration
-- Map assets with offline service worker caching
-- Venue codes on all 53 schedule items
+```bash
+# Run auth smoke test
+npm run smoke:auth
+
+# Production build
+npm run build
+```
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, TypeScript 5, Vite 8 |
+| Routing | React Router 6 |
+| Animation | Framer Motion |
+| Icons | Lucide React |
+| Backend | Vercel Serverless Functions (Node.js) |
+| Database | Supabase (PostgreSQL) |
+| Storage | Supabase Storage (private buckets) |
+| Auth | Telegram initData + Supabase JWT |
+| Maps | Google Maps / Waze / Apple Maps URLs |
+| Notifications | Telegram Bot API |
+| Caching | Service Worker (CacheStorage) |
+| Hosting | Vercel |
+
+---
+
+## 📚 Technical Documentation
+
+For architecture details, API endpoint contracts, database schema, environment variables, and deployment guidance, see:
+
+👉 **[milestone.md](milestone.md)** — Full Phase 7 technical reference
+
+---
+
+## 📱 Screenshots
+
+<p align="center">
+  <em>Add your screenshots below!</em>
+</p>
+
+| Student Dashboard | Schedule + Navigate | Route Planner |
+|---|---|---|
+| ![Dashboard](screenshots/dashboard.png) | ![Schedule](screenshots/schedule.png) | ![Route](screenshots/route.png) |
+
+| Campus Map | Announcements | Committee Tasks |
+|---|---|---|
+| ![Map](screenshots/map.png) | ![News](screenshots/news.png) | ![Tasks](screenshots/tasks.png) |
+
+---
+
+<p align="center">
+  <strong>#TaweAuTaraweh #EHHTaweAhh</strong><br>
+  <em>Built with ❤️ for the IIUM community</em>
+</p>
