@@ -8,7 +8,7 @@ import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 import type { Bureau, Role } from "../types";
 
-const allowedRoles: Role[] = ["committee", "head"];
+const allowedRoles: Role[] = ["committee", "head", "mainboard"];
 
 type AccessCodeGateProps = {
   compact?: boolean;
@@ -132,7 +132,7 @@ export function AccessCodeGate({ compact = false }: AccessCodeGateProps) {
         </label>
         <label>
           <span>Bureau</span>
-          <select value={form.bureau} onChange={(event) => setForm((current) => ({ ...current, bureau: event.target.value as Bureau }))}>
+          <select value={form.bureau} disabled={form.role === "mainboard"} onChange={(event) => setForm((current) => ({ ...current, bureau: event.target.value as Bureau }))}>
             {BUREAUS.map((bureau) => (
               <option key={bureau} value={bureau}>
                 {bureau}

@@ -34,11 +34,22 @@ export default async function handler(req, res) {
     let bureau;
     let accessWasRedeemed = false;
     if (body.inviteCode) {
-      const invite = resolveAccessCode({
-        code: body.inviteCode,
-        selectedRole: body.selectedRole,
-        selectedBureau: body.selectedBureau
-      });
+      let invite;
+      if (hasSupabaseServerConfig()) {
+        const { findInviteCodeByCode, isInviteValid } = await import("../_lib/invite-code-utils.js");
+        const row = await findInviteCodeByCode(body.inviteCode);
+        const supabaseResult = isInviteValid(row);
+        if (supabaseResult.ok) {
+          invite = supabaseResult;
+        }
+      }
+      if (!invite) {
+        invite = resolveAccessCode({
+          code: body.inviteCode,
+          selectedRole: body.selectedRole,
+          selectedBureau: body.selectedBureau
+        });
+      }
       if (!invite.ok) return sendJson(res, 403, { error: invite.reason });
       role = invite.role;
       bureau = invite.bureau;
