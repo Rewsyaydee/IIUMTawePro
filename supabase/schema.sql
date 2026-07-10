@@ -257,6 +257,10 @@ alter table public.users add column if not exists kulliyyah text check (
   kulliyyah is null
   or kulliyyah in ('KICT','KOE','KENMS','KOED','AIKOL','KAED','AHAS KIRKHS')
 );
+alter table public.users add column if not exists registration_step text check (
+  registration_step is null
+  or registration_step in ('matric','kulliyyah','change_matric','change_kulliyyah')
+);
 
 -- Student attendance: individual submissions
 create table if not exists public.student_attendance (
