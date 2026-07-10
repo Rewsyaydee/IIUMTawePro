@@ -95,6 +95,29 @@ export function AppShell() {
                   <X size={15} aria-hidden="true" />
                 </button>
               </div>
+              {user.role === "student" && (
+                <>
+                  {user.matricNumber ? (
+                    <div className="account-profile">
+                      <div className="account-profile-row">
+                        <span>📝 Matric</span>
+                        <strong>{user.matricNumber}</strong>
+                      </div>
+                      {user.kulliyyah && (
+                        <div className="account-profile-row">
+                          <span>🏛️ Kulliyyah</span>
+                          <strong>{user.kulliyyah}</strong>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <a className="account-register-link" href="https://t.me/iiumtaweprobot" target="_blank" rel="noreferrer">
+                      Register via @iiumtaweprobot /start →
+                    </a>
+                  )}
+                  <hr style={{ margin: "8px 0", border: "none", borderTop: "1px solid var(--line)" }} />
+                </>
+              )}
               {user.role === "student" ? (
                 <AccessCodeGate compact />
               ) : (

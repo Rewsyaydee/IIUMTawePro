@@ -3453,6 +3453,42 @@ textarea {
   text-decoration: none;
 }
 
+.account-profile {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(0, 145, 142, 0.05);
+  border: 1px solid rgba(0, 145, 142, 0.08);
+}
+
+.account-profile-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.account-profile-row span {
+  color: var(--tg-subtitle-text-color);
+  font-size: 0.82rem;
+}
+
+.account-profile-row strong {
+  color: var(--tg-text-color);
+  font-size: 0.88rem;
+}
+
+.account-register-link {
+  display: block;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(213, 159, 15, 0.08);
+  color: var(--amber);
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
 @keyframes sheetIn {
   from {
     opacity: 0;
