@@ -262,3 +262,34 @@ on public.static_routes
 for all
 using (app_private.is_mainboard())
 with check (app_private.is_mainboard());
+
+-- Student attendance RLS
+alter table public.student_attendance enable row level security;
+
+create policy "students can submit own attendance"
+on public.student_attendance
+for insert
+with check (
+  app_private.claim_role() = 'student'
+  and user_id = app_private.claim_user_id()
+);
+
+create policy "students read own attendance"
+on public.student_attendance
+for select
+using (
+  user_id = app_private.claim_user_id()
+  or app_private.is_mainboard()
+);
+
+create policy "students update own attendance (excuse)"
+on public.student_attendance
+for update
+using (user_id = app_private.claim_user_id())
+with check (user_id = app_private.claim_user_id());
+
+create policy "mainboard reviews attendance"
+on public.student_attendance
+for update
+using (app_private.is_mainboard())
+with check (app_private.is_mainboard());

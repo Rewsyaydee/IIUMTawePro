@@ -7,6 +7,8 @@ export interface Venue {
   shortName: string;
   description: string;
   category: VenueCategory;
+  lat?: number;
+  lng?: number;
 }
 
 export interface RouteStep {

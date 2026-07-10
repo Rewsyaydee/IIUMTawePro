@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Map, BookOpen, CalendarDays, Camera, ClipboardList, FileText, Grid3X3, HeartPulse, Bell, Rocket, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Map, BookOpen, CalendarDays, Camera, ClipboardCheck, ClipboardList, FileText, Grid3X3, HeartPulse, Bell, Rocket, ShieldCheck, ShieldAlert } from "lucide-react";
 import { Link } from "react-router-dom";
 import { MenuTile } from "../components/MenuTile";
 import { StatusBadge } from "../components/StatusBadge";
@@ -57,7 +57,7 @@ function Dashboard() {
   const tiles: Array<{ to: string; title: string; meta: string; icon: typeof CalendarDays; tone: TileTone }> = [
     { to: "/schedule", title: "Today's Programme", meta: live ? `Live: ${live.title}` : currentScheduleItem ? `Next: ${currentScheduleItem.title}` : "No live slot", icon: CalendarDays, tone: "blue" as const },
     { to: "/official-schedule", title: "Official PDF", meta: "IIUM source schedule", icon: FileText, tone: "amber" as const },
-    { to: "/attendance", title: "Daily Punch Card", meta: `${pendingAttendance} awaiting review`, icon: Camera, tone: "red" as const },
+    { to: "/attendance", title: user.role === "student" ? "Event Attendance" : "Daily Punch Card", meta: user.role === "student" ? "Submit your attendance" : `${pendingAttendance} awaiting review`, icon: user.role === "student" ? ClipboardCheck : Camera, tone: "red" as const },
     { to: "/tasks", title: "Bureau Tasks", meta: `${bureauTasks.length} visible tasks`, icon: ClipboardList, tone: "green" as const },
     { to: "/bureau", title: "Bureau Ops", meta: `${opsIssues} need attention`, icon: Grid3X3, tone: "violet" as const },
     { to: "/resources", title: "Guides & Contacts", meta: "Booklet, dress code, contacts", icon: BookOpen, tone: "amber" as const },

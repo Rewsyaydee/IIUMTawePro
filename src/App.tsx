@@ -2,7 +2,9 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { LoadingScreen } from "./components/LoadingScreen";
+import { OnboardingModal } from "./components/OnboardingModal";
 import { setupTelegramShell } from "./lib/telegram";
+import { useMockUser } from "./state/MockUserContext";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Schedule = lazy(() => import("./pages/Schedule"));
@@ -19,6 +21,8 @@ const CampusMap = lazy(() => import("./features/navigation/components/CampusMapP
 
 function App() {
   const [booting, setBooting] = useState(true);
+  const { user } = useMockUser();
+  const [onboardingDone, setOnboardingDone] = useState(false);
 
   useEffect(() => {
     setupTelegramShell();
@@ -26,9 +30,12 @@ function App() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  const needsOnboarding = user.role === "student" && !user.matricNumber && !onboardingDone;
+
   return (
     <>
       {booting && <LoadingScreen />}
+      {needsOnboarding && <OnboardingModal onComplete={() => setOnboardingDone(true)} />}
       <Routes>
         <Route element={<AppShell />}>
           <Route

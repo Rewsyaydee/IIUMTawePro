@@ -34,6 +34,25 @@ function mapAuditRow(row) {
   };
 }
 
+function mapStudentAttendance(row) {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    scheduleItemId: row.schedule_item_id,
+    eventTitle: row.event_title,
+    studentName: row.student_name,
+    matricNumber: row.matric_number,
+    kulliyyah: row.kulliyyah || undefined,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    status: row.status,
+    excuse: row.excuse || undefined,
+    submittedAt: row.submitted_at,
+    reviewedBy: row.reviewed_by || undefined,
+    reviewedAt: row.reviewed_at || undefined
+  };
+}
+
 function mapScheduleItem(row) {
   return {
     id: row.id,
@@ -236,6 +255,63 @@ export default async function handler(req, res) {
         const rows = await supabaseRequest("/audit_log?select=id,actor_id,actor_name,action,table_name,record_id,details,timestamp&order=timestamp.desc&limit=100");
         const items = (Array.isArray(rows) ? rows : []).map(mapAuditRow);
         return sendJson(res, 200, { items });
+      }
+
+      // ── STUDENT ATTENDANCE ──
+      case "user.onboard": {
+        if (!user || user.role !== "student") return sendJson(res, 403, { error: "Students only." });
+        if (!body.matricNumber) return sendJson(res, 400, { error: "Matric number is required." });
+        await supabaseRequest(`/users?id=eq.${encodeURIComponent(user.id)}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: { matric_number: String(body.matricNumber).trim(), kulliyyah: body.kulliyyah || null }
+        });
+        return sendJson(res, 200, { onboarded: true });
+      }
+      case "attendance.submit": {
+        if (!user || user.role !== "student") return sendJson(res, 403, { error: "Students only." });
+        if (!body.scheduleItemId || !body.latitude || !body.longitude) return sendJson(res, 400, { error: "Event ID and location are required." });
+        const rows = await supabaseRequest("/student_attendance?select=id,user_id,schedule_item_id,status", {
+          method: "POST",
+          headers: { Prefer: "return=representation" },
+          body: [{
+            user_id: user.id,
+            schedule_item_id: body.scheduleItemId,
+            event_title: body.eventTitle || "",
+            student_name: body.studentName || user.name,
+            matric_number: body.matricNumber || "",
+            kulliyyah: body.kulliyyah || null,
+            latitude: body.latitude,
+            longitude: body.longitude,
+            status: body.status || "present",
+            excuse: body.excuse || null
+          }]
+        });
+        const record = Array.isArray(rows) ? rows[0] : undefined;
+        if (!record) return sendJson(res, 500, { error: "Failed to submit attendance." });
+        return sendJson(res, 201, { attendance: mapStudentAttendance(record) });
+      }
+      case "attendance.student.list": {
+        if (!user) return sendJson(res, 401);
+        const rows = await supabaseRequest(`/student_attendance?user_id=eq.${encodeURIComponent(user.id)}&order=submitted_at.desc`);
+        return sendJson(res, 200, { attendances: (Array.isArray(rows) ? rows : []).map(mapStudentAttendance) });
+      }
+      case "attendance.mainboard.list": {
+        if (!user || user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
+        const rows = await supabaseRequest("/student_attendance?select=*&order=submitted_at.desc&limit=200");
+        return sendJson(res, 200, { attendances: (Array.isArray(rows) ? rows : []).map(mapStudentAttendance) });
+      }
+      case "attendance.review": {
+        if (!user || user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
+        if (!body.id || !body.status) return sendJson(res, 400, { error: "ID and status are required." });
+        const rows = await supabaseRequest(`/student_attendance?id=eq.${encodeURIComponent(body.id)}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=representation" },
+          body: { status: body.status, reviewed_by: user.id, reviewed_at: new Date().toISOString() }
+        });
+        const record = Array.isArray(rows) ? rows[0] : undefined;
+        if (!record) return sendJson(res, 404, { error: "Attendance record not found." });
+        return sendJson(res, 200, { attendance: mapStudentAttendance(record) });
       }
 
       default:

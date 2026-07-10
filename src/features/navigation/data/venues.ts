@@ -7,7 +7,9 @@ export const venues: Venue[] = [
     name: "Main Hall, ICC",
     shortName: "ICC Main Hall",
     description: "Primary event hall in the ICC building. Hosts registration, briefings, and placement tests.",
-    category: "hall"
+    category: "hall",
+    lat: 3.251663,
+    lng: 101.732462
   },
   {
     id: "v-main-auditorium",
@@ -15,7 +17,9 @@ export const venues: Venue[] = [
     name: "Main Auditorium",
     shortName: "Main Auditorium",
     description: "Largest auditorium on campus. Hosts opening ceremony, video presentations, VIP sessions.",
-    category: "hall"
+    category: "hall",
+    lat: 3.250950,
+    lng: 101.733678
   },
   {
     id: "v-mini-auditorium",
@@ -31,7 +35,9 @@ export const venues: Venue[] = [
     name: "IIUM SHAS Mosque",
     shortName: "SHAS Mosque",
     description: "Central campus mosque for congregational prayers, tadarus Al-Quran, and usrah sessions.",
-    category: "mosque"
+    category: "mosque",
+    lat: 3.251366,
+    lng: 101.734955
   },
   {
     id: "v-sejahtera-clinic",

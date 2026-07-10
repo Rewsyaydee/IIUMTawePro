@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { BadgeCheck, Camera, Send, ShieldCheck, XCircle } from "lucide-react";
 import { EmptyState } from "../components/EmptyState";
 import { StatusBadge } from "../components/StatusBadge";
+import { StudentAttendanceView } from "../components/StudentAttendanceView";
 import {
   listAttendanceProofs,
   reviewAttendanceProof as reviewAttendanceProofApi,
@@ -134,6 +135,10 @@ function Attendance() {
 
   return (
     <section className="page-stack">
+      {user.role === "student" ? (
+        <StudentAttendanceView />
+      ) : (
+        <>
       <div className="page-heading">
         <div>
           <p className="eyebrow">Daily proof</p>
@@ -260,6 +265,8 @@ function Attendance() {
 
       {!isCommittee && !isSpecialTask && !isMainboard && (
         <EmptyState icon={Camera} title="Committee area" body="Daily punch card is available to committee members." />
+      )}
+        </>
       )}
     </section>
   );

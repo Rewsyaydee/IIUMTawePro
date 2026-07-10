@@ -30,6 +30,8 @@ export interface MockUser {
   name: string;
   role: Role;
   bureau?: Bureau;
+  matricNumber?: string;
+  kulliyyah?: string;
 }
 
 export interface InviteCode {
@@ -73,6 +75,7 @@ export interface ScheduleItem {
   preSessionTasks?: string[];
   readinessStatus?: ReadinessStatus;
   venueCode?: string;
+  isAttendanceRequired?: boolean;
 }
 
 export interface EmergencyContact {
@@ -194,4 +197,23 @@ export interface MockNotification {
   sentAt: string;
   sentBy: string;
   relatedTaskId?: string;
+}
+
+export type StudentAttendanceStatus = "present" | "absent" | "excused";
+
+export interface StudentAttendance {
+  id: string;
+  userId: string;
+  scheduleItemId: string;
+  eventTitle: string;
+  studentName: string;
+  matricNumber: string;
+  kulliyyah?: string;
+  latitude: number;
+  longitude: number;
+  status: StudentAttendanceStatus;
+  excuse?: string;
+  submittedAt: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
 }

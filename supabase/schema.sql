@@ -251,5 +251,35 @@ create table if not exists public.static_routes (
 -- Extend schedule_items with venue code for navigation
 alter table public.schedule_items add column if not exists venue_code text;
 
+-- Student attendance: extend users table
+alter table public.users add column if not exists matric_number text;
+alter table public.users add column if not exists kulliyyah text check (
+  kulliyyah is null
+  or kulliyyah in ('KICT','KOE','KENMS','KOED','AIKOL','KAED','AHAS KIRKHS')
+);
+
+-- Student attendance: individual submissions
+create table if not exists public.student_attendance (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users(id),
+  schedule_item_id text not null,
+  event_title text not null,
+  student_name text not null,
+  matric_number text not null,
+  kulliyyah text,
+  latitude real not null,
+  longitude real not null,
+  status text not null default 'present' check (status in ('present','absent','excused')),
+  excuse text,
+  submitted_at timestamptz not null default now(),
+  reviewed_by uuid references public.users(id),
+  reviewed_at timestamptz,
+  unique (user_id, schedule_item_id)
+);
+
+create index if not exists student_attendance_user_idx on public.student_attendance (user_id);
+create index if not exists student_attendance_schedule_idx on public.student_attendance (schedule_item_id);
+create index if not exists student_attendance_status_idx on public.student_attendance (status);
+
 create index if not exists static_locations_code_idx on public.static_locations (code);
 create index if not exists static_routes_from_to_idx on public.static_routes (from_venue_code, to_venue_code);

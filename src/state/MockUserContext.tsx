@@ -8,7 +8,7 @@ type NewMockUserInput = Pick<MockUser, "name" | "role" | "bureau"> & {
   telegramId?: string;
 };
 
-type MockUserUpdate = Partial<Pick<MockUser, "name" | "role" | "bureau">>;
+type MockUserUpdate = Partial<Pick<MockUser, "name" | "role" | "bureau" | "matricNumber" | "kulliyyah">>;
 
 type MockUserContextValue = {
   user: MockUser;
