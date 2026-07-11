@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Map, BookOpen, CalendarDays, Camera, ClipboardCheck, ClipboardList, FileText, Grid3X3, HeartPulse, Bell, Rocket, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Map, BookOpen, CalendarDays, ClipboardCheck, ClipboardList, Grid3X3, HeartPulse, Bell, Rocket, ShieldAlert, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { MenuTile } from "../components/MenuTile";
-import { StatusBadge } from "../components/StatusBadge";
+import { EventCarousel } from "../components/EventCarousel";
 import { bureauShortLabels, roleLabels } from "../constants";
 import {
   TransitionReminderBanner,
@@ -11,8 +11,7 @@ import {
   useRoutePlanner,
   useScheduleTransition
 } from "../features/navigation";
-import { getCurrentScheduleItem, getScheduleClock, getScheduleStatus, getTaweWeekProgress } from "../lib/scheduleTime";
-import { getTelegramWebApp } from "../lib/telegram";
+import { getTaweWeekProgress } from "../lib/scheduleTime";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 
@@ -21,23 +20,17 @@ type TileTone = "blue" | "green" | "amber" | "red" | "violet";
 function Dashboard() {
   const { user } = useMockUser();
   const { announcements, attendanceProofs, bureauOperations, schedule, reports, tasks, notifications, dismissAnnouncement } = useMockData();
-  const scheduleClock = getScheduleClock(schedule);
-  const currentScheduleItem = getCurrentScheduleItem(schedule, scheduleClock.now);
-  const currentScheduleStatus = currentScheduleItem ? getScheduleStatus(currentScheduleItem, scheduleClock.now) : "upcoming";
-  const live = currentScheduleItem && currentScheduleStatus === "live" ? currentScheduleItem : undefined;
   const bureauTasks = user.role === "mainboard" ? tasks : tasks.filter((task) => task.bureau === user.bureau);
   const openReports = reports.filter((report) => report.status !== "resolved").length;
   const completed = tasks.filter((task) => task.status === "done").length;
   const poaCompletion = Math.round((completed / Math.max(tasks.length, 1)) * 100);
-  const taweCompletion = getTaweWeekProgress(schedule, scheduleClock.now);
+  const taweCompletion = getTaweWeekProgress(schedule, new Date());
   const completion = user.role === "student" ? taweCompletion : poaCompletion;
   const pendingAttendance = attendanceProofs.filter((proof) => proof.status === "pending_review").length;
   const opsIssues =
     user.role === "mainboard"
       ? bureauOperations.filter((operation) => operation.status === "issue").length
       : bureauOperations.filter((operation) => operation.bureau === user.bureau && operation.status === "issue").length;
-  const telegramUser = getTelegramWebApp()?.initDataUnsafe?.user;
-  const firstName = telegramUser?.first_name || telegramUser?.username || user.name.split(" ")[0];
 
   const transition = useScheduleTransition(schedule);
   const { lookup } = useRoutePlanner();
@@ -48,36 +41,34 @@ function Dashboard() {
     .filter((a) => a.isActive && (a.type === "urgent" || a.type === "emergency") && !a.dismissedBy?.includes(user.id))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
 
-  const dashboardTitle = user.role === "student" ? `Assalamu'alaikum, ${firstName}` : "Committee command centre";
-  const dashboardSubtitle =
-    user.role === "student"
-      ? "Today's programme, safety contacts, and support in one calm place."
-      : `${user.bureau ? bureauShortLabels[user.bureau] : "Mainboard"} workspace for today's operations.`;
+  const studentTiles: Array<{ to: string; title: string; meta: string; icon: typeof CalendarDays; tone: TileTone }> = [
+    { to: "/resources", title: "Guides", meta: "Booklet, dress code and contacts", icon: BookOpen, tone: "amber" as const },
+    { to: "/announcements", title: "News", meta: "Latest announcement", icon: Bell, tone: "blue" as const },
+    { to: "/wellbeing", title: "Get Help", meta: "Report health to Welfare committee", icon: HeartPulse, tone: "red" as const },
+    { to: "/map", title: "Map", meta: "Interactive IIUM campus map", icon: Map, tone: "green" as const }
+  ];
 
-  const tiles: Array<{ to: string; title: string; meta: string; icon: typeof CalendarDays; tone: TileTone }> = [
-    { to: "/schedule", title: "Today's Programme", meta: live ? `Live: ${live.title}` : currentScheduleItem ? `Next: ${currentScheduleItem.title}` : "No live slot", icon: CalendarDays, tone: "blue" as const },
-    { to: "/official-schedule", title: "Official PDF", meta: "IIUM source schedule", icon: FileText, tone: "amber" as const },
-    { to: "/attendance", title: user.role === "student" ? "Event Attendance" : "Daily Punch Card", meta: user.role === "student" ? "Submit your attendance" : `${pendingAttendance} awaiting review`, icon: user.role === "student" ? ClipboardCheck : Camera, tone: "red" as const },
-    { to: "/tasks", title: "Bureau Tasks", meta: `${bureauTasks.length} visible tasks`, icon: ClipboardList, tone: "green" as const },
+  const committeeTiles: Array<{ to: string; title: string; meta: string; icon: typeof CalendarDays; tone: TileTone }> = [
+    { to: "/schedule", title: "Today's Programme", meta: "View live schedule", icon: CalendarDays, tone: "blue" as const },
     { to: "/bureau", title: "Bureau Ops", meta: `${opsIssues} need attention`, icon: Grid3X3, tone: "violet" as const },
-    { to: "/resources", title: "Guides & Contacts", meta: "Booklet, dress code, contacts", icon: BookOpen, tone: "amber" as const },
+    { to: "/tasks", title: "Tasks", meta: `${bureauTasks.length} visible tasks`, icon: ClipboardList, tone: "green" as const },
     { to: "/wellbeing", title: "Get Help", meta: `${openReports} open reports`, icon: HeartPulse, tone: "red" as const }
-  ].filter((tile) => !["/tasks", "/attendance", "/bureau"].includes(tile.to) || user.role !== "student");
+  ];
 
-  if (user.role === "student") {
-    tiles.push({ to: "/map", title: "Campus Map", meta: "Navigate between venues", icon: Map, tone: "green" as const });
-  }
+  const mainboardTiles: Array<{ to: string; title: string; meta: string; icon: typeof CalendarDays; tone: TileTone }> = [
+    { to: "/mainboard", title: "Control Room", meta: `${notifications.length} sends`, icon: ShieldAlert, tone: "violet" as const },
+    { to: "/bureau", title: "Bureau Ops", meta: `${opsIssues} issues`, icon: Grid3X3, tone: "green" as const },
+    { to: "/launch", title: "Launch Readiness", meta: "Production gate checks", icon: Rocket, tone: "amber" as const },
+    { to: "/attendance", title: "Attendance Review", meta: `${pendingAttendance} awaiting`, icon: ClipboardCheck, tone: "red" as const }
+  ];
 
-  if (user.role === "mainboard") {
-    tiles.push({ to: "/mainboard", title: "Control Room", meta: `${notifications.length} mock sends`, icon: ShieldAlert, tone: "violet" as const });
-    tiles.push({ to: "/launch", title: "Launch Readiness", meta: "Production gate checks", icon: Rocket, tone: "amber" as const });
-  }
+  const tiles = user.role === "student" ? studentTiles : user.role === "mainboard" ? mainboardTiles : committeeTiles;
 
   return (
     <section className="page-stack">
       {user.role === "student" && !user.matricNumber && (
         <a className="register-bar" href="https://t.me/iiumtaweprobot" target="_blank" rel="noreferrer">
-          <span>⚠️ Complete your registration to track attendance — message @iiumtaweprobot /start</span>
+          <span>Complete your registration to track attendance — message @iiumtaweprobot /start</span>
           <span style={{ fontWeight: 800, whiteSpace: "nowrap" }}>Register →</span>
         </a>
       )}
@@ -121,11 +112,15 @@ function Dashboard() {
         />
       )}
 
+      <EventCarousel />
+
       <div className="hero-panel">
         <div>
-          <p className="eyebrow">Garden of Knowledge and Virtue</p>
-          <h2>{dashboardTitle}</h2>
-          <p>{dashboardSubtitle}</p>
+          <p className="eyebrow">{user.role === "student" ? "Your week at a glance" : `${bureauShortLabels[user.bureau || "Program Coordinator"]} workspace`}</p>
+          <h2 style={{ fontFamily: "var(--font-display)" }}>
+            {user.role === "student" ? "TAWE Progress" : "POA Completion"}
+          </h2>
+          <p>{user.role === "student" ? "Track your event attendance and kit eligibility" : "Bureau task completion for today's operations"}</p>
         </div>
         <div className="metric-orbit">
           <ShieldCheck size={20} aria-hidden="true" />
@@ -133,19 +128,6 @@ function Dashboard() {
           <span>{user.role === "student" ? "TAWE done" : "POA done"}</span>
         </div>
       </div>
-
-      {live && (
-        <motion.article className="live-card" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-          <div>
-            <StatusBadge value="live" />
-            <h3>{live.title}</h3>
-            <p>
-              {live.scheduledStartTime}-{live.scheduledEndTime} at {live.venue}
-            </p>
-          </div>
-          {user.role !== "student" && live.responsibleBureau && <span className="soft-chip">{live.responsibleBureau}</span>}
-        </motion.article>
-      )}
 
       <div className="dashboard-grid">
         {tiles.map((tile, index) => (

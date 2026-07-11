@@ -19,8 +19,8 @@ export function MenuTile({ to, title, meta, icon: Icon, tone = "blue" }: MenuTil
           <Icon size={22} aria-hidden="true" />
         </span>
         <span>
-          <strong>{title}</strong>
-          <small>{meta}</small>
+          <strong style={{ display: "block" }}>{title}</strong>
+          <small style={{ display: "block" }}>{meta}</small>
         </span>
       </Link>
     </motion.div>
