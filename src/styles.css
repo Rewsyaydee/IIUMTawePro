@@ -66,6 +66,7 @@ body {
       #143a2e 100%
     );
   background-attachment: fixed;
+  overflow-x: hidden;
 }
 
 button,
@@ -126,6 +127,10 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
+}
+
+.page-heading > div:first-child {
+  min-width: 0;
 }
 
 .topbar {
@@ -3925,6 +3930,7 @@ textarea {
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
+  overflow: hidden;
 }
 
 .event-history-left {
@@ -3987,6 +3993,7 @@ textarea {
 
 .event-history-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   width: 100%;
   align-items: center;
@@ -3997,6 +4004,8 @@ textarea {
   min-height: 34px;
   font-size: 0.76rem;
   padding: 0 10px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .attendance-excuse-form {

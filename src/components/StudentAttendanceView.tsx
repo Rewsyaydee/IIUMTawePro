@@ -228,7 +228,7 @@ export function StudentAttendanceView() {
                         value={excuseText}
                         onChange={(e) => setExcuseText(e.target.value)}
                       />
-                      <div style={{ display: "flex", gap: "6px" }}>
+                      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", width: "100%" }}>
                         <button className="danger-outline-button" onClick={() => handleSubmit(item, true)} disabled={submitting === item.id || !excuseText.trim()}>
                           Submit
                         </button>
