@@ -72,13 +72,11 @@ function Mainboard() {
     announcements,
     attendanceProofs,
     auditLog,
-    banners,
     bureauOperations,
     createAnnouncement,
     createEmergencyBroadcast,
     createScheduleItem,
     deactivateAnnouncement,
-    deactivateBanner,
     deleteScheduleItem,
     generateInviteCode,
     inviteCodes,
@@ -924,31 +922,6 @@ function Mainboard() {
           <span>Send mock emergency</span>
         </button>
       </form>
-
-      <section className="ops-panel">
-        <div className="section-heading">
-          <h3>Active banners</h3>
-          <span>{banners.filter((banner) => banner.isActive).length} active</span>
-        </div>
-        <div className="banner-admin-list">
-          {banners.map((banner) => (
-            <article key={banner.id}>
-              <div>
-                <strong>{banner.title}</strong>
-                <p>{banner.body}</p>
-              </div>
-              <div className="admin-actions">
-                <StatusBadge value={banner.type === "emergency" ? "critical" : "mock"} />
-                {banner.isActive && (
-                  <button type="button" onClick={() => deactivateBanner(banner.id)}>
-                    deactivate
-                  </button>
-                )}
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
 
       <section className="ops-panel">
         <div className="section-heading">

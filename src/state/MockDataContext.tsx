@@ -9,6 +9,7 @@ import {
   initialNotifications,
   initialReports,
   initialSchedule,
+  initialStudentAttendances,
   initialTasks
 } from "../data/mockData";
 import type {
@@ -26,6 +27,7 @@ import type {
   ReadinessStatus,
   Role,
   ScheduleItem,
+  StudentAttendance,
   TaskStatus,
   WellbeingReport
 } from "../types";
@@ -61,6 +63,7 @@ type MockDataContextValue = {
   reports: WellbeingReport[];
   tasks: PoaTask[];
   attendanceProofs: AttendanceProof[];
+  studentAttendances: StudentAttendance[];
   bureauOperations: BureauOperation[];
   banners: Banner[];
   notifications: MockNotification[];
@@ -103,6 +106,7 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
   const [reports, setReports] = useState(initialReports);
   const [tasks, setTasks] = useState(initialTasks);
   const [attendanceProofs, setAttendanceProofs] = useState(initialAttendanceProofs);
+  const [studentAttendances, setStudentAttendances] = useState(initialStudentAttendances);
   const [bureauOperations, setBureauOperations] = useState(initialBureauOperations);
   const [banners, setBanners] = useState(initialBanners);
   const [notifications, setNotifications] = useState(initialNotifications);
@@ -563,6 +567,7 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
       reports,
       tasks,
       attendanceProofs,
+      studentAttendances,
       bureauOperations,
       banners,
       notifications,
@@ -592,7 +597,7 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
       dismissAnnouncement,
       deactivateAnnouncement
     };},
-    [attendanceProofs, auditLog, banners, bureauOperations, inviteCodes, notifications, reports, schedule, tasks, announcements, user]
+    [attendanceProofs, studentAttendances, auditLog, banners, bureauOperations, inviteCodes, notifications, reports, schedule, tasks, announcements, user]
   );
 
   return <MockDataContext.Provider value={value}>{children}</MockDataContext.Provider>;

@@ -1,11 +1,8 @@
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  Activity,
-  AlertTriangle,
   BookOpen,
   CalendarDays,
-  Camera,
   ClipboardList,
   Grid3X3,
   Home,
@@ -22,7 +19,6 @@ import { roleLabels } from "../constants";
 import { hapticImpact } from "../lib/telegram";
 import { applyRoleTheme } from "../lib/themes";
 import { getTelegramWebApp } from "../lib/telegram";
-import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 import type { Role } from "../types";
 import { AccessCodeGate } from "./AccessCodeGate";
@@ -76,10 +72,8 @@ export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useMockUser();
-  const { banners, dismissBanner } = useMockData();
   const [accountOpen, setAccountOpen] = useState(false);
   const [centerMenuOpen, setCenterMenuOpen] = useState(false);
-  const activeBanners = banners.filter((banner) => banner.isActive && !banner.dismissedBy?.includes(user.id));
 
   const telegramUser = getTelegramWebApp()?.initDataUnsafe?.user;
   const firstName = telegramUser?.first_name || telegramUser?.username || user.name.split(" ")[0];
@@ -177,38 +171,6 @@ export function AppShell() {
       </header>
 
       <RoleSwitcher />
-
-      <div className="banner-stack">
-        {activeBanners.map((banner) => (
-          <motion.div
-            key={banner.id}
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.08}
-            onDragEnd={(_, info) => {
-              if (info.offset.x < -70) dismissBanner(banner.id, user.id);
-            }}
-            whileDrag={{ scale: 0.98 }}
-            className="swipeable-card"
-          >
-            <div className="swipe-delete-bg">
-              <svg className="swipeable-delete-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
-            </div>
-            <div className={`banner banner-${banner.type}`}>
-              <AlertTriangle size={18} aria-hidden="true" />
-              <div>
-                <strong>{banner.title}</strong>
-                <p>{banner.body}</p>
-              </div>
-              {banner.type !== "emergency" && (
-                <button className="icon-button" onClick={() => dismissBanner(banner.id, user.id)} aria-label="Dismiss banner">
-                  <X size={15} aria-hidden="true" />
-                </button>
-              )}
-            </div>
-          </motion.div>
-        ))}
-      </div>
 
       <main className="main-surface">
         <div className="route-frame" key={location.pathname}>
