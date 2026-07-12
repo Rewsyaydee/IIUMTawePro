@@ -94,34 +94,35 @@ export function AppShell() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div className="app-header-left">
-          <h2 className="app-header-greeting">Salam, {firstName}</h2>
-          <div className="app-header-mark">
-            <img src="/assets/iium-logo.png" alt="" />
-            <span>Ta'aruf Week</span>
-          </div>
+        <div className="app-header-mark">
+          <img src="/assets/iium-logo.png" alt="" />
+          <span>Ta'aruf Week</span>
         </div>
-        <div className="app-header-right">
-          <div className="account-menu-wrap">
-            {avatarUrl ? (
-              <img
-                className="app-header-avatar"
-                src={avatarUrl}
-                alt="Profile"
-                onClick={() => setAccountOpen((v) => !v)}
-              />
-            ) : (
-              <button
-                className="app-header-avatar-fallback"
-                type="button"
-                aria-expanded={accountOpen}
-                aria-controls="account-menu"
-                onClick={() => setAccountOpen((v) => !v)}
-              >
-                {initials}
-              </button>
-            )}
-            <span className="app-header-role">{roleLabel}</span>
+        <div className="app-header-row">
+          <div className="app-header-left">
+            <h2 className="app-header-greeting">Salam, {firstName}</h2>
+          </div>
+          <div className="app-header-right">
+            <div className="account-menu-wrap">
+              {avatarUrl ? (
+                <img
+                  className="app-header-avatar"
+                  src={avatarUrl}
+                  alt="Profile"
+                  onClick={() => setAccountOpen((v) => !v)}
+                />
+              ) : (
+                <button
+                  className="app-header-avatar-fallback"
+                  type="button"
+                  aria-expanded={accountOpen}
+                  aria-controls="account-menu"
+                  onClick={() => setAccountOpen((v) => !v)}
+                >
+                  {initials}
+                </button>
+              )}
+              <span className="app-header-role">{roleLabel}</span>
             {accountOpen && (
               <section className="account-popover" id="account-menu" aria-label="Account and access menu">
                 <div className="account-popover-head">
@@ -166,6 +167,7 @@ export function AppShell() {
                 )}
               </section>
             )}
+            </div>
           </div>
         </div>
       </header>

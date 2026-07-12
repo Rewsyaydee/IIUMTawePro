@@ -145,10 +145,35 @@ a {
 
 .app-header {
   display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.app-header-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.app-header-mark img {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.app-header-row {
+  display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
 }
 
 .app-header-left {
@@ -161,28 +186,10 @@ a {
 .app-header-greeting {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.5rem;
+  font-size: 2rem;
   font-weight: 700;
   color: var(--gold-accent);
-  line-height: 1.2;
-}
-
-.app-header-mark {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text-secondary);
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.app-header-mark img {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  object-fit: contain;
+  line-height: 1.1;
 }
 
 .app-header-right {
@@ -667,6 +674,12 @@ textarea {
   border-radius: 12px;
   background: rgba(229, 211, 179, 0.1);
   filter: drop-shadow(0 0 8px rgba(229, 211, 179, 0.3));
+}
+
+.streak-flame img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
 }
 
 .streak-number-info {
@@ -3788,6 +3801,12 @@ textarea {
   margin-bottom: 8px;
   filter: drop-shadow(0 0 30px rgba(229, 211, 179, 0.4));
   animation: flamePulse 2s ease-in-out infinite;
+}
+
+.attendance-hero-flame img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
 }
 
 @keyframes flamePulse {

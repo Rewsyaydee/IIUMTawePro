@@ -21,18 +21,7 @@ export function StreakWidget() {
     <div className="streak-widget glass-card">
       <div className="streak-left">
         <div className="streak-flame">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M12 2C12 2 8 6 8 11C8 14 10 16 12 16C14 16 16 14 16 11C16 6 12 2 12 2Z"
-              fill="#E5D3B3"
-              opacity="0.9"
-            />
-            <path
-              d="M12 7C12 7 10 9 10 12C10 13.5 11 14.5 12 14.5C13 14.5 14 13.5 14 12C14 9 12 7 12 7Z"
-              fill="#fff7e0"
-              opacity="0.8"
-            />
-          </svg>
+          <img src="/assets/flame.svg" alt="Streak flame" />
         </div>
         <div className="streak-number-info">
           <strong className="streak-number">{attendedCount}</strong>

@@ -45,13 +45,6 @@ function Dashboard() {
 
   return (
     <section className="page-stack">
-      {user.role === "student" && !user.matricNumber && (
-        <a className="register-bar" href="https://t.me/iiumtaweprobot" target="_blank" rel="noreferrer">
-          <span>Complete your registration to track attendance — message @iiumtaweprobot /start</span>
-          <span style={{ fontWeight: 800, whiteSpace: "nowrap" }}>Register →</span>
-        </a>
-      )}
-
       <EventCarousel />
 
       <StreakWidget />
