@@ -241,10 +241,19 @@ a {
 }
 
 .app-header-role {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   color: var(--text-secondary);
   font-size: 0.68rem;
   font-weight: 600;
   white-space: nowrap;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.app-header-role-line {
+  display: block;
 }
 
 .brand-lockup {
@@ -845,6 +854,30 @@ textarea {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.carousel-ongoing-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(91, 158, 184, 0.15);
+  border: 1px solid rgba(91, 158, 184, 0.35);
+  color: var(--blue);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.carousel-card.ongoing {
+  border-color: rgba(91, 158, 184, 0.2);
+}
+
+.carousel-card-sessions {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.7rem;
 }
 
 .carousel-status-badge {
@@ -3922,6 +3955,184 @@ textarea {
   display: grid;
   gap: 8px;
   padding-bottom: 20px;
+}
+
+.session-block-list {
+  display: grid;
+  gap: 14px;
+  padding-bottom: 8px;
+}
+
+.session-block-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  transition: border-color 200ms ease;
+}
+
+.session-block-card.attended {
+  border-color: rgba(229, 211, 179, 0.25);
+}
+
+.session-block-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.session-block-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.session-block-time {
+  display: block;
+  margin-top: 3px;
+  color: var(--gold-accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.session-block-timeline {
+  display: grid;
+  gap: 10px;
+  padding-left: 4px;
+  border-left: 2px solid var(--glass-border);
+}
+
+.session-block-group {
+  display: grid;
+  gap: 6px;
+}
+
+.session-block-group-label {
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding-left: 8px;
+}
+
+.session-block-sub {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-left: 8px;
+  position: relative;
+}
+
+.session-block-sub::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--gold-accent);
+  opacity: 0.6;
+}
+
+.session-block-sub-time {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 500;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.session-block-sub-title {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+.session-block-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  align-items: center;
+}
+
+.session-block-actions .verify-button,
+.session-block-actions .danger-outline-button {
+  min-height: 38px;
+  font-size: 0.8rem;
+  padding: 0 14px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.session-block-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ongoing-booth-section {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.ongoing-booth-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+}
+
+.ongoing-booth-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ongoing-booth-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ongoing-booth-info strong {
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.ongoing-booth-info span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.ongoing-booth-subtitle {
+  color: var(--blue);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.timeline-block-group {
+  margin-bottom: 8px;
+}
+
+.timeline-block-heading {
+  margin: 8px 0 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(229, 211, 179, 0.08);
+  color: var(--gold-accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .event-history-item {

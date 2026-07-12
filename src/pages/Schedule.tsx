@@ -19,6 +19,25 @@ function groupByDate(items: ScheduleItem[]) {
   }, {});
 }
 
+function groupByBlock(items: ScheduleItem[]) {
+  const groups: Array<{ block: string; label: string; items: ScheduleItem[] }> = [];
+  const blockOrder = ["before_break", "after_break", "concurrent", "none"];
+  const blockLabels: Record<string, string> = {
+    before_break: "Before Break",
+    after_break: "After Break",
+    concurrent: "Concurrent",
+    none: "Other"
+  };
+
+  for (const block of blockOrder) {
+    const blockItems = items.filter((i) => (i.block || "none") === block);
+    if (blockItems.length > 0) {
+      groups.push({ block, label: blockLabels[block], items: blockItems });
+    }
+  }
+  return groups;
+}
+
 function Schedule() {
   const { user } = useMockUser();
   const { schedule, updateReadiness } = useMockData();
@@ -103,14 +122,21 @@ function Schedule() {
       </div>
 
       <div className="timeline">
-        {Object.entries(grouped).map(([date, items]) => (
-          <div className="timeline-day" key={date}>
-            <h3>{date}</h3>
-            {items.map((item, index) => {
-              const scheduleStatus = getScheduleStatus(item, scheduleClock.now);
-              const isLive = scheduleStatus === "live" || item.isLive;
-              const isCurrent = currentItem?.id === item.id;
-              const progress = getItemProgress(item, scheduleClock.now);
+        {Object.entries(grouped).map(([date, dateItems]) => {
+          const blockGroups = groupByBlock(dateItems);
+          return (
+            <div className="timeline-day" key={date}>
+              <h3>{date}</h3>
+              {blockGroups.map((bg) => (
+                <div key={bg.block} className="timeline-block-group">
+                  {bg.block !== "none" && (
+                    <h4 className="timeline-block-heading">{bg.label}</h4>
+                  )}
+                  {bg.items.map((item, index) => {
+                    const scheduleStatus = getScheduleStatus(item, scheduleClock.now);
+                    const isLive = scheduleStatus === "live" || item.isLive;
+                    const isCurrent = currentItem?.id === item.id;
+                    const progress = getItemProgress(item, scheduleClock.now);
 
               return (
                 <motion.article
@@ -209,9 +235,12 @@ function Schedule() {
                   </div>
                 </motion.article>
               );
-            })}
-          </div>
-        ))}
+              })}
+                </div>
+              ))}
+            </div>
+          );
+        })}
       </div>
 
       {route && (

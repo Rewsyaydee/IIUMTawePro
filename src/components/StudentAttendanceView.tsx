@@ -7,10 +7,13 @@ import { shouldUseApiAuth, authSessionChangedEvent } from "../lib/apiAuth";
 import { listStudentAttendance, submitStudentAttendance } from "../lib/studentAttendanceApi";
 import { getCurrentPosition } from "../lib/locationVerify";
 import { hapticError, hapticSuccess } from "../lib/telegram";
+import {
+  getSessionBlocks,
+  getConcurrentEvents,
+  getRequiredBlockCount,
+  type SessionBlockInfo
+} from "../data/eventSchedule";
 import type { StudentAttendance, StudentAttendanceStatus } from "../types";
-
-const TOTAL_REQUIRED = 9;
-const MILESTONES = [3, 6, 9];
 
 export function StudentAttendanceView() {
   const { user } = useMockUser();
@@ -23,9 +26,14 @@ export function StudentAttendanceView() {
   const [excuseText, setExcuseText] = useState("");
   const [error, setError] = useState("");
 
-  const allSchedule = [...schedule].sort(
-    (a, b) => `${a.date}${a.scheduledStartTime}`.localeCompare(`${b.date}${b.scheduledStartTime}`)
-  );
+  const blocks = getSessionBlocks(schedule);
+  const concurrents = getConcurrentEvents(schedule);
+  const totalRequired = getRequiredBlockCount(schedule);
+  const milestones = totalRequired <= 3 ? [1, 2, 3] : totalRequired <= 5 ? [2, 4, 5] : [3, 5, totalRequired];
+
+  const nonBlockItems = schedule
+    .filter((s) => !s.block && s.week === "event_week")
+    .sort((a, b) => `${a.date}${a.scheduledStartTime}`.localeCompare(`${b.date}${b.scheduledStartTime}`));
 
   useEffect(() => {
     const h = () => setAuthTick((v) => v + 1);
@@ -45,20 +53,20 @@ export function StudentAttendanceView() {
     return () => { c = true; };
   }, [apiMode, authTick, studentAttendances, user.id]);
 
-  const getStatus = (scheduleItemId: string): StudentAttendanceStatus | null => {
-    return attendances.find((a) => a.scheduleItemId === scheduleItemId)?.status || null;
+  const getBlockStatus = (blockId: string): StudentAttendanceStatus | null => {
+    return attendances.find((a) => a.scheduleItemId === blockId)?.status || null;
   };
 
   const attendedCount = attendances.filter((a) => a.status === "present" || a.status === "excused").length;
-  const remaining = Math.max(TOTAL_REQUIRED - attendedCount, 0);
-  const progressPct = Math.round((attendedCount / TOTAL_REQUIRED) * 100);
+  const remaining = Math.max(totalRequired - attendedCount, 0);
+  const nextMilestone = milestones.find((m) => attendedCount < m) || totalRequired;
 
-  const handleSubmit = async (item: typeof allSchedule[number], isAbsent: boolean) => {
+  const handleSubmitBlock = async (block: SessionBlockInfo, isAbsent: boolean) => {
     if (!user.matricNumber) {
       setError("Please complete onboarding first.");
       return;
     }
-    setSubmitting(item.id);
+    setSubmitting(block.id);
     setError("");
     try {
       let lat = 0, lng = 0;
@@ -76,8 +84,8 @@ export function StudentAttendanceView() {
 
       if (apiMode) {
         const record = await submitStudentAttendance({
-          scheduleItemId: item.id,
-          eventTitle: item.title,
+          scheduleItemId: block.id,
+          eventTitle: block.blockLabel,
           studentName: user.name,
           matricNumber: user.matricNumber,
           kulliyyah: user.kulliyyah,
@@ -86,7 +94,7 @@ export function StudentAttendanceView() {
           status: isAbsent ? "absent" : "present",
           excuse: isAbsent ? excuseText : undefined
         });
-        setAttendances((prev) => [record, ...prev.filter((a) => a.scheduleItemId !== item.id)]);
+        setAttendances((prev) => [record, ...prev.filter((a) => a.scheduleItemId !== block.id)]);
       }
       setShowExcuse(null);
       setExcuseText("");
@@ -99,9 +107,7 @@ export function StudentAttendanceView() {
     }
   };
 
-  const recentRequired = allSchedule.filter((s) => s.isAttendanceRequired).slice(0, 7);
-
-  const nextMilestone = MILESTONES.find((m) => attendedCount < m) || TOTAL_REQUIRED;
+  const recentBlocks = blocks.slice(0, 7);
 
   return (
     <section className="page-stack">
@@ -123,14 +129,14 @@ export function StudentAttendanceView() {
         <span className="attendance-hero-label">events attended</span>
 
         <div className="attendance-circles">
-          {recentRequired.map((item, i) => {
-            const status = getStatus(item.id);
+          {recentBlocks.map((block, i) => {
+            const status = getBlockStatus(block.id);
             const isAttended = status === "present" || status === "excused";
             return (
               <div
-                key={item.id}
+                key={block.id}
                 className={`attendance-circle ${isAttended ? "attended" : ""}`}
-                title={item.title}
+                title={block.blockLabel}
               >
                 {isAttended ? (
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0a2e23" strokeWidth="3">
@@ -148,7 +154,7 @@ export function StudentAttendanceView() {
       <div className="milestone-card glass-card">
         <p className="milestone-title">NEXT REWARD: +200 SP / TAARUF KIT</p>
         <div className="milestone-grid">
-          {MILESTONES.map((target) => {
+          {milestones.map((target) => {
             const reached = attendedCount >= target;
             const isNext = nextMilestone === target && !reached;
             return (
@@ -171,52 +177,85 @@ export function StudentAttendanceView() {
         </div>
       </div>
 
-      <div className="event-history-list">
-        {allSchedule.map((item) => {
-          const status = getStatus(item.id);
+      {concurrents.length > 0 && (
+        <div className="ongoing-booth-section">
+          {concurrents.map((item) => (
+            <div key={item.id} className="ongoing-booth-card glass-card-flat">
+              <div className="ongoing-booth-header">
+                <div className="ongoing-booth-info">
+                  <strong>{item.title}</strong>
+                  <span>{item.scheduledStartTime} - {item.scheduledEndTime}</span>
+                </div>
+                <span className="pill-badge optional">OPTIONAL</span>
+              </div>
+              <span className="ongoing-booth-subtitle">All-Day Booth · Drop-in Service</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="session-block-list">
+        {blocks.map((block, index) => {
+          const status = getBlockStatus(block.id);
           const isSubmitted = status !== null;
-          const isRequired = Boolean(item.isAttendanceRequired);
+          const isAttended = status === "present" || status === "excused";
+
+          const groupMap = new Map<string, typeof block.items>();
+          for (const item of block.items) {
+            const key = item.blockGroup || "";
+            if (!groupMap.has(key)) groupMap.set(key, []);
+            groupMap.get(key)!.push(item);
+          }
+          const groups = Array.from(groupMap.entries());
 
           return (
             <motion.article
-              key={item.id}
-              className="event-history-item glass-card-flat"
-              initial={{ opacity: 0, y: 6 }}
+              key={block.id}
+              className={`session-block-card glass-card ${isAttended ? "attended" : ""}`}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.03 }}
             >
-              <div className="event-history-left">
-                <strong>{item.title}</strong>
-                <span>{item.date} · {item.scheduledStartTime}–{item.scheduledEndTime}</span>
+              <div className="session-block-header">
+                <div>
+                  <h3 className="session-block-title">{block.blockLabel}</h3>
+                  <span className="session-block-time">{block.timeRange}</span>
+                </div>
+                <span className={`pill-badge ${block.isAttendanceRequired ? "required" : "optional"}`}>
+                  {block.isAttendanceRequired ? "REQUIRED" : "OPTIONAL"}
+                </span>
               </div>
 
-              <span className={`pill-badge ${isRequired ? "required" : "optional"}`}>
-                {isRequired ? "REQUIRED" : "OPTIONAL"}
-              </span>
-
-              <div className="event-history-status">
-                {status === "present" || status === "excused" ? (
-                  <CheckCircle2 size={18} color="var(--gold-accent)" />
-                ) : status === "absent" ? (
-                  <XCircleIcon size={18} color="var(--red)" />
-                ) : (
-                  <div className="event-history-pending" />
-                )}
+              <div className="session-block-timeline">
+                {groups.map(([groupLabel, items]) => (
+                  <div key={groupLabel} className="session-block-group">
+                    {groups.length > 1 && (
+                      <span className="session-block-group-label">{groupLabel}</span>
+                    )}
+                    {items.map((item) => (
+                      <div key={item.id} className="session-block-sub">
+                        <span className="session-block-sub-time">{item.scheduledStartTime} - {item.scheduledEndTime}</span>
+                        <span className="session-block-sub-title">{item.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
               </div>
 
-              {isRequired && !isSubmitted && (
-                <div className="event-history-actions">
+              {block.isAttendanceRequired && !isSubmitted && (
+                <div className="session-block-actions">
                   <button
                     className="verify-button"
-                    disabled={submitting === item.id}
-                    onClick={() => handleSubmit(item, false)}
+                    disabled={submitting === block.id}
+                    onClick={() => handleSubmitBlock(block, false)}
                   >
                     <MapPin size={14} />
-                    <span>{submitting === item.id ? "..." : "Check In"}</span>
+                    <span>{submitting === block.id ? "Detecting..." : "Check In"}</span>
                   </button>
-                  {showExcuse !== item.id ? (
+                  {showExcuse !== block.id ? (
                     <button
                       className="danger-outline-button"
-                      onClick={() => { setShowExcuse(item.id); setExcuseText(""); }}
+                      onClick={() => { setShowExcuse(block.id); setExcuseText(""); }}
                     >
                       <span>Absent</span>
                     </button>
@@ -229,7 +268,7 @@ export function StudentAttendanceView() {
                         onChange={(e) => setExcuseText(e.target.value)}
                       />
                       <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", width: "100%" }}>
-                        <button className="danger-outline-button" onClick={() => handleSubmit(item, true)} disabled={submitting === item.id || !excuseText.trim()}>
+                        <button className="danger-outline-button" onClick={() => handleSubmitBlock(block, true)} disabled={submitting === block.id || !excuseText.trim()}>
                           Submit
                         </button>
                         <button className="icon-button" onClick={() => setShowExcuse(null)}>
@@ -240,10 +279,45 @@ export function StudentAttendanceView() {
                   )}
                 </div>
               )}
+
+              {isSubmitted && (
+                <div className="session-block-status">
+                  {isAttended ? (
+                    <CheckCircle2 size={18} color="var(--gold-accent)" />
+                  ) : (
+                    <XCircleIcon size={18} color="var(--red)" />
+                  )}
+                  <span className={`status-badge status-${status === "present" ? "done" : "rejected"}`}>
+                    {status === "present" ? "Present" : status === "absent" ? "Absent" : "Excused"}
+                  </span>
+                </div>
+              )}
             </motion.article>
           );
         })}
       </div>
+
+      {nonBlockItems.length > 0 && (
+        <div className="event-history-list">
+          {nonBlockItems.map((item) => {
+            const isRequired = Boolean(item.isAttendanceRequired);
+            return (
+              <div key={item.id} className="event-history-item glass-card-flat">
+                <div className="event-history-left">
+                  <strong>{item.title}</strong>
+                  <span>{item.date} · {item.scheduledStartTime}–{item.scheduledEndTime}</span>
+                </div>
+                <span className={`pill-badge ${isRequired ? "required" : "optional"}`}>
+                  {isRequired ? "REQUIRED" : "OPTIONAL"}
+                </span>
+                <div className="event-history-status">
+                  <div className="event-history-pending" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

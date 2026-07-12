@@ -1,44 +1,65 @@
 import { useEffect, useMemo, useRef } from "react";
 import { MapPin, Info, Plane, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { getScheduleClock, getScheduleStatus, scheduleDateTime, type ScheduleStatus } from "../lib/scheduleTime";
+import { getScheduleClock, getScheduleStatus, scheduleDateTime } from "../lib/scheduleTime";
 import { hapticImpact } from "../lib/telegram";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
+import {
+  getSessionBlocks,
+  getConcurrentEvents,
+  type SessionBlockInfo
+} from "../data/eventSchedule";
 import type { ScheduleItem } from "../types";
+
+type CarouselEntry =
+  | { kind: "block"; block: SessionBlockInfo; status: "live" | "done" | "upcoming" }
+  | { kind: "concurrent"; item: ScheduleItem; status: "live" | "done" | "upcoming" };
 
 export function EventCarousel() {
   const { user } = useMockUser();
-  const { schedule } = useMockData();
+  const { schedule, studentAttendances } = useMockData();
   const navigate = useNavigate();
   const scrollerRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const scheduleClock = useMemo(() => getScheduleClock(schedule), [schedule]);
 
-  const sorted = useMemo(
-    () =>
-      [...schedule].sort(
-        (a, b) =>
-          scheduleDateTime(a.date, a.scheduledStartTime).getTime() -
-          scheduleDateTime(b.date, b.scheduledStartTime).getTime()
-      ),
-    [schedule]
-  );
+  const blocks = useMemo(() => getSessionBlocks(schedule), [schedule]);
+  const concurrents = useMemo(() => getConcurrentEvents(schedule), [schedule]);
+
+  const entries = useMemo<CarouselEntry[]>(() => {
+    const blockEntries: CarouselEntry[] = blocks.map((block) => {
+      const blockStart = scheduleDateTime(block.date, block.timeRange.split(" - ")[0]).getTime();
+      const blockEnd = scheduleDateTime(block.date, block.timeRange.split(" - ")[1]).getTime();
+      const now = scheduleClock.now.getTime();
+      const status = now >= blockStart && now < blockEnd ? "live" : now >= blockEnd ? "done" : "upcoming";
+      return { kind: "block" as const, block, status };
+    });
+
+    const concurrentEntries: CarouselEntry[] = concurrents.map((item) => {
+      const status = getScheduleStatus(item, scheduleClock.now);
+      return { kind: "concurrent" as const, item, status };
+    });
+
+    return [...blockEntries, ...concurrentEntries].sort((a, b) => {
+      const aDate = a.kind === "block" ? a.block.date : a.item.date;
+      const bDate = b.kind === "block" ? b.block.date : b.item.date;
+      const aTime = a.kind === "block" ? a.block.timeRange.split(" - ")[0] : a.item.scheduledStartTime;
+      const bTime = b.kind === "block" ? b.block.timeRange.split(" - ")[0] : b.item.scheduledStartTime;
+      return `${aDate}${aTime}`.localeCompare(`${bDate}${bTime}`);
+    });
+  }, [blocks, concurrents, scheduleClock.now]);
 
   const currentIndex = useMemo(() => {
-    const liveIdx = sorted.findIndex(
-      (item) => getScheduleStatus(item, scheduleClock.now) === "live"
-    );
+    const liveIdx = entries.findIndex((e) => e.status === "live" && e.kind === "block");
     if (liveIdx >= 0) return liveIdx;
 
-    const upcomingIdx = sorted.findIndex(
-      (item) => getScheduleStatus(item, scheduleClock.now) === "upcoming"
-    );
+    const upcomingIdx = entries.findIndex((e) => e.status === "upcoming" && e.kind === "block");
     if (upcomingIdx >= 0) return upcomingIdx;
 
-    return sorted.length - 1;
-  }, [sorted, scheduleClock.now]);
+    return entries.length - 1;
+  }, [entries]);
 
   useEffect(() => {
     const el = cardRefs.current[currentIndex];
@@ -69,32 +90,47 @@ export function EventCarousel() {
     navigate("/map");
   };
 
+  const isBlockAttended = (blockId: string): boolean => {
+    return studentAttendances.some(
+      (a) => a.userId === user.id && a.scheduleItemId === blockId && (a.status === "present" || a.status === "excused")
+    );
+  };
+
   return (
     <div className="event-carousel-wrapper">
       <div className="event-carousel" ref={scrollerRef}>
-        {sorted.map((item, index) => {
-          const status: ScheduleStatus = getScheduleStatus(item, scheduleClock.now);
+        {entries.map((entry, index) => {
           const isCurrent = index === currentIndex;
-          const isPast = status === "done";
-          const isLive = status === "live";
-          const checkedIn = false;
+          const isPast = entry.status === "done";
+          const isLive = entry.status === "live";
+          const isOngoing = entry.kind === "concurrent" && isLive;
+
+          const title = entry.kind === "block" ? entry.block.blockLabel : entry.item.title;
+          const timeRange = entry.kind === "block" ? entry.block.timeRange : `${entry.item.scheduledStartTime} — ${entry.item.scheduledEndTime}`;
+          const venue = entry.kind === "block"
+            ? [...new Set(entry.block.items.map((i) => i.venue))].join(", ")
+            : entry.item.venue;
+
+          const checkedIn = entry.kind === "block" ? isBlockAttended(entry.block.id) : false;
 
           return (
             <div
-              key={item.id}
+              key={entry.kind === "block" ? entry.block.id : entry.item.id}
               ref={(el) => { cardRefs.current[index] = el; }}
-              className={`carousel-card ${isCurrent ? "current" : ""} ${isPast ? "past" : ""}`}
+              className={`carousel-card ${isCurrent ? "current" : ""} ${isPast ? "past" : ""} ${isOngoing ? "ongoing" : ""}`}
               onClick={handleCardTap}
             >
               {isPast && (
                 <span className="carousel-edge-label left">PAST</span>
               )}
-              {!isPast && !isCurrent && (
+              {!isPast && !isCurrent && !isOngoing && (
                 <span className="carousel-edge-label right">NEXT</span>
               )}
 
               <div className="carousel-card-top">
-                {isLive ? (
+                {isOngoing ? (
+                  <span className="carousel-ongoing-badge">ONGOING</span>
+                ) : isLive ? (
                   <span className="carousel-now-badge">NOW</span>
                 ) : isPast ? (
                   <span className="carousel-status-badge done">Done</span>
@@ -115,17 +151,20 @@ export function EventCarousel() {
               </div>
 
               <div className="carousel-card-body">
-                <p className="carousel-card-time">
-                  {item.scheduledStartTime} — {item.scheduledEndTime}
-                </p>
-                <h3 className="carousel-card-title">{item.title}</h3>
+                <p className="carousel-card-time">{timeRange}</p>
+                <h3 className="carousel-card-title">{title}</h3>
                 <div className="carousel-card-venue">
                   <MapPin size={14} />
-                  <span>{item.venue}</span>
+                  <span>{venue}</span>
                 </div>
+                {entry.kind === "block" && (
+                  <p className="carousel-card-sessions">
+                    {entry.block.items.length} sessions
+                  </p>
+                )}
               </div>
 
-              {isCurrent && (
+              {isCurrent && entry.kind === "block" && (
                 <div className="carousel-card-actions">
                   {user.role === "student" ? (
                     <button

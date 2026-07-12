@@ -452,42 +452,42 @@ export const initialNotifications: MockNotification[] = [
 export const initialStudentAttendances: StudentAttendance[] = [
   {
     id: "sa-001",
-    userId: "u-student-001",
-    scheduleItemId: "real-s-011",
-    eventTitle: "Welcoming Session with Prof. Dato' Dr. Mohamad Fauzan Noordin",
+    userId: "u-student",
+    scheduleItemId: "block-2026-02-22-before_break",
+    eventTitle: "Sunday - Before Break",
     studentName: "Rusyaidi",
     matricNumber: "2410000",
     kulliyyah: "KICT",
     latitude: 3.250950,
     longitude: 101.733678,
     status: "present",
-    submittedAt: "2026-02-23T10:35:00.000Z"
+    submittedAt: "2026-02-22T10:35:00.000Z"
   },
   {
     id: "sa-002",
-    userId: "u-student-001",
-    scheduleItemId: "real-s-015",
-    eventTitle: "Murabbi Session",
+    userId: "u-student",
+    scheduleItemId: "block-2026-02-22-after_break",
+    eventTitle: "Sunday - After Break",
     studentName: "Rusyaidi",
     matricNumber: "2410000",
     kulliyyah: "KICT",
     latitude: 3.251366,
     longitude: 101.734955,
     status: "present",
-    submittedAt: "2026-02-23T14:05:00.000Z"
+    submittedAt: "2026-02-22T14:05:00.000Z"
   },
   {
     id: "sa-003",
-    userId: "u-student-001",
-    scheduleItemId: "real-s-023",
-    eventTitle: "Tadarus Al-Quran & Mini Usrah",
+    userId: "u-student",
+    scheduleItemId: "block-2026-02-23-before_break",
+    eventTitle: "Monday - Before Break",
     studentName: "Rusyaidi",
     matricNumber: "2410000",
     kulliyyah: "KICT",
-    latitude: 3.251366,
-    longitude: 101.734955,
+    latitude: 3.250950,
+    longitude: 101.733678,
     status: "present",
-    submittedAt: "2026-02-24T09:50:00.000Z"
+    submittedAt: "2026-02-23T08:50:00.000Z"
   }
 ];
 
