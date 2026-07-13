@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { MapPin, Clock3 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { formatScheduleClock, getScheduleClock, getScheduleStatus, scheduleDateTime } from "../lib/scheduleTime";
 import { hapticImpact, hapticSuccess } from "../lib/telegram";
+import { ColorSweepText } from "../components/ColorSweepText";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 import type { ScheduleItem } from "../types";
@@ -34,6 +36,7 @@ function formatDateShort(iso: string): string {
 function Schedule() {
   const { user } = useMockUser();
   const { schedule, studentAttendances } = useMockData();
+  const navigate = useNavigate();
   const [clockTick, setClockTick] = useState(0);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedView, setSelectedView] = useState<SelectedView>("main");
@@ -80,8 +83,13 @@ function Schedule() {
     );
   };
 
-  const handleCheckIn = () => {
+  const handleCheckIn = (blockType: "before_break" | "after_break") => {
     hapticSuccess();
+    const blockLabel = blockType === "before_break" ? "Morning Session" : "Afternoon Session";
+    const blockId = `block-${selectedDate}-${blockType}`;
+    const blockItems = schedule.filter((s) => s.date === selectedDate && s.block === blockType && !s.isConcurrent);
+    const venueCodes = [...new Set(blockItems.map((i) => i.venueCode).filter(Boolean))] as string[];
+    navigate("/attendance", { state: { blockLabel, blockId, venueCodes } });
   };
 
   const handleDateClick = (iso: string) => {
@@ -121,13 +129,9 @@ function Schedule() {
             </span>
           </div>
           {status === "live" && (
-            <motion.span
-              className="timeline-now-badge"
-              animate={{ color: ["#E5D3B3", "#ffffff", "#E5D3B3"] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            >
-              NOW
-            </motion.span>
+            <span className="timeline-now-badge">
+              <ColorSweepText text="NOW" />
+            </span>
           )}
           {status === "done" && (
             <span className="timeline-past-label">PAST</span>
@@ -150,7 +154,7 @@ function Schedule() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.04 }}
         disabled={attended}
-        onClick={handleCheckIn}
+        onClick={() => handleCheckIn(blockType)}
       >
         {attended ? `✓ ${label} — Checked In` : `Check In: ${label} ✓`}
       </motion.button>

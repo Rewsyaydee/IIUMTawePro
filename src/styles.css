@@ -1622,6 +1622,224 @@ textarea {
   cursor: default;
 }
 
+.check-in-form {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+}
+
+.check-in-form-header {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--gold-accent);
+  line-height: 1.3;
+}
+
+.check-in-form-field {
+  display: grid;
+  gap: 6px;
+}
+
+.check-in-form-field label {
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.check-in-form-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text-primary);
+  font-size: 0.86rem;
+  outline: none;
+  transition: border-color 140ms ease;
+}
+
+.check-in-form-input:focus {
+  border-color: var(--gold-accent);
+}
+
+.check-in-form-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text-primary);
+  font-size: 0.86rem;
+  outline: none;
+  resize: vertical;
+  transition: border-color 140ms ease;
+}
+
+.check-in-form-textarea:focus {
+  border-color: var(--gold-accent);
+}
+
+.gps-validator {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.gps-validator-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.gps-verify-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: var(--glass-bg);
+  color: var(--gold-accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 140ms ease;
+}
+
+.gps-verify-btn:active {
+  transform: scale(0.97);
+}
+
+.gps-validator-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.gps-validator-status.scanning {
+  color: var(--text-secondary);
+}
+
+.gps-validator-status.success {
+  color: var(--gold-accent);
+}
+
+.gps-validator-status.failed {
+  color: var(--red);
+  flex-wrap: wrap;
+}
+
+.gps-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.gps-retry-btn {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.check-in-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--gold-accent);
+  color: #0a2e23;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 140ms ease, opacity 140ms ease;
+  text-decoration: none;
+}
+
+.check-in-submit:active {
+  transform: scale(0.98);
+}
+
+.check-in-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.check-in-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  text-align: center;
+}
+
+.check-in-success h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--gold-accent);
+}
+
+.check-in-success p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.check-in-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.check-in-empty h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.check-in-empty p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.check-in-empty .check-in-submit {
+  margin-top: 8px;
+  max-width: 220px;
+}
+
 .committee-panel {
   display: grid;
   grid-template-columns: minmax(120px, 1fr) minmax(130px, 1fr);

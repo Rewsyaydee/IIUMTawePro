@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
   initialAnnouncements,
   initialAuditLog,
@@ -80,6 +80,7 @@ type MockDataContextValue = {
   addTask: (input: TaskInput) => PoaTask;
   submitAttendanceProof: (input: AttendanceInput) => AttendanceProof;
   reviewAttendanceProof: (id: string, status: Extract<AttendanceStatus, "sent_to_mainboard" | "rejected">) => void;
+  submitStudentAttendance: (input: { blockId: string; blockLabel: string; studentName: string; matricNumber: string; kulliyyah?: string; latitude: number; longitude: number; note?: string }) => StudentAttendance;
   updateBureauOperationStatus: (id: string, status: BureauOperationStatus) => void;
   sendBureauOperationAlert: (id: string) => void;
   dismissBanner: (id: string, userId: string) => void;
@@ -106,7 +107,22 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
   const [reports, setReports] = useState(initialReports);
   const [tasks, setTasks] = useState(initialTasks);
   const [attendanceProofs, setAttendanceProofs] = useState(initialAttendanceProofs);
-  const [studentAttendances, setStudentAttendances] = useState(initialStudentAttendances);
+  const [studentAttendances, setStudentAttendances] = useState<StudentAttendance[]>(() => {
+    try {
+      const stored = localStorage.getItem("tawepro-student-attendances");
+      if (stored) {
+        const parsed = JSON.parse(stored) as StudentAttendance[];
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return initialStudentAttendances;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("tawepro-student-attendances", JSON.stringify(studentAttendances));
+    } catch {}
+  }, [studentAttendances]);
   const [bureauOperations, setBureauOperations] = useState(initialBureauOperations);
   const [banners, setBanners] = useState(initialBanners);
   const [notifications, setNotifications] = useState(initialNotifications);
@@ -350,6 +366,32 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
       });
     };
 
+    const submitStudentAttendance = (input: { blockId: string; blockLabel: string; studentName: string; matricNumber: string; kulliyyah?: string; latitude: number; longitude: number; note?: string }) => {
+      const now = new Date().toISOString();
+      const record: StudentAttendance = {
+        id: stampId("sa"),
+        userId: user.id,
+        scheduleItemId: input.blockId,
+        eventTitle: input.blockLabel,
+        studentName: input.studentName,
+        matricNumber: input.matricNumber,
+        kulliyyah: input.kulliyyah,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        status: "present",
+        excuse: input.note,
+        submittedAt: now
+      };
+      setStudentAttendances((items) => [record, ...items.filter((a) => a.scheduleItemId !== input.blockId)]);
+      recordAuditLog({
+        action: "Student checked in",
+        table: "student_attendance",
+        recordId: record.id,
+        details: `${input.studentName} checked in for ${input.blockLabel}.`
+      });
+      return record;
+    };
+
     const updateBureauOperationStatus = (id: string, status: BureauOperationStatus) => {
       const now = new Date().toISOString();
       setBureauOperations((items) => items.map((item) => (item.id === id ? { ...item, status, updatedAt: now } : item)));
@@ -584,6 +626,7 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
       addTask,
       submitAttendanceProof,
       reviewAttendanceProof,
+      submitStudentAttendance,
       updateBureauOperationStatus,
       sendBureauOperationAlert,
       dismissBanner,

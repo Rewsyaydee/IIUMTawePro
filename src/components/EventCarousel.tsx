@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef } from "react";
 import { MapPin, Info, Plane, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { getScheduleClock, getScheduleStatus, scheduleDateTime } from "../lib/scheduleTime";
-import { hapticImpact } from "../lib/telegram";
+import { hapticImpact, hapticSuccess } from "../lib/telegram";
+import { ColorSweepText } from "./ColorSweepText";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 import {
@@ -78,10 +79,16 @@ export function EventCarousel() {
     navigate("/schedule");
   };
 
-  const handleCheckIn = (e: React.MouseEvent) => {
+  const handleCheckIn = (e: React.MouseEvent, entry: CarouselEntry) => {
     e.stopPropagation();
-    hapticImpact("medium");
-    navigate("/attendance");
+    hapticSuccess();
+    if (entry.kind === "block") {
+      const venueCodes = [...new Set(entry.block.items.map((i) => i.venueCode).filter(Boolean))] as string[];
+      const blockLabel = entry.block.blockLabel.includes("Before") ? "Morning Session" : "Afternoon Session";
+      navigate("/attendance", { state: { blockLabel, blockId: entry.block.id, venueCodes } });
+    } else {
+      navigate("/attendance");
+    }
   };
 
   const handleNavigate = (e: React.MouseEvent) => {
@@ -131,7 +138,7 @@ export function EventCarousel() {
                 {isOngoing ? (
                   <span className="carousel-ongoing-badge">ONGOING</span>
                 ) : isLive ? (
-                  <span className="carousel-now-badge">NOW</span>
+                  <span className="carousel-now-badge"><ColorSweepText text="NOW" /></span>
                 ) : isPast ? (
                   <span className="carousel-status-badge done">Done</span>
                 ) : (
@@ -170,7 +177,7 @@ export function EventCarousel() {
                     <button
                       className={`carousel-action-btn check-in ${checkedIn ? "checked" : ""}`}
                       type="button"
-                      onClick={handleCheckIn}
+                      onClick={(e) => handleCheckIn(e, entry)}
                     >
                       {checkedIn ? (
                         <>
@@ -185,7 +192,7 @@ export function EventCarousel() {
                     <button
                       className="carousel-action-btn stats"
                       type="button"
-                      onClick={handleCheckIn}
+                      onClick={(e) => handleCheckIn(e, entry)}
                     >
                       Attendance
                     </button>
