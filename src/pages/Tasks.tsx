@@ -26,7 +26,7 @@ function Tasks() {
     bureau: user.bureau || "Welfare",
     title: "",
     description: "",
-    dueDate: "2026-02-23",
+    dueDate: "2026-07-14",
     dueTime: "09:00",
     assignedTo: "",
     priority: "medium"

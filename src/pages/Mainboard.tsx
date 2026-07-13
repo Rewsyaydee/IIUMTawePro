@@ -43,8 +43,8 @@ type AdminTab = (typeof ADMIN_TABS)[number]["id"];
 const ADMIN_ROLES: AdminRole[] = ["committee", "head", "mainboard"];
 
 const defaultScheduleForm = {
-  date: "2026-02-24",
-  day: "Tuesday",
+  date: "2026-07-15",
+  day: "Wednesday",
   week: "event_week" as ScheduleItem["week"],
   scheduledStartTime: "15:00",
   scheduledEndTime: "16:00",

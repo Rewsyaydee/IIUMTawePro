@@ -12,13 +12,13 @@ import type { ScheduleItem } from "../types";
 type SelectedView = "main" | "concurrent";
 
 const EVENT_DATES = [
-  { iso: "2026-02-22", day: "Sun", label: "22" },
-  { iso: "2026-02-23", day: "Mon", label: "23" },
-  { iso: "2026-02-24", day: "Tue", label: "24" },
-  { iso: "2026-02-25", day: "Wed", label: "25" },
-  { iso: "2026-02-26", day: "Thu", label: "26" },
-  { iso: "2026-02-27", day: "Fri", label: "27" },
-  { iso: "2026-02-28", day: "Sat", label: "28" }
+  { iso: "2026-07-13", day: "Mon", label: "13" },
+  { iso: "2026-07-14", day: "Tue", label: "14" },
+  { iso: "2026-07-15", day: "Wed", label: "15" },
+  { iso: "2026-07-16", day: "Thu", label: "16" },
+  { iso: "2026-07-17", day: "Fri", label: "17" },
+  { iso: "2026-07-18", day: "Sat", label: "18" },
+  { iso: "2026-07-19", day: "Sun", label: "19" }
 ];
 
 function formatDayLabel(iso: string): string {
