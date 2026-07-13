@@ -223,25 +223,44 @@ async function handleUnlock(chatId, userRecord, codeText) {
 
   // Mainboard — no bureau needed
   if (invite.role === "mainboard") {
-    await updateUserRegistration(userRecord.telegram_id, {
-      role: "mainboard",
-      bureau: null,
-      registration_step: null
-    });
-    await callTelegram("sendMessage", {
-      chat_id: chatId,
-      text: `🎉 <b>Access unlocked, ${html(name)}!</b>\n\n🎭 You are now <b>Mainboard</b>.\n\nYou now have full access to the control room, broadcast tools, and operations dashboard.\n\nTap below to open your workspace 👇`,
-      parse_mode: "HTML",
-      reply_markup: dashboardKeyboard()
-    });
+    try {
+      await updateUserRegistration(userRecord.telegram_id, {
+        role: "mainboard",
+        bureau: null,
+        registration_step: null
+      });
+      await callTelegram("sendMessage", {
+        chat_id: chatId,
+        text: `🎉 <b>Access unlocked, ${html(name)}!</b>\n\n🎭 You are now <b>Mainboard</b>.\n\nYou now have full access to the control room, broadcast tools, and operations dashboard.\n\nTap below to open your workspace 👇`,
+        parse_mode: "HTML",
+        reply_markup: dashboardKeyboard()
+      });
+    } catch (err) {
+      console.error("Unlock mainboard failed:", err?.message || err);
+      await callTelegram("sendMessage", {
+        chat_id: chatId,
+        text: `😓 Sorry ${html(name)}, something went wrong updating your account. Please try again or contact the Mainboard team.`,
+        parse_mode: "HTML"
+      });
+    }
     return;
   }
 
   // Committee or Head — need to ask for bureau
-  await updateUserRegistration(userRecord.telegram_id, {
-    role: invite.role,
-    registration_step: `unlock_bureau:${invite.role}`
-  });
+  try {
+    await updateUserRegistration(userRecord.telegram_id, {
+      role: invite.role,
+      registration_step: `unlock_bureau:${invite.role}`
+    });
+  } catch (err) {
+    console.error("Unlock committee/head DB update failed:", err?.message || err);
+    await callTelegram("sendMessage", {
+      chat_id: chatId,
+      text: `😓 Sorry ${html(name)}, something went wrong updating your account. Please try again or contact the Mainboard team.`,
+      parse_mode: "HTML"
+    });
+    return;
+  }
 
   const roleText = invite.role === "head" ? "Head of Bureau" : "Committee Member";
   await callTelegram("sendMessage", {
@@ -311,14 +330,29 @@ async function handleCallback(chatId, userRecord, data) {
     if (!BUREAUS.includes(b)) return;
 
     const step = userRecord?.registration_step || "";
-    if (!step.startsWith("unlock_bureau:")) return;
-    const unlockRole = step.split(":")[1];
+    let unlockRole;
+    if (step.startsWith("unlock_bureau:")) {
+      unlockRole = step.split(":")[1];
+    } else {
+      unlockRole = userRecord?.role || "";
+      if (unlockRole !== "committee" && unlockRole !== "head") return;
+    }
 
-    await updateUserRegistration(userRecord.telegram_id, {
-      bureau: b,
-      role: unlockRole,
-      registration_step: null
-    });
+    try {
+      await updateUserRegistration(userRecord.telegram_id, {
+        bureau: b,
+        role: unlockRole,
+        registration_step: null
+      });
+    } catch (err) {
+      console.error("Bureau update failed:", err?.message || err);
+      await callTelegram("sendMessage", {
+        chat_id: chatId,
+        text: `😓 Sorry ${html(name)}, something went wrong saving your bureau. Please try again or contact the Mainboard team.`,
+        parse_mode: "HTML"
+      });
+      return;
+    }
 
     const rLabel = roleLabel(unlockRole, b);
     await callTelegram("sendMessage", {

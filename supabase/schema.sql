@@ -257,9 +257,13 @@ alter table public.users add column if not exists kulliyyah text check (
   kulliyyah is null
   or kulliyyah in ('KICT','KOE','KENMS','KOED','AIKOL','KAED','AHAS KIRKHS')
 );
-alter table public.users add column if not exists registration_step text check (
+alter table public.users add column if not exists registration_step text;
+
+-- Recreate registration_step check with unlock_bureau:* values used by the Telegram bot
+alter table public.users drop constraint if exists users_registration_step_check;
+alter table public.users add constraint users_registration_step_check check (
   registration_step is null
-  or registration_step in ('matric','kulliyyah','change_matric','change_kulliyyah')
+  or registration_step in ('matric','kulliyyah','change_matric','change_kulliyyah','unlock_bureau:committee','unlock_bureau:head')
 );
 
 -- Student attendance: individual submissions
