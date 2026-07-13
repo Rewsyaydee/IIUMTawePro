@@ -21,7 +21,6 @@ import { applyRoleTheme } from "../lib/themes";
 import { getTelegramWebApp } from "../lib/telegram";
 import { useMockUser } from "../state/MockUserContext";
 import type { Role } from "../types";
-import { AccessCodeGate } from "./AccessCodeGate";
 import { RoleSwitcher } from "./RoleSwitcher";
 
 type CenterMenuItem = {
@@ -167,12 +166,9 @@ export function AppShell() {
                         Register via @iiumtaweprobot /start →
                       </a>
                     )}
-                    <hr style={{ margin: "8px 0", border: "none", borderTop: "1px solid var(--glass-border)" }} />
                   </>
                 )}
-                {user.role === "student" ? (
-                  <AccessCodeGate compact />
-                ) : (
+                {user.role !== "student" && (
                   <p className="account-note">Committee workspace is active. Use the center menu for your operational sections.</p>
                 )}
               </section>
