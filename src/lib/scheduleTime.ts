@@ -2,7 +2,7 @@ import type { ScheduleItem } from "../types";
 
 export type ScheduleStatus = "done" | "live" | "upcoming";
 
-const demoNow = new Date(2026, 1, 24, 10, 0);
+const demoNow = new Date(2026, 6, 15, 10, 0);
 
 export function scheduleDateTime(date: string, time: string) {
   const [year, month, day] = date.split("-").map(Number);

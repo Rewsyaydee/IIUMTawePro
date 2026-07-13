@@ -57,6 +57,8 @@ export interface AuditLogEntry {
   timestamp: string;
 }
 
+export type SessionBlock = "before_break" | "after_break" | "concurrent";
+
 export interface ScheduleItem {
   id: string;
   date: string;
@@ -76,6 +78,10 @@ export interface ScheduleItem {
   readinessStatus?: ReadinessStatus;
   venueCode?: string;
   isAttendanceRequired?: boolean;
+  block?: SessionBlock;
+  blockGroup?: string;
+  isConcurrent?: boolean;
+  track?: string;
 }
 
 export interface EmergencyContact {

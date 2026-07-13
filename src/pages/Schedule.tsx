@@ -1,77 +1,165 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2, Clock3, Search } from "lucide-react";
-import { StatusBadge } from "../components/StatusBadge";
-import { KulliyyahPicker, NavigateButton, RoutePlannerModal, useRoutePlanner } from "../features/navigation";
-import { formatScheduleClock, getCurrentScheduleItem, getItemProgress, getScheduleClock, getScheduleStatus } from "../lib/scheduleTime";
-import { hapticImpact } from "../lib/telegram";
+import { MapPin, Clock3 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { formatScheduleClock, getScheduleClock, getScheduleStatus, scheduleDateTime } from "../lib/scheduleTime";
+import { hapticImpact, hapticSuccess } from "../lib/telegram";
+import { ColorSweepText } from "../components/ColorSweepText";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
-import type { ReadinessStatus, ScheduleItem, Week } from "../types";
+import type { ScheduleItem } from "../types";
 
-const readiness: ReadinessStatus[] = ["pending", "ready", "issues"];
+type SelectedView = "main" | "concurrent";
 
-function groupByDate(items: ScheduleItem[]) {
-  return items.reduce<Record<string, ScheduleItem[]>>((groups, item) => {
-    groups[item.date] = groups[item.date] || [];
-    groups[item.date].push(item);
-    return groups;
-  }, {});
+const EVENT_DATES = [
+  { iso: "2026-07-13", day: "Mon", label: "13" },
+  { iso: "2026-07-14", day: "Tue", label: "14" },
+  { iso: "2026-07-15", day: "Wed", label: "15" },
+  { iso: "2026-07-16", day: "Thu", label: "16" },
+  { iso: "2026-07-17", day: "Fri", label: "17" },
+  { iso: "2026-07-18", day: "Sat", label: "18" },
+  { iso: "2026-07-19", day: "Sun", label: "19" }
+];
+
+function formatDayLabel(iso: string): string {
+  const [, month, day] = iso.split("-");
+  const date = new Date(parseInt(iso.slice(0, 4)), parseInt(month) - 1, parseInt(day));
+  return date.toLocaleDateString("en-MY", { weekday: "short" });
+}
+
+function formatDateShort(iso: string): string {
+  const [, month, day] = iso.split("-");
+  const date = new Date(parseInt(iso.slice(0, 4)), parseInt(month) - 1, parseInt(day));
+  return date.toLocaleDateString("en-MY", { day: "2-digit", month: "short" });
 }
 
 function Schedule() {
   const { user } = useMockUser();
-  const { schedule, updateReadiness } = useMockData();
-  const [week, setWeek] = useState<Week | "all">("all");
-  const [tag, setTag] = useState("all");
-  const [query, setQuery] = useState("");
+  const { schedule, studentAttendances } = useMockData();
+  const navigate = useNavigate();
   const [clockTick, setClockTick] = useState(0);
-  const [activeRoute, setActiveRoute] = useState<{ fromCode: string; toCode: string } | null>(null);
-  const [kulliyyahPickerFrom, setKulliyyahPickerFrom] = useState<string | null>(null);
-  const { lookup } = useRoutePlanner();
+  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedView, setSelectedView] = useState<SelectedView>("main");
+  const nowRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const tags = useMemo(() => ["all", ...Array.from(new Set(schedule.map((item) => item.tag)))], [schedule]);
   const scheduleClock = useMemo(() => getScheduleClock(schedule), [clockTick, schedule]);
-  const visibleItems = useMemo(() => {
-    return schedule
-      .filter((item) => week === "all" || item.week === week)
-      .filter((item) => tag === "all" || item.tag === tag)
-      .filter((item) => {
-        const value = `${item.title} ${item.venue} ${item.description || ""}`.toLowerCase();
-        return value.includes(query.toLowerCase());
-      })
-      .sort((a, b) => `${a.date}${a.scheduledStartTime}`.localeCompare(`${b.date}${b.scheduledStartTime}`));
-  }, [query, schedule, tag, week]);
-
-  const grouped = groupByDate(visibleItems);
-  const currentItem = useMemo(() => getCurrentScheduleItem(visibleItems, scheduleClock.now), [scheduleClock.now, visibleItems]);
-  const canUpdateReadiness = user.role === "head" || user.role === "mainboard";
-
-  const isStudent = user.role === "student";
-
-  const getNextItem = useCallback(
-    (currentId: string): ScheduleItem | undefined => {
-      const sorted = [...schedule].sort((a, b) => `${a.date}${a.scheduledStartTime}`.localeCompare(`${b.date}${b.scheduledStartTime}`));
-      const idx = sorted.findIndex((i) => i.id === currentId);
-      return idx >= 0 ? sorted[idx + 1] : undefined;
-    },
-    [schedule]
-  );
-
-  const route = activeRoute ? lookup(activeRoute.fromCode, activeRoute.toCode) : undefined;
 
   useEffect(() => {
-    const timer = window.setInterval(() => setClockTick((value) => value + 1), 30000);
+    const timer = window.setInterval(() => setClockTick((v) => v + 1), 30000);
     return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
-    if (!currentItem) return;
-    const timer = window.setTimeout(() => {
-      document.getElementById(`schedule-${currentItem.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 260);
-    return () => window.clearTimeout(timer);
-  }, [currentItem?.id]);
+    const nowIso = scheduleClock.now;
+    const todayStr = `${nowIso.getFullYear()}-${String(nowIso.getMonth() + 1).padStart(2, "0")}-${String(nowIso.getDate()).padStart(2, "0")}`;
+    const match = EVENT_DATES.find((d) => d.iso === todayStr);
+    setSelectedDate(match ? match.iso : EVENT_DATES[0].iso);
+  }, [scheduleClock.isDemo]);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      nowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 300);
+    return () => window.clearTimeout(t);
+  }, [selectedDate, selectedView]);
+
+  const dayItems = useMemo(() => {
+    if (!selectedDate) return [];
+    return schedule
+      .filter((s) => s.date === selectedDate && s.week === "event_week")
+      .sort((a, b) => a.scheduledStartTime.localeCompare(b.scheduledStartTime));
+  }, [schedule, selectedDate]);
+
+  const beforeBreakItems = dayItems.filter((s) => s.block === "before_break");
+  const afterBreakItems = dayItems.filter((s) => s.block === "after_break");
+  const noBlockItems = dayItems.filter((s) => !s.block);
+  const concurrentItems = dayItems.filter((s) => s.isConcurrent);
+
+  const isBlockAttended = (blockType: "before_break" | "after_break"): boolean => {
+    const blockId = `block-${selectedDate}-${blockType}`;
+    return studentAttendances.some(
+      (a) => a.userId === user.id && a.scheduleItemId === blockId && (a.status === "present" || a.status === "excused")
+    );
+  };
+
+  const handleCheckIn = (blockType: "before_break" | "after_break") => {
+    hapticSuccess();
+    const blockLabel = blockType === "before_break" ? "Morning Session" : "Afternoon Session";
+    const blockId = `block-${selectedDate}-${blockType}`;
+    const blockItems = schedule.filter((s) => s.date === selectedDate && s.block === blockType && !s.isConcurrent);
+    const venueCodes = [...new Set(blockItems.map((i) => i.venueCode).filter(Boolean))] as string[];
+    navigate("/attendance", { state: { blockLabel, blockId, venueCodes } });
+  };
+
+  const handleDateClick = (iso: string) => {
+    hapticImpact("light");
+    setSelectedDate(iso);
+  };
+
+  const handleViewToggle = (view: SelectedView) => {
+    hapticImpact("light");
+    setSelectedView(view);
+  };
+
+  const renderEventCard = (item: ScheduleItem, index: number) => {
+    const status = getScheduleStatus(item, scheduleClock.now);
+    const statusClass = status === "live" ? "now" : status === "done" ? "past" : "upcoming";
+    const isRequired = Boolean(item.isAttendanceRequired);
+    const hasNowRef = status === "live" && !nowRef.current;
+
+    return (
+      <motion.div
+        key={item.id}
+        ref={hasNowRef ? nowRef : undefined}
+        className={`timeline-event-card ${statusClass}`}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.04 }}
+      >
+        <div className="timeline-event-header">
+          <span className={`timeline-event-dot ${isRequired ? "required" : "optional"}`} />
+          <div className="timeline-event-info">
+            <strong>{item.title}</strong>
+            <span>
+              <MapPin size={11} /> {item.venue}
+            </span>
+            <span>
+              <Clock3 size={11} /> {item.scheduledStartTime} - {item.scheduledEndTime}
+            </span>
+          </div>
+          {status === "live" && (
+            <span className="timeline-now-badge">
+              <ColorSweepText text="NOW" />
+            </span>
+          )}
+          {status === "done" && (
+            <span className="timeline-past-label">PAST</span>
+          )}
+        </div>
+        {item.track && (
+          <span className="timeline-track-label">{item.track}</span>
+        )}
+      </motion.div>
+    );
+  };
+
+  const renderCheckInButton = (label: string, blockType: "before_break" | "after_break", index: number) => {
+    const attended = isBlockAttended(blockType);
+    return (
+      <motion.button
+        key={`checkin-${blockType}`}
+        className={`check-in-inline ${attended ? "checked" : ""}`}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.04 }}
+        disabled={attended}
+        onClick={() => handleCheckIn(blockType)}
+      >
+        {attended ? `✓ ${label} — Checked In` : `Check In: ${label} ✓`}
+      </motion.button>
+    );
+  };
 
   return (
     <section className="page-stack">
@@ -80,146 +168,84 @@ function Schedule() {
           <p className="eyebrow">Programme</p>
           <h2>Event Schedule</h2>
         </div>
-        <span className="soft-chip">{scheduleClock.isDemo ? `Preview ${formatScheduleClock(scheduleClock.now)}` : `Live ${formatScheduleClock(scheduleClock.now)}`}</span>
+        <span className="soft-chip">
+          {scheduleClock.isDemo ? `Preview ${formatScheduleClock(scheduleClock.now)}` : `Live ${formatScheduleClock(scheduleClock.now)}`}
+        </span>
       </div>
 
-      <div className="filter-bar">
-        <label className="search-box">
-          <Search size={16} aria-hidden="true" />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search programme" />
-        </label>
-        <select value={week} onChange={(event) => setWeek(event.target.value as Week | "all")}>
-          <option value="all">All weeks</option>
-          <option value="preparation">Preparation</option>
-          <option value="event_week">Event week</option>
-        </select>
-        <select value={tag} onChange={(event) => setTag(event.target.value)}>
-          {tags.map((item) => (
-            <option key={item} value={item}>
-              {item === "all" ? "All tags" : item}
-            </option>
+      <div className="schedule-timeline-layout">
+        <div className="schedule-date-nav">
+          {EVENT_DATES.map((d) => (
+            <button
+              key={d.iso}
+              className={`schedule-date-btn ${selectedDate === d.iso ? "active" : ""}`}
+              onClick={() => handleDateClick(d.iso)}
+            >
+              <span className="schedule-date-day">{formatDayLabel(d.iso)}</span>
+              <span className="schedule-date-num">{d.label}</span>
+            </button>
           ))}
-        </select>
-      </div>
+        </div>
 
-      <div className="timeline">
-        {Object.entries(grouped).map(([date, items]) => (
-          <div className="timeline-day" key={date}>
-            <h3>{date}</h3>
-            {items.map((item, index) => {
-              const scheduleStatus = getScheduleStatus(item, scheduleClock.now);
-              const isLive = scheduleStatus === "live" || item.isLive;
-              const isCurrent = currentItem?.id === item.id;
-              const progress = getItemProgress(item, scheduleClock.now);
-
-              return (
-                <motion.article
-                  id={`schedule-${item.id}`}
-                  key={item.id}
-                  className={`schedule-card schedule-${scheduleStatus} ${isLive ? "is-live" : ""} ${isCurrent ? "is-current" : ""}`}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.035 }}
-                >
-                  <div className="time-block">
-                    {scheduleStatus === "done" ? <CheckCircle2 className="done-check" size={17} aria-hidden="true" /> : <Clock3 size={16} aria-hidden="true" />}
-                    <strong>{item.scheduledStartTime}</strong>
-                    <span>{item.scheduledEndTime}</span>
-                  </div>
-                  <div className="schedule-body">
-                    <div className="schedule-title-row">
-                      <div>
-                        <h4>{item.title}</h4>
-                        <p>
-                          {item.venue} - {item.audience}
-                        </p>
-                      </div>
-                      <div className="badge-row">
-                        {isLive && <StatusBadge value="live" />}
-                        {scheduleStatus === "done" && <StatusBadge value="done" />}
-                        {isCurrent && !isLive && <StatusBadge value="upcoming" />}
-                        <span className="soft-chip">{item.tag}</span>
-                      </div>
-                    </div>
-                    {isLive && (
-                      <div className="schedule-progress" aria-label={`${progress}% of this session completed`}>
-                        <span style={{ width: `${progress}%` }} />
-                      </div>
-                    )}
-                    {item.description && <p className="muted">{item.description}</p>}
-                    {isStudent && (() => {
-                      const nextItem = getNextItem(item.id);
-                      if (nextItem && item.venueCode && nextItem.venueCode && item.venueCode !== nextItem.venueCode) {
-                        if (nextItem.venueCode === "kulliyyah-zone") {
-                          return (
-                            <div style={{ marginTop: "10px" }}>
-                              <button className="navigate-btn" type="button" onClick={() => setKulliyyahPickerFrom(item.venueCode!)}>
-                                <span>Select Kulliyyah →</span>
-                              </button>
-                            </div>
-                          );
-                        }
-                        const navRoute = lookup(item.venueCode, nextItem.venueCode);
-                        if (navRoute) {
-                          return (
-                            <div style={{ marginTop: "10px" }}>
-                              <NavigateButton onClick={() => setActiveRoute({ fromCode: item.venueCode!, toCode: nextItem.venueCode! })} />
-                            </div>
-                          );
-                        }
-                      }
-                      return null;
-                    })()}
-                    {user.role !== "student" && item.responsibleBureau && (
-                      <div className="committee-panel">
-                        <div>
-                          <span className="label">Owner</span>
-                          <strong>{item.responsibleBureau}</strong>
-                        </div>
-                        <div>
-                          <span className="label">Readiness</span>
-                          {canUpdateReadiness ? (
-                            <select
-                              value={item.readinessStatus}
-                              onChange={(event) => {
-                                hapticImpact("light");
-                                updateReadiness(item.id, event.target.value as ReadinessStatus);
-                              }}
-                            >
-                              {readiness.map((status) => (
-                                <option key={status} value={status}>
-                                  {status}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <StatusBadge value={item.readinessStatus || "pending"} />
-                          )}
-                        </div>
-                        <ul className="task-list-mini">
-                          {(item.preSessionTasks || []).map((task) => (
-                            <li key={task}>
-                              <CheckCircle2 size={14} aria-hidden="true" />
-                              <span>{task}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                </motion.article>
-              );
-            })}
+        <div className="schedule-content-area" ref={scrollContainerRef}>
+          <div className="schedule-toggle">
+            <button
+              className={`schedule-toggle-btn ${selectedView === "main" ? "active" : ""}`}
+              onClick={() => handleViewToggle("main")}
+            >
+              Main Schedule
+            </button>
+            <button
+              className={`schedule-toggle-btn ${selectedView === "concurrent" ? "active" : ""}`}
+              onClick={() => handleViewToggle("concurrent")}
+            >
+              Concurrent
+            </button>
           </div>
-        ))}
-      </div>
 
-      {route && (
-        <RoutePlannerModal route={route} onClose={() => setActiveRoute(null)} />
-      )}
-      {kulliyyahPickerFrom && (
-        <KulliyyahPicker fromCode={kulliyyahPickerFrom} onClose={() => setKulliyyahPickerFrom(null)} />
-      )}
+          <div className="schedule-events-list">
+            {selectedView === "main" ? (
+              <>
+                {beforeBreakItems.length > 0 && (
+                  <>
+                {beforeBreakItems.map((item, i) => renderEventCard(item, i))}
+                    {renderCheckInButton("Morning Session", "before_break", beforeBreakItems.length)}
+                  </>
+                )}
+
+                {afterBreakItems.length > 0 && (
+                  <>
+                    {afterBreakItems.map((item, i) => renderEventCard(item, i + beforeBreakItems.length))}
+                    {renderCheckInButton("Afternoon Session", "after_break", afterBreakItems.length)}
+                  </>
+                )}
+
+                {noBlockItems.length > 0 && (
+                  <>
+                    {noBlockItems.map((item, i) => renderEventCard(item, i + beforeBreakItems.length + afterBreakItems.length))}
+                  </>
+                )}
+
+                {dayItems.length === 0 && (
+                  <div className="timeline-empty">
+                    <p>No events scheduled for this day.</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {concurrentItems.length > 0 ? (
+                  concurrentItems.map((item, i) => renderEventCard(item, i))
+                ) : (
+                  <div className="timeline-empty">
+                    <p>No concurrent events for this day.</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

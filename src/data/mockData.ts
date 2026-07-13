@@ -103,7 +103,7 @@ export const initialReports: WellbeingReport[] = [
     category: "Dizzy",
     notes: "Needs water and shaded waiting area.",
     status: "responded",
-    submittedAt: "2026-02-24T07:52:00.000Z",
+    submittedAt: "2026-07-15T07:52:00.000Z",
     assignedTo: "Nisa Welfare"
   },
   {
@@ -114,7 +114,7 @@ export const initialReports: WellbeingReport[] = [
     category: "Lost group",
     notes: "Waiting near registration gate two.",
     status: "submitted",
-    submittedAt: "2026-02-24T08:06:00.000Z"
+    submittedAt: "2026-07-15T08:06:00.000Z"
   }
 ];
 
@@ -124,7 +124,7 @@ export const initialTasks: PoaTask[] = [
     bureau: "Catering",
     title: "Verify breakfast vendor arrival",
     description: "Confirm truck access, count meals, and release distribution lanes.",
-    dueDate: "2026-02-23",
+    dueDate: "2026-07-14",
     dueTime: "06:45",
     assignedTo: "Hakim Catering",
     status: "in_progress",
@@ -137,7 +137,7 @@ export const initialTasks: PoaTask[] = [
     bureau: "Registration",
     title: "Open QR check-in lanes",
     description: "Prepare scanners and split students by group prefix.",
-    dueDate: "2026-02-23",
+    dueDate: "2026-07-14",
     dueTime: "07:00",
     assignedTo: "Mira Registration",
     status: "blocked",
@@ -150,7 +150,7 @@ export const initialTasks: PoaTask[] = [
     bureau: "Welfare",
     title: "Sickbay readiness sweep",
     description: "Restock water, ice packs, medication sheet, and privacy screen.",
-    dueDate: "2026-02-23",
+    dueDate: "2026-07-14",
     dueTime: "07:15",
     assignedTo: "Nisa Welfare",
     status: "todo",
@@ -163,7 +163,7 @@ export const initialTasks: PoaTask[] = [
     bureau: "Multimedia",
     title: "Opening montage handoff",
     description: "Confirm latest render, backup drive, and AV booth copy.",
-    dueDate: "2026-02-23",
+    dueDate: "2026-07-14",
     dueTime: "08:30",
     assignedTo: "Danial Media",
     status: "todo",
@@ -176,7 +176,7 @@ export const initialTasks: PoaTask[] = [
     bureau: "Discipline",
     title: "Prayer movement route check",
     description: "Check corridor lights and student movement line.",
-    dueDate: "2026-02-24",
+    dueDate: "2026-07-15",
     dueTime: "05:00",
     assignedTo: "Izzat Discipline",
     status: "todo",
@@ -189,27 +189,27 @@ export const initialTasks: PoaTask[] = [
 export const initialAttendanceProofs: AttendanceProof[] = [
   {
     id: "ap-001",
-    date: "2026-02-23",
+    date: "2026-07-14",
     userId: "u-committee",
     telegramId: "1001002",
     committeeName: "Hakim Catering",
     bureau: "Catering",
     selfieDataUrl: selfiePlaceholder("Hakim", "#0f7a5c"),
-    submittedAt: "2026-02-23T08:54:00.000Z",
+    submittedAt: "2026-07-14T08:54:00.000Z",
     status: "pending_review"
   },
   {
     id: "ap-002",
-    date: "2026-02-23",
+    date: "2026-07-14",
     userId: "u-head",
     telegramId: "1001003",
     committeeName: "Nisa Welfare",
     bureau: "Welfare",
     selfieDataUrl: selfiePlaceholder("Nisa", "#217b88"),
-    submittedAt: "2026-02-23T08:58:00.000Z",
+    submittedAt: "2026-07-14T08:58:00.000Z",
     status: "sent_to_mainboard",
     reviewedBy: "Sofea Special Task",
-    reviewedAt: "2026-02-23T09:10:00.000Z"
+    reviewedAt: "2026-07-14T09:10:00.000Z"
   }
 ];
 
@@ -223,7 +223,7 @@ export const initialBureauOperations: BureauOperation[] = [
     owner: "Hakim Catering",
     status: "active",
     metric: "412 / 600 claimed",
-    updatedAt: "2026-02-23T09:24:00.000Z"
+    updatedAt: "2026-07-14T09:24:00.000Z"
   },
   {
     id: "bo-cat-002",
@@ -234,7 +234,7 @@ export const initialBureauOperations: BureauOperation[] = [
     owner: "Alya Catering",
     status: "pending",
     metric: "3 checklist items open",
-    updatedAt: "2026-02-23T09:05:00.000Z"
+    updatedAt: "2026-07-14T09:05:00.000Z"
   },
   {
     id: "bo-cat-003",
@@ -245,7 +245,7 @@ export const initialBureauOperations: BureauOperation[] = [
     owner: "Farid Catering",
     status: "ready",
     metric: "Zone A ready",
-    updatedAt: "2026-02-23T09:18:00.000Z"
+    updatedAt: "2026-07-14T09:18:00.000Z"
   },
   {
     id: "bo-prep-001",
@@ -256,7 +256,7 @@ export const initialBureauOperations: BureauOperation[] = [
     owner: "Ammar PrepTech",
     status: "active",
     metric: "18 / 22 issued",
-    updatedAt: "2026-02-23T09:20:00.000Z"
+    updatedAt: "2026-07-14T09:20:00.000Z"
   },
   {
     id: "bo-prep-002",
@@ -267,7 +267,7 @@ export const initialBureauOperations: BureauOperation[] = [
     owner: "Sofia PrepTech",
     status: "issue",
     metric: "4 low batteries",
-    updatedAt: "2026-02-23T09:26:00.000Z"
+    updatedAt: "2026-07-14T09:26:00.000Z"
   },
   {
     id: "bo-reg-001",
@@ -278,7 +278,7 @@ export const initialBureauOperations: BureauOperation[] = [
     owner: "Mira Registration",
     status: "active",
     metric: "2 items logged",
-    updatedAt: "2026-02-23T09:31:00.000Z"
+    updatedAt: "2026-07-14T09:31:00.000Z"
   },
   {
     id: "bo-reg-002",
@@ -289,7 +289,7 @@ export const initialBureauOperations: BureauOperation[] = [
     owner: "Irfan Registration",
     status: "active",
     metric: "71% distributed",
-    updatedAt: "2026-02-23T09:35:00.000Z"
+    updatedAt: "2026-07-14T09:35:00.000Z"
   },
   {
     id: "bo-reg-003",
@@ -300,7 +300,7 @@ export const initialBureauOperations: BureauOperation[] = [
     owner: "Hana Registration",
     status: "ready",
     metric: "12 robes ready",
-    updatedAt: "2026-02-23T09:10:00.000Z"
+    updatedAt: "2026-07-14T09:10:00.000Z"
   },
   {
     id: "bo-prog-001",
@@ -311,7 +311,7 @@ export const initialBureauOperations: BureauOperation[] = [
     owner: "Imran Program",
     status: "ready",
     metric: "Cue 4 next",
-    updatedAt: "2026-02-23T09:42:00.000Z"
+    updatedAt: "2026-07-14T09:42:00.000Z"
   },
   {
     id: "bo-prog-002",
@@ -322,7 +322,7 @@ export const initialBureauOperations: BureauOperation[] = [
     owner: "Nadia Program",
     status: "pending",
     metric: "Starts 09:00",
-    updatedAt: "2026-02-23T09:12:00.000Z"
+    updatedAt: "2026-07-14T09:12:00.000Z"
   },
   {
     id: "bo-prog-003",
@@ -333,7 +333,7 @@ export const initialBureauOperations: BureauOperation[] = [
     owner: "Izz Program",
     status: "ready",
     metric: "4 cues staged",
-    updatedAt: "2026-02-23T09:25:00.000Z"
+    updatedAt: "2026-07-14T09:25:00.000Z"
   },
   {
     id: "bo-special-001",
@@ -344,7 +344,7 @@ export const initialBureauOperations: BureauOperation[] = [
     owner: "Sofea Special Task",
     status: "active",
     metric: "1 proof pending",
-    updatedAt: "2026-02-23T09:32:00.000Z"
+    updatedAt: "2026-07-14T09:32:00.000Z"
   },
   {
     id: "bo-special-002",
@@ -355,7 +355,7 @@ export const initialBureauOperations: BureauOperation[] = [
     owner: "Danish Special Task",
     status: "ready",
     metric: "Block B available",
-    updatedAt: "2026-02-23T09:14:00.000Z"
+    updatedAt: "2026-07-14T09:14:00.000Z"
   },
   {
     id: "bo-disc-001",
@@ -366,7 +366,7 @@ export const initialBureauOperations: BureauOperation[] = [
     owner: "Izzat Discipline",
     status: "done",
     metric: "4 / 4 zones complete",
-    updatedAt: "2026-02-23T08:08:00.000Z"
+    updatedAt: "2026-07-14T08:08:00.000Z"
   },
   {
     id: "bo-disc-002",
@@ -377,7 +377,7 @@ export const initialBureauOperations: BureauOperation[] = [
     owner: "Sarah Discipline",
     status: "pending",
     metric: "0 escalations",
-    updatedAt: "2026-02-23T09:00:00.000Z"
+    updatedAt: "2026-07-14T09:00:00.000Z"
   },
   {
     id: "bo-media-001",
@@ -388,7 +388,7 @@ export const initialBureauOperations: BureauOperation[] = [
     owner: "Danial Media",
     status: "issue",
     metric: "Awaiting final montage",
-    updatedAt: "2026-02-23T09:38:00.000Z"
+    updatedAt: "2026-07-14T09:38:00.000Z"
   },
   {
     id: "bo-media-002",
@@ -399,7 +399,7 @@ export const initialBureauOperations: BureauOperation[] = [
     owner: "Lina Media",
     status: "active",
     metric: "Batch 3 printing",
-    updatedAt: "2026-02-23T09:28:00.000Z"
+    updatedAt: "2026-07-14T09:28:00.000Z"
   },
   {
     id: "bo-welfare-001",
@@ -410,7 +410,7 @@ export const initialBureauOperations: BureauOperation[] = [
     owner: "Nisa Welfare",
     status: "active",
     metric: "1 active patient",
-    updatedAt: "2026-02-23T09:40:00.000Z"
+    updatedAt: "2026-07-14T09:40:00.000Z"
   },
   {
     id: "bo-welfare-002",
@@ -421,7 +421,7 @@ export const initialBureauOperations: BureauOperation[] = [
     owner: "Aisyah Welfare",
     status: "issue",
     metric: "Panadol below threshold",
-    updatedAt: "2026-02-23T09:22:00.000Z"
+    updatedAt: "2026-07-14T09:22:00.000Z"
   }
 ];
 
@@ -432,7 +432,7 @@ export const initialBanners: Banner[] = [
     body: "Ta'aruf Week Semester 2, 2025/2026 programme is available.",
     type: "info",
     isActive: true,
-    createdAt: "2026-02-19T10:00:00.000Z"
+    createdAt: "2026-07-09T10:00:00.000Z"
   }
 ];
 
@@ -444,7 +444,7 @@ export const initialNotifications: MockNotification[] = [
     title: "Mock: programme schedule",
     body: "Official Ta'aruf Week schedule has been loaded for public view.",
     type: "mock_push",
-    sentAt: "2026-02-19T10:20:00.000Z",
+    sentAt: "2026-07-09T10:20:00.000Z",
     sentBy: "Mainboard Ops"
   }
 ];
@@ -452,42 +452,42 @@ export const initialNotifications: MockNotification[] = [
 export const initialStudentAttendances: StudentAttendance[] = [
   {
     id: "sa-001",
-    userId: "u-student-001",
-    scheduleItemId: "real-s-011",
-    eventTitle: "Welcoming Session with Prof. Dato' Dr. Mohamad Fauzan Noordin",
+    userId: "u-student",
+    scheduleItemId: "block-2026-07-13-before_break",
+    eventTitle: "Sunday - Before Break",
     studentName: "Rusyaidi",
     matricNumber: "2410000",
     kulliyyah: "KICT",
     latitude: 3.250950,
     longitude: 101.733678,
     status: "present",
-    submittedAt: "2026-02-23T10:35:00.000Z"
+    submittedAt: "2026-07-13T10:35:00.000Z"
   },
   {
     id: "sa-002",
-    userId: "u-student-001",
-    scheduleItemId: "real-s-015",
-    eventTitle: "Murabbi Session",
+    userId: "u-student",
+    scheduleItemId: "block-2026-07-13-after_break",
+    eventTitle: "Sunday - After Break",
     studentName: "Rusyaidi",
     matricNumber: "2410000",
     kulliyyah: "KICT",
     latitude: 3.251366,
     longitude: 101.734955,
     status: "present",
-    submittedAt: "2026-02-23T14:05:00.000Z"
+    submittedAt: "2026-07-13T14:05:00.000Z"
   },
   {
     id: "sa-003",
-    userId: "u-student-001",
-    scheduleItemId: "real-s-023",
-    eventTitle: "Tadarus Al-Quran & Mini Usrah",
+    userId: "u-student",
+    scheduleItemId: "block-2026-07-14-before_break",
+    eventTitle: "Monday - Before Break",
     studentName: "Rusyaidi",
     matricNumber: "2410000",
     kulliyyah: "KICT",
-    latitude: 3.251366,
-    longitude: 101.734955,
+    latitude: 3.250950,
+    longitude: 101.733678,
     status: "present",
-    submittedAt: "2026-02-24T09:50:00.000Z"
+    submittedAt: "2026-07-14T08:50:00.000Z"
   }
 ];
 
@@ -496,7 +496,7 @@ export const initialInviteCodes: InviteCode[] = [
     id: "inv-committee-shared",
     code: "OiAkuNakTaweNi",
     role: "committee",
-    createdAt: "2026-02-19T10:00:00.000Z",
+    createdAt: "2026-07-09T10:00:00.000Z",
     expiresAt: "2026-03-15T23:59:00.000Z",
     isUsed: false,
     isReusable: true
@@ -505,7 +505,7 @@ export const initialInviteCodes: InviteCode[] = [
     id: "inv-001",
     code: "MB-TAARUF-2401",
     role: "mainboard",
-    createdAt: "2026-02-19T10:00:00.000Z",
+    createdAt: "2026-07-09T10:00:00.000Z",
     expiresAt: "2026-03-15T23:59:00.000Z",
     isUsed: false
   },
@@ -514,7 +514,7 @@ export const initialInviteCodes: InviteCode[] = [
     code: "WEL-HEAD-2402",
     role: "head",
     bureau: "Welfare",
-    createdAt: "2026-02-19T10:05:00.000Z",
+    createdAt: "2026-07-09T10:05:00.000Z",
     expiresAt: "2026-03-15T23:59:00.000Z",
     isUsed: true,
     usedBy: "Nisa Welfare"
@@ -524,7 +524,7 @@ export const initialInviteCodes: InviteCode[] = [
     code: "ST-COM-2403",
     role: "committee",
     bureau: "Special Task",
-    createdAt: "2026-02-19T10:08:00.000Z",
+    createdAt: "2026-07-09T10:08:00.000Z",
     expiresAt: "2026-03-15T23:59:00.000Z",
     isUsed: true,
     usedBy: "Sofea Special Task"
@@ -540,7 +540,7 @@ export const initialAuditLog: AuditLogEntry[] = [
     table: "schedule",
     recordId: "real-s-010",
     details: "Ta'aruf Week Semester 2, 2025/2026 schedule was loaded from the markdown source.",
-    timestamp: "2026-02-19T10:00:00.000Z"
+    timestamp: "2026-07-09T10:00:00.000Z"
   },
   {
     id: "audit-002",
@@ -550,7 +550,7 @@ export const initialAuditLog: AuditLogEntry[] = [
     table: "attendance_proofs",
     recordId: "ap-002",
     details: "Nisa Welfare proof was sent to mainboard.",
-    timestamp: "2026-02-23T09:10:00.000Z"
+    timestamp: "2026-07-14T09:10:00.000Z"
   },
   {
     id: "audit-003",
@@ -560,7 +560,7 @@ export const initialAuditLog: AuditLogEntry[] = [
     table: "invite_codes",
     recordId: "inv-001",
     details: "Created unused mainboard invite for event operations.",
-    timestamp: "2026-02-19T10:00:00.000Z"
+    timestamp: "2026-07-09T10:00:00.000Z"
   }
 ];
 
@@ -571,7 +571,7 @@ export const initialAnnouncements: Announcement[] = [
     body: "Assalamualaikum w.b.t.\n\nA friendly reminder to all new intake students of Ta'aruf Week Semester 2, 2025/2026 Intake.\n\nHere is the schedule of wake-up calls on 24th February 2026 (Tuesday) to make sure the programme goes smoothly.\n\n5:00 AM\nFirst siren for wake-up\n\n5:30 AM\nSecond siren for wake-up\n\n6:00 AM\nThird siren for wake-up\n\n6:45 AM\nLast siren and announcement\n\n7:00 AM\nDepart to bus stop\n\nREMINDER\n1. Please follow the dress code.\n2. Bring along your own UMBRELLA for all sessions IN CASE OF RAINING and POWERBANK\n3. NO JEANS, SANDALS and SLIPPERS are allowed during the program.\n4. For sisters, you are advised to bring along your telekung and prayer mat.\n\nThank you for your kind cooperation.\n\nBest regards,\nTa'aruf Week Student Committee,\nSemester 2, 2025/2026.",
     type: "urgent",
     isActive: true,
-    createdAt: "2026-02-23T20:00:00.000Z",
+    createdAt: "2026-07-14T20:00:00.000Z",
     tags: ["wake-up", "schedule", "reminder"]
   },
   {
@@ -580,7 +580,7 @@ export const initialAnnouncements: Announcement[] = [
     body: "Assalamualaikum w.b.t.\n\nAttention to all new intake students for Ta'aruf Week Semester 2, 2025/2026, who have lost their items.\n\nPlease fill up this form if you have any concerns about your lost belongings.\n\nThank you for your attention and cooperation.\n\nBest regards,\nTa'aruf Week Student Committee,\nSemester 2, 2025/2026.",
     type: "info",
     isActive: true,
-    createdAt: "2026-02-24T14:00:00.000Z",
+    createdAt: "2026-07-15T14:00:00.000Z",
     links: [
       { label: "Lost & Found Form", url: "https://docs.google.com/forms/d/1DnPSncw0VCGm7vQhBSQn-q0z5Ol6p8HuK0wkE9P2kFk/edit" }
     ],
@@ -592,7 +592,7 @@ export const initialAnnouncements: Announcement[] = [
     body: "Assalamualaikum w.b.t.\n\nReminder to all new intake students to attend the night session on 23rd February 2026 at your respective mahallah. Your attendance is COMPULSORY. Hereby are the details for the session:\n\nSlot: My Mahallah My Second Home\nVenue: Respective Mahallah\nTime: Based on respective Mahallah\nDresscode: Shariah Compliance\n\nThank you for your kind cooperation.\n\nBest regards,\nTa'aruf Week Student Committee,\nSemester 2, 2025/2026.",
     type: "urgent",
     isActive: true,
-    createdAt: "2026-02-22T18:00:00.000Z",
+    createdAt: "2026-07-13T18:00:00.000Z",
     tags: ["night-session", "compulsory", "mahallah"]
   },
   {
@@ -601,7 +601,7 @@ export const initialAnnouncements: Announcement[] = [
     body: "Assalamualaikum w.b.t.\n\nDear Brothers and Sisters,\n\nThis is the group link of each Kulliyyah in the Gombak campus for your reference. Do enter your respective kulliyyah's group for more information on the Ihsan Madani session and related matters.\n\nDo follow our social media accounts for more updates on Ta'aruf Week.\n\nBest regards,\nTa'aruf Week Student Committee\nSemester 2, 2025/2026.",
     type: "info",
     isActive: true,
-    createdAt: "2026-02-21T10:00:00.000Z",
+    createdAt: "2026-07-12T10:00:00.000Z",
     links: [
       { label: "KICT Group", url: "https://chat.whatsapp.com/JXbSUV7VBaN4O4npHEkKvP" },
       { label: "KOE Group", url: "https://chat.whatsapp.com/EYM80Ik3Xk02QRIFqxH9zj" },

@@ -21,7 +21,6 @@ import { applyRoleTheme } from "../lib/themes";
 import { getTelegramWebApp } from "../lib/telegram";
 import { useMockUser } from "../state/MockUserContext";
 import type { Role } from "../types";
-import { AccessCodeGate } from "./AccessCodeGate";
 import { RoleSwitcher } from "./RoleSwitcher";
 
 type CenterMenuItem = {
@@ -79,7 +78,8 @@ export function AppShell() {
   const firstName = telegramUser?.first_name || telegramUser?.username || user.name.split(" ")[0];
   const avatarUrl = telegramUser?.photo_url;
   const initials = firstName.charAt(0).toUpperCase();
-  const roleLabel = user.bureau ? `${roleLabels[user.role]} — ${user.bureau}` : roleLabels[user.role];
+  const rolePrefix = user.bureau ? `${roleLabels[user.role]} of` : roleLabels[user.role];
+  const roleSuffix = user.bureau || "";
   const centerMenu = centerMenuByRole[user.role] || [];
 
   useEffect(() => {
@@ -122,15 +122,24 @@ export function AppShell() {
                   {initials}
                 </button>
               )}
-              <span className="app-header-role">{roleLabel}</span>
+              <span className="app-header-role">
+                {roleSuffix ? (
+                  <>
+                    <span className="app-header-role-line">{rolePrefix}</span>
+                    <span className="app-header-role-line">{roleSuffix}</span>
+                  </>
+                ) : (
+                  <span className="app-header-role-line">{rolePrefix}</span>
+                )}
+              </span>
             {accountOpen && (
               <section className="account-popover" id="account-menu" aria-label="Account and access menu">
                 <div className="account-popover-head">
                   <div>
                     <p className="eyebrow">Current view</p>
                     <strong>
-                      {roleLabels[user.role]}
-                      {user.bureau ? ` - ${user.bureau}` : ""}
+                      {rolePrefix}
+                      {roleSuffix ? ` ${roleSuffix}` : ""}
                     </strong>
                   </div>
                   <button className="icon-button" type="button" aria-label="Close account menu" onClick={() => setAccountOpen(false)}>
@@ -157,12 +166,9 @@ export function AppShell() {
                         Register via @iiumtaweprobot /start →
                       </a>
                     )}
-                    <hr style={{ margin: "8px 0", border: "none", borderTop: "1px solid var(--glass-border)" }} />
                   </>
                 )}
-                {user.role === "student" ? (
-                  <AccessCodeGate compact />
-                ) : (
+                {user.role !== "student" && (
                   <p className="account-note">Committee workspace is active. Use the center menu for your operational sections.</p>
                 )}
               </section>

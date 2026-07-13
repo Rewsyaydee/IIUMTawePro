@@ -16,7 +16,7 @@ export const BUREAUS: Bureau[] = [
 export const roleLabels: Record<Role, string> = {
   student: "Student",
   committee: "Committee",
-  head: "Head of Bureau",
+  head: "Head",
   mainboard: "Mainboard"
 };
 

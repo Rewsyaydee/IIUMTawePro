@@ -1,6 +1,7 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { BadgeCheck, Camera, Send, ShieldCheck, XCircle } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import { EmptyState } from "../components/EmptyState";
 import { StatusBadge } from "../components/StatusBadge";
 import { StudentAttendanceView } from "../components/StudentAttendanceView";
@@ -23,6 +24,8 @@ function todayKey() {
 function Attendance() {
   const { user } = useMockUser();
   const { attendanceProofs, submitAttendanceProof, reviewAttendanceProof } = useMockData();
+  const location = useLocation();
+  const checkInState = (location.state as { blockLabel: string; blockId: string; venueCodes: string[] } | null) || null;
   const apiMode = shouldUseApiAuth();
   const [remoteProofs, setRemoteProofs] = useState<AttendanceProof[]>([]);
   const [loadingProofs, setLoadingProofs] = useState(false);
@@ -136,7 +139,7 @@ function Attendance() {
   return (
     <section className="page-stack">
       {user.role === "student" ? (
-        <StudentAttendanceView />
+        <StudentAttendanceView checkInState={checkInState} />
       ) : (
         <>
       <div className="page-heading">
