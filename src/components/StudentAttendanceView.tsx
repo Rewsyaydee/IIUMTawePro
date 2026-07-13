@@ -8,7 +8,6 @@ import { listStudentAttendance } from "../lib/studentAttendanceApi";
 import { CheckInForm } from "./CheckInForm";
 import {
   getSessionBlocks,
-  getConcurrentEvents,
   getRequiredBlockCount
 } from "../data/eventSchedule";
 import type { StudentAttendance, StudentAttendanceStatus } from "../types";
@@ -27,7 +26,6 @@ export function StudentAttendanceView({ checkInState }: { checkInState?: CheckIn
   const [authTick, setAuthTick] = useState(0);
 
   const blocks = getSessionBlocks(schedule);
-  const concurrents = getConcurrentEvents(schedule);
   const totalRequired = getRequiredBlockCount(schedule);
   const milestones = totalRequired <= 3 ? [1, 2, 3] : totalRequired <= 5 ? [2, 4, 5] : [3, 5, totalRequired];
 
@@ -124,23 +122,6 @@ export function StudentAttendanceView({ checkInState }: { checkInState?: CheckIn
           })}
         </div>
       </div>
-
-      {concurrents.length > 0 && (
-        <div className="ongoing-booth-section">
-          {concurrents.map((item) => (
-            <div key={item.id} className="ongoing-booth-card glass-card-flat">
-              <div className="ongoing-booth-header">
-                <div className="ongoing-booth-info">
-                  <strong>{item.title}</strong>
-                  <span>{item.scheduledStartTime} - {item.scheduledEndTime}</span>
-                </div>
-                <span className="pill-badge optional">OPTIONAL</span>
-              </div>
-              <span className="ongoing-booth-subtitle">All-Day Booth · Drop-in Service</span>
-            </div>
-          ))}
-        </div>
-      )}
 
       {checkInState ? (
         <CheckInForm
