@@ -5,7 +5,8 @@ export function ColorSweepText({ text = "NOW" }: { text?: string }) {
     <motion.div
       style={{
         backgroundImage: "linear-gradient(90deg, #E5D3B3 0%, #FFFFFF 50%, #E5D3B3 100%)",
-        backgroundSize: "200% auto",
+        backgroundSize: "200% 100%",
+        backgroundClip: "text",
         WebkitBackgroundClip: "text",
         WebkitTextFillColor: "transparent",
         display: "inline-block",
@@ -15,7 +16,7 @@ export function ColorSweepText({ text = "NOW" }: { text?: string }) {
         textTransform: "uppercase",
       }}
       animate={{
-        backgroundPosition: ["0% center", "200% center"],
+        backgroundPositionX: ["0%", "200%"],
       }}
       transition={{
         duration: 3,
