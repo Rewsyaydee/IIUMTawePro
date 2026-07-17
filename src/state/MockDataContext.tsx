@@ -79,7 +79,7 @@ type MockDataContextValue = {
   updateTaskStatus: (id: string, status: TaskStatus) => void;
   addTask: (input: TaskInput) => PoaTask;
   submitAttendanceProof: (input: AttendanceInput) => AttendanceProof;
-  reviewAttendanceProof: (id: string, status: Extract<AttendanceStatus, "sent_to_mainboard" | "rejected">) => void;
+  reviewAttendanceProof: (id: string, status: Extract<AttendanceStatus, "sent_to_mainboard" | "rejected">, rejectionReason?: string) => void;
   submitStudentAttendance: (input: { blockId: string; blockLabel: string; studentName: string; matricNumber: string; kulliyyah?: string; latitude: number; longitude: number; note?: string }) => StudentAttendance;
   updateBureauOperationStatus: (id: string, status: BureauOperationStatus) => void;
   sendBureauOperationAlert: (id: string) => void;
@@ -218,6 +218,10 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
     };
 
     const updateReportStatus = (id: string, status: WellbeingReport["status"]) => {
+      if (user.role !== "mainboard" && user.bureau !== "Welfare") {
+        console.warn("Unauthorized report status update attempted");
+        return;
+      }
       setReports((items) =>
         items.map((item) =>
           item.id === id
@@ -326,7 +330,7 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
       return next;
     };
 
-    const reviewAttendanceProof = (id: string, status: Extract<AttendanceStatus, "sent_to_mainboard" | "rejected">) => {
+    const reviewAttendanceProof = (id: string, status: Extract<AttendanceStatus, "sent_to_mainboard" | "rejected">, rejectionReason?: string) => {
       const now = new Date().toISOString();
       let reviewedProof: AttendanceProof | undefined;
 
@@ -337,7 +341,8 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
             ...item,
             status,
             reviewedBy: user.name,
-            reviewedAt: now
+            reviewedAt: now,
+            rejectionReason: status === "rejected" ? rejectionReason : undefined
           };
           return reviewedProof;
         })
@@ -351,6 +356,20 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
             targetBureau: "all",
             title: "Mock: attendance verified",
             body: reviewedProof ? `${reviewedProof.committeeName} verified by Special Task.` : "Attendance proof verified.",
+            type: "mock_attendance",
+            sentAt: now,
+            sentBy: user.name
+          },
+          ...items
+        ]);
+      } else {
+        setNotifications((items) => [
+          {
+            id: stampId("n"),
+            targetRole: "committee",
+            targetBureau: reviewedProof?.bureau || "all",
+            title: "Attendance proof rejected",
+            body: reviewedProof ? `Your attendance proof was rejected by ${user.name}.${rejectionReason ? ` Reason: ${rejectionReason}` : ""} Please resubmit.` : "Your attendance proof was rejected. Please resubmit.",
             type: "mock_attendance",
             sentAt: now,
             sentBy: user.name

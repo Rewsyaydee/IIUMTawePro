@@ -499,7 +499,7 @@ export const initialInviteCodes: InviteCode[] = [
     code: "OiAkuNakTaweNi",
     role: "committee",
     createdAt: "2026-07-09T10:00:00.000Z",
-    expiresAt: "2026-03-15T23:59:00.000Z",
+    expiresAt: "2026-08-15T23:59:00.000Z",
     isUsed: false,
     isReusable: true
   },
@@ -508,7 +508,7 @@ export const initialInviteCodes: InviteCode[] = [
     code: "MB-TAARUF-2401",
     role: "mainboard",
     createdAt: "2026-07-09T10:00:00.000Z",
-    expiresAt: "2026-03-15T23:59:00.000Z",
+    expiresAt: "2026-08-15T23:59:00.000Z",
     isUsed: false
   },
   {
@@ -517,7 +517,7 @@ export const initialInviteCodes: InviteCode[] = [
     role: "head",
     bureau: "Welfare",
     createdAt: "2026-07-09T10:05:00.000Z",
-    expiresAt: "2026-03-15T23:59:00.000Z",
+    expiresAt: "2026-08-15T23:59:00.000Z",
     isUsed: true,
     usedBy: "Nisa Welfare"
   },
@@ -527,7 +527,7 @@ export const initialInviteCodes: InviteCode[] = [
     role: "committee",
     bureau: "Special Task",
     createdAt: "2026-07-09T10:08:00.000Z",
-    expiresAt: "2026-03-15T23:59:00.000Z",
+    expiresAt: "2026-08-15T23:59:00.000Z",
     isUsed: true,
     usedBy: "Sofea Special Task"
   }
@@ -570,7 +570,7 @@ export const initialAnnouncements: Announcement[] = [
   {
     id: "ann-001",
     title: "ANNOUNCEMENT FOR WAKE UP CALL",
-    body: "Assalamualaikum w.b.t.\n\nA friendly reminder to all new intake students of Ta'aruf Week Semester 2, 2025/2026 Intake.\n\nHere is the schedule of wake-up calls on 24th February 2026 (Tuesday) to make sure the programme goes smoothly.\n\n5:00 AM\nFirst siren for wake-up\n\n5:30 AM\nSecond siren for wake-up\n\n6:00 AM\nThird siren for wake-up\n\n6:45 AM\nLast siren and announcement\n\n7:00 AM\nDepart to bus stop\n\nREMINDER\n1. Please follow the dress code.\n2. Bring along your own UMBRELLA for all sessions IN CASE OF RAINING and POWERBANK\n3. NO JEANS, SANDALS and SLIPPERS are allowed during the program.\n4. For sisters, you are advised to bring along your telekung and prayer mat.\n\nThank you for your kind cooperation.\n\nBest regards,\nTa'aruf Week Student Committee,\nSemester 2, 2025/2026.",
+    body: "Assalamualaikum w.b.t.\n\nA friendly reminder to all new intake students of Ta'aruf Week Semester 2, 2025/2026 Intake.\n\nHere is the schedule of wake-up calls on 15th July 2026 (Wednesday) to make sure the programme goes smoothly.\n\n5:00 AM\nFirst siren for wake-up\n\n5:30 AM\nSecond siren for wake-up\n\n6:00 AM\nThird siren for wake-up\n\n6:45 AM\nLast siren and announcement\n\n7:00 AM\nDepart to bus stop\n\nREMINDER\n1. Please follow the dress code.\n2. Bring along your own UMBRELLA for all sessions IN CASE OF RAINING and POWERBANK\n3. NO JEANS, SANDALS and SLIPPERS are allowed during the program.\n4. For sisters, you are advised to bring along your telekung and prayer mat.\n\nThank you for your kind cooperation.\n\nBest regards,\nTa'aruf Week Student Committee,\nSemester 2, 2025/2026.",
     type: "urgent",
     isActive: true,
     createdAt: "2026-07-14T20:00:00.000Z",
@@ -591,7 +591,7 @@ export const initialAnnouncements: Announcement[] = [
   {
     id: "ann-003",
     title: "ANNOUNCEMENT FOR NIGHT SESSION TA'ARUF WEEK SEMESTER 2, 2025/2026",
-    body: "Assalamualaikum w.b.t.\n\nReminder to all new intake students to attend the night session on 23rd February 2026 at your respective mahallah. Your attendance is COMPULSORY. Hereby are the details for the session:\n\nSlot: My Mahallah My Second Home\nVenue: Respective Mahallah\nTime: Based on respective Mahallah\nDresscode: Shariah Compliance\n\nThank you for your kind cooperation.\n\nBest regards,\nTa'aruf Week Student Committee,\nSemester 2, 2025/2026.",
+    body: "Assalamualaikum w.b.t.\n\nReminder to all new intake students to attend the night session on 14th July 2026 at your respective mahallah. Your attendance is COMPULSORY. Hereby are the details for the session:\n\nSlot: My Mahallah My Second Home\nVenue: Respective Mahallah\nTime: Based on respective Mahallah\nDresscode: Shariah Compliance\n\nThank you for your kind cooperation.\n\nBest regards,\nTa'aruf Week Student Committee,\nSemester 2, 2025/2026.",
     type: "urgent",
     isActive: true,
     createdAt: "2026-07-13T18:00:00.000Z",

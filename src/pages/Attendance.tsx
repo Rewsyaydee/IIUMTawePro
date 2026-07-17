@@ -33,6 +33,7 @@ function Attendance() {
   const [selfieDataUrl, setSelfieDataUrl] = useState("");
   const [latestStatus, setLatestStatus] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [rejectionForm, setRejectionForm] = useState<{ proofId: string; reason: string } | null>(null);
   const today = todayKey();
   const isCommittee = user.role === "committee" || user.role === "head";
   const isSpecialTask = user.bureau === "Special Task";
@@ -120,15 +121,16 @@ function Attendance() {
     }
   };
 
-  const reviewProof = async (id: string, status: "sent_to_mainboard" | "rejected") => {
+  const reviewProof = async (id: string, status: "sent_to_mainboard" | "rejected", rejectionReason?: string) => {
     try {
       setErrorMessage("");
       if (apiMode) {
-        const proof = await reviewAttendanceProofApi(id, status);
+        const proof = await reviewAttendanceProofApi(id, status, rejectionReason);
         mergeRemoteProof(proof);
       } else {
-        reviewAttendanceProof(id, status);
+        reviewAttendanceProof(id, status, rejectionReason);
       }
+      setRejectionForm(null);
       hapticImpact(status === "sent_to_mainboard" ? "medium" : "light");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to review attendance proof.");
@@ -217,14 +219,37 @@ function Attendance() {
                       {proof.bureau} - {new Date(proof.submittedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </p>
                     <div className="review-actions">
-                      <button type="button" className="danger-outline-button" onClick={() => reviewProof(proof.id, "rejected")}>
-                        <XCircle size={16} aria-hidden="true" />
-                        <span>Reject</span>
-                      </button>
-                      <button type="button" className="verify-button" onClick={() => reviewProof(proof.id, "sent_to_mainboard")}>
-                        <ShieldCheck size={16} aria-hidden="true" />
-                        <span>Verify & send</span>
-                      </button>
+                      {rejectionForm?.proofId === proof.id ? (
+                        <div className="rejection-form">
+                          <input
+                            type="text"
+                            className="form-input"
+                            placeholder="Reason (e.g. blurry, wrong person)..."
+                            value={rejectionForm.reason}
+                            onChange={(e) => setRejectionForm({ ...rejectionForm, reason: e.target.value })}
+                            autoFocus
+                          />
+                          <div className="rejection-form-actions">
+                            <button type="button" className="outline-button" onClick={() => setRejectionForm(null)}>
+                              Cancel
+                            </button>
+                            <button type="button" className="danger-outline-button" onClick={() => reviewProof(proof.id, "rejected", rejectionForm.reason || undefined)}>
+                              Confirm Reject
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <button type="button" className="danger-outline-button" onClick={() => setRejectionForm({ proofId: proof.id, reason: "" })}>
+                            <XCircle size={16} aria-hidden="true" />
+                            <span>Reject</span>
+                          </button>
+                          <button type="button" className="verify-button" onClick={() => reviewProof(proof.id, "sent_to_mainboard")}>
+                            <ShieldCheck size={16} aria-hidden="true" />
+                            <span>Verify & send</span>
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </motion.article>

@@ -41,7 +41,8 @@ export default async function handler(req, res) {
     const row = await updateAttendanceReview({
       proofId,
       reviewerId: user.id,
-      status
+      status,
+      rejectionReason: body.rejectionReason || null
     });
     if (!row) return sendJson(res, 404, { error: "Attendance proof not found." });
 

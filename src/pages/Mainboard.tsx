@@ -9,6 +9,7 @@ import {
   ClipboardList,
   KeyRound,
   Megaphone,
+  PenLine,
   PlusCircle,
   Send,
   ShieldAlert,
@@ -21,13 +22,18 @@ import {
 import { BUREAUS, ROLES, roleLabels } from "../constants";
 import { authSessionChangedEvent, shouldUseApiAuth } from "../lib/apiAuth";
 import { createAnnouncement as createAnnouncementApi, deactivateAnnouncementApi, listAnnouncements, listAuditLog } from "../lib/announcementsApi";
-import { createScheduleItem as createScheduleItemApi, listSchedule, publishScheduleItem } from "../lib/scheduleApi";
+import { listBureauOperations } from "../lib/bureauOpsApi";
+import { createScheduleItem as createScheduleItemApi, listSchedule, publishScheduleItem, updateScheduleItem as updateScheduleItemApi } from "../lib/scheduleApi";
+import { listTasks } from "../lib/tasksApi";
+import { listUsers, revokeUserApi, updateUser as updateUserApi } from "../lib/usersApi";
 import { sendBureauAlert, sendEmergency as sendEmergencyApi, sendNotification } from "../lib/notifyApi";
+import { listWellbeingReports } from "../lib/wellbeingApi";
 import { confirmNative, hapticError, hapticSuccess } from "../lib/telegram";
 import { StatusBadge } from "../components/StatusBadge";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
-import type { AdminRole, Announcement, AuditLogEntry, Bureau, Role, ScheduleItem } from "../types";
+import type { AdminRole, Announcement, AuditLogEntry, Bureau, BureauOperation, PoaTask, Role, ScheduleItem, WellbeingReport } from "../types";
+import { venues } from "../features/navigation/data/venues";
 
 const ADMIN_TABS = [
   { id: "overview", label: "Overview", icon: BarChart3 },
@@ -56,6 +62,7 @@ const defaultScheduleForm = {
   notifyMinutesBefore: "30",
   responsibleBureau: "Program Coordinator" as Bureau,
   readinessStatus: "pending" as NonNullable<ScheduleItem["readinessStatus"]>,
+  venueCode: "",
   preSessionTasks: "Confirm venue, Assign usher, Prepare announcement"
 };
 
@@ -92,6 +99,10 @@ function Mainboard() {
   const [remoteSchedule, setRemoteSchedule] = useState<ScheduleItem[]>([]);
   const [remoteAnnouncements, setRemoteAnnouncements] = useState<Announcement[]>([]);
   const [remoteAudit, setRemoteAudit] = useState<AuditLogEntry[]>([]);
+  const [remoteTasks, setRemoteTasks] = useState<PoaTask[]>([]);
+  const [remoteReports, setRemoteReports] = useState<WellbeingReport[]>([]);
+  const [remoteOps, setRemoteOps] = useState<BureauOperation[]>([]);
+  const [remoteUsers, setRemoteUsers] = useState<Record<string, unknown>[]>([]);
   const [authRefreshTick, setAuthRefreshTick] = useState(0);
 
   useEffect(() => {
@@ -104,14 +115,22 @@ function Mainboard() {
     if (!apiMode) return;
     let cancelled = false;
     Promise.all([
-      listSchedule().catch(() => []),
-      listAnnouncements().catch(() => []),
-      listAuditLog().catch(() => [])
-    ]).then(([s, a, aud]) => {
+      listSchedule().catch(() => [] as ScheduleItem[]),
+      listAnnouncements().catch(() => [] as Announcement[]),
+      listAuditLog().catch(() => [] as AuditLogEntry[]),
+      listTasks().catch(() => [] as PoaTask[]),
+      listWellbeingReports().catch(() => [] as WellbeingReport[]),
+      listBureauOperations().catch(() => [] as BureauOperation[]),
+      listUsers().catch(() => [] as Record<string, unknown>[])
+    ]).then(([s, a, aud, t, r, o, u]) => {
       if (!cancelled) {
         setRemoteSchedule(s);
         setRemoteAnnouncements(a as Announcement[]);
         setRemoteAudit(aud as AuditLogEntry[]);
+        setRemoteTasks(t);
+        setRemoteReports(r);
+        setRemoteOps(o);
+        setRemoteUsers(u);
       }
     });
     return () => { cancelled = true; };
@@ -120,6 +139,9 @@ function Mainboard() {
   const activeSchedule = apiMode ? remoteSchedule : schedule;
   const activeAnnouncements = apiMode ? remoteAnnouncements : announcements;
   const activeAudit = apiMode ? remoteAudit : auditLog;
+  const activeTasks = apiMode ? remoteTasks : tasks;
+  const activeReports = apiMode ? remoteReports : reports;
+  const activeOps = apiMode ? remoteOps : bureauOperations;
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [emergencyForm, setEmergencyForm] = useState({
     title: "Emergency update",
@@ -146,6 +168,7 @@ function Mainboard() {
     bureau: "Catering" as Bureau
   });
   const [scheduleForm, setScheduleForm] = useState(defaultScheduleForm);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [announcementForm, setAnnouncementForm] = useState({
     title: "",
     body: "",
@@ -155,13 +178,13 @@ function Mainboard() {
   });
 
   const metrics = useMemo(() => {
-    const done = tasks.filter((task) => task.status === "done").length;
-    const blocked = tasks.filter((task) => task.status === "blocked").length;
-    const unresolved = reports.filter((report) => report.status !== "resolved").length;
+    const done = activeTasks.filter((task) => task.status === "done").length;
+    const blocked = activeTasks.filter((task) => task.status === "blocked").length;
+    const unresolved = activeReports.filter((report) => report.status !== "resolved").length;
     const verifiedAttendance = attendanceProofs.filter((proof) => proof.status === "sent_to_mainboard").length;
     const pendingAttendance = attendanceProofs.filter((proof) => proof.status === "pending_review").length;
-    const taskCompletion = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
-    const operationIssues = bureauOperations.filter((operation) => operation.status === "issue").length;
+    const taskCompletion = activeTasks.length ? Math.round((done / activeTasks.length) * 100) : 0;
+    const operationIssues = activeOps.filter((operation) => operation.status === "issue").length;
     const liveItems = activeSchedule.filter((item) => item.isLive).length;
     const pendingInvites = inviteCodes.filter((invite) => !invite.isUsed).length;
     return {
@@ -172,11 +195,11 @@ function Mainboard() {
       pendingAttendance,
       pendingInvites,
       taskCompletion,
-      totalTasks: tasks.length,
+      totalTasks: activeTasks.length,
       unresolved,
       verifiedAttendance
     };
-  }, [attendanceProofs, bureauOperations, inviteCodes, reports, activeSchedule, tasks]);
+  }, [attendanceProofs, inviteCodes, activeReports, activeSchedule, activeTasks, activeOps]);
 
   if (user.role !== "mainboard") {
     return (
@@ -275,7 +298,7 @@ function Mainboard() {
 
   const submitSchedule = async (event: FormEvent) => {
     event.preventDefault();
-    const input = {
+    const input: Record<string, unknown> = {
       date: scheduleForm.date,
       day: scheduleForm.day,
       week: scheduleForm.week,
@@ -291,17 +314,23 @@ function Mainboard() {
       readinessStatus: scheduleForm.readinessStatus,
       preSessionTasks: scheduleForm.preSessionTasks.split(",").map((task) => task.trim()).filter(Boolean),
       isLive: false,
-      venueCode: undefined
+      venueCode: scheduleForm.venueCode || undefined
     };
 
     try {
       if (apiMode) {
-        const item = await createScheduleItemApi(input);
-        setRemoteSchedule((items) => [...items, item]);
+        if (editingId) {
+          const item = await updateScheduleItemApi(editingId, input);
+          setRemoteSchedule((items) => items.map((i) => (i.id === editingId ? item : i)));
+        } else {
+          const item = await createScheduleItemApi(input as Partial<ScheduleItem>);
+          setRemoteSchedule((items) => [...items, item]);
+        }
       } else {
-        createScheduleItem(input);
+        createScheduleItem(input as ScheduleItem & Record<string, unknown>);
       }
       setScheduleForm(defaultScheduleForm);
+      setEditingId(null);
       hapticSuccess();
     } catch (error) {
       hapticError();
@@ -341,14 +370,12 @@ function Mainboard() {
 
     try {
       if (apiMode) {
-        let body = announcementForm.body;
-        if (links.length > 0) {
-          body += "\n\nLinks:\n" + links.map((l) => `${l.label}: ${l.url}`).join("\n");
-        }
         await createAnnouncementApi({
           title: announcementForm.title,
-          body,
-          type: announcementForm.type
+          body: announcementForm.body,
+          type: announcementForm.type,
+          tags: tags.length > 0 ? tags : undefined,
+          links: links.length > 0 ? links : undefined
         });
         const items = await listAnnouncements();
         setRemoteAnnouncements(items);
@@ -566,10 +593,19 @@ function Mainboard() {
       <section className="ops-panel">
         <div className="section-heading">
           <h3>Access list</h3>
-          <span>{users.length} users</span>
+          <span>{apiMode ? remoteUsers.length : users.length} users</span>
         </div>
         <div className="admin-list">
-          {users.map((person) => (
+          {(apiMode
+            ? remoteUsers.map((row) => ({
+                id: row.id as string,
+                name: row.name as string,
+                role: row.role as Role,
+                bureau: row.bureau as Bureau | undefined,
+                status: row.status as string
+              }))
+            : users
+          ).map((person) => (
             <article className="admin-row" key={person.id}>
               <div className="admin-row-main">
                 <strong>{person.name}</strong>
@@ -580,9 +616,15 @@ function Mainboard() {
               <div className="admin-row-controls">
                 <select
                   value={person.role}
-                  onChange={(event) => {
+                  onChange={async (event) => {
                     const role = event.target.value as Role;
-                    updateMockUser(person.id, { role, bureau: role === "student" || role === "mainboard" ? undefined : person.bureau || "Catering" });
+                    if (apiMode) {
+                      await updateUserApi(person.id, { role, bureau: role === "student" || role === "mainboard" ? null : (person.bureau || "Catering") }).then(() => {
+                        setRemoteUsers((items) => items.map((u) => (u.id === person.id ? { ...u, role, bureau: role === "student" || role === "mainboard" ? null : (u.bureau || "Catering") } : u)));
+                      }).catch(() => hapticError());
+                    } else {
+                      updateMockUser(person.id, { role, bureau: role === "student" || role === "mainboard" ? undefined : person.bureau || "Catering" });
+                    }
                     recordAuditLog({
                       action: "Updated user role",
                       table: "users",
@@ -600,9 +642,15 @@ function Mainboard() {
                 <select
                   value={person.bureau || "Catering"}
                   disabled={person.role === "student" || person.role === "mainboard"}
-                  onChange={(event) => {
+                  onChange={async (event) => {
                     const bureau = event.target.value as Bureau;
-                    updateMockUser(person.id, { bureau });
+                    if (apiMode) {
+                      await updateUserApi(person.id, { bureau }).then(() => {
+                        setRemoteUsers((items) => items.map((u) => (u.id === person.id ? { ...u, bureau } : u)));
+                      }).catch(() => hapticError());
+                    } else {
+                      updateMockUser(person.id, { bureau });
+                    }
                     recordAuditLog({
                       action: "Updated user bureau",
                       table: "users",
@@ -617,7 +665,18 @@ function Mainboard() {
                     </option>
                   ))}
                 </select>
-                <button className="danger-outline-button" type="button" disabled={person.id === user.id} onClick={() => revokeUser(person.id, person.name)}>
+                <button className="danger-outline-button" type="button" disabled={person.id === user.id} onClick={async () => {
+                    if (apiMode) {
+                      const confirmed = await confirmNative(`Revoke ${person.name}?`);
+                      if (!confirmed) return;
+                      await revokeUserApi(person.id).then(() => {
+                        setRemoteUsers((items) => items.filter((u) => u.id !== person.id));
+                      }).catch(() => hapticError());
+                      hapticSuccess();
+                    } else {
+                      revokeUser(person.id, person.name);
+                    }
+                  }}>
                   <Trash2 size={15} aria-hidden="true" />
                   <span>Revoke</span>
                 </button>
@@ -655,7 +714,7 @@ function Mainboard() {
       <form className="form-card" onSubmit={submitSchedule}>
         <div className="form-title">
           <CalendarPlus size={20} aria-hidden="true" />
-          <h3>Add programme item</h3>
+          <h3>{editingId ? "Edit programme item" : "Add programme item"}</h3>
         </div>
         <div className="form-grid">
           <label>
@@ -665,6 +724,25 @@ function Mainboard() {
           <label>
             <span>Venue</span>
             <input value={scheduleForm.venue} required onChange={(event) => setScheduleForm((current) => ({ ...current, venue: event.target.value }))} />
+          </label>
+          <label>
+            <span>Venue Code (for navigation)</span>
+            <select
+              value={scheduleForm.venueCode}
+              onChange={(event) => {
+                const v = venues.find((vn) => vn.code === event.target.value);
+                setScheduleForm((current) => ({
+                  ...current,
+                  venueCode: event.target.value,
+                  venue: v ? v.name : current.venue
+                }));
+              }}
+            >
+              <option value="">— None —</option>
+              {venues.map((v) => (
+                <option key={v.code} value={v.code}>{v.code} — {v.name}</option>
+              ))}
+            </select>
           </label>
         </div>
         <div className="form-grid">
@@ -755,7 +833,7 @@ function Mainboard() {
         </label>
         <button className="primary-button full-width" type="submit">
           <CalendarPlus size={16} aria-hidden="true" />
-          <span>Add to mock schedule</span>
+          <span>{editingId ? "Update schedule item" : "Add to mock schedule"}</span>
         </button>
       </form>
 
@@ -786,7 +864,34 @@ function Mainboard() {
                       <StatusBadge value={item.readinessStatus || "pending"} />
                     </div>
                   </div>
-                  <div className="admin-row-controls compact">
+                   <div className="admin-row-controls compact">
+                    <button
+                      className="outline-button"
+                      type="button"
+                      onClick={() => {
+                        setScheduleForm({
+                          date: item.date,
+                          day: item.day,
+                          week: item.week,
+                          scheduledStartTime: item.scheduledStartTime,
+                          scheduledEndTime: item.scheduledEndTime,
+                          title: item.title,
+                          venue: item.venue,
+                          tag: item.tag,
+                          audience: item.audience,
+                          description: item.description || "",
+                          notifyMinutesBefore: String(item.notifyMinutesBefore || 30),
+                          responsibleBureau: item.responsibleBureau as Bureau,
+                          readinessStatus: (item.readinessStatus || "pending") as NonNullable<ScheduleItem["readinessStatus"]>,
+                          preSessionTasks: Array.isArray(item.preSessionTasks) ? item.preSessionTasks.join(", ") : "",
+                          venueCode: item.venueCode || ""
+                        });
+                        setEditingId(item.id);
+                      }}
+                    >
+                      <PenLine size={15} aria-hidden="true" />
+                      <span>Edit</span>
+                    </button>
                     <button
                       className={item.isLive ? "danger-outline-button" : "verify-button"}
                       type="button"

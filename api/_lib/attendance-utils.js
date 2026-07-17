@@ -71,7 +71,8 @@ export function mapAttendanceProof(row, selfieDataUrl = "") {
     submittedAt: row.submitted_at,
     status: row.status,
     reviewedBy: row.reviewed_by || undefined,
-    reviewedAt: row.reviewed_at || undefined
+    reviewedAt: row.reviewed_at || undefined,
+    rejectionReason: row.rejection_reason || undefined
   };
 }
 
@@ -157,17 +158,21 @@ export async function resubmitRejectedAttendanceProof({ id, selfiePath }) {
   return Array.isArray(rows) ? rows[0] : undefined;
 }
 
-export async function updateAttendanceReview({ proofId, reviewerId, status }) {
+export async function updateAttendanceReview({ proofId, reviewerId, status, rejectionReason }) {
+  const updateBody = {
+    status,
+    reviewed_by: reviewerId,
+    reviewed_at: new Date().toISOString()
+  };
+  if (rejectionReason !== undefined) {
+    updateBody.rejection_reason = rejectionReason || null;
+  }
   const rows = await supabaseRequest(`/attendance_proofs?id=eq.${encodeURIComponent(proofId)}&select=${PROOF_SELECT}`, {
     method: "PATCH",
     headers: {
       Prefer: "return=representation"
     },
-    body: {
-      status,
-      reviewed_by: reviewerId,
-      reviewed_at: new Date().toISOString()
-    }
+    body: updateBody
   });
   return Array.isArray(rows) ? rows[0] : undefined;
 }

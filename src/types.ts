@@ -131,6 +131,7 @@ export interface AttendanceProof {
   status: AttendanceStatus;
   reviewedBy?: string;
   reviewedAt?: string;
+  rejectionReason?: string;
 }
 
 export interface BureauOperation {

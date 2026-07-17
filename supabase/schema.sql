@@ -180,7 +180,9 @@ create table if not exists public.banners (
   type text not null check (type in ('info', 'success', 'warning', 'emergency')),
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
-  expires_at timestamptz
+  expires_at timestamptz,
+  tags text[] default '{}',
+  links jsonb default '[]'
 );
 
 create table if not exists public.notifications (
@@ -291,3 +293,10 @@ create index if not exists student_attendance_status_idx on public.student_atten
 
 create index if not exists static_locations_code_idx on public.static_locations (code);
 create index if not exists static_routes_from_to_idx on public.static_routes (from_venue_code, to_venue_code);
+
+-- Phase 8: extend banners with tags and links (production finalization)
+alter table public.banners add column if not exists tags text[] default '{}';
+alter table public.banners add column if not exists links jsonb default '[]';
+
+-- Phase 8: add rejection reason to attendance proofs
+alter table public.attendance_proofs add column if not exists rejection_reason text;

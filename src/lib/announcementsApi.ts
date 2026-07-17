@@ -36,7 +36,7 @@ export async function listAnnouncements() {
   return payload.items;
 }
 
-export async function createAnnouncement(input: { title: string; body: string; type: string }) {
+export async function createAnnouncement(input: { title: string; body: string; type: string; tags?: string[]; links?: { label: string; url: string }[] }) {
   const payload = (await rpc("announcements.create", input as Record<string, unknown>)) as AnnouncementResponse;
   return payload.item;
 }

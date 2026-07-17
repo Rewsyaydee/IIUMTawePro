@@ -45,3 +45,8 @@ export async function publishScheduleItem(id: string, isLive: boolean, readiness
   const payload = (await rpc("schedule.publish", { id, isLive, readinessStatus })) as ScheduleItemResponse;
   return payload.item;
 }
+
+export async function updateScheduleItem(id: string, input: Partial<ScheduleItem> & Record<string, unknown>) {
+  const payload = (await rpc("schedule.update", { id, ...input })) as ScheduleItemResponse;
+  return payload.item;
+}

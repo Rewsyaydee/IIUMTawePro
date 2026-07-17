@@ -48,14 +48,14 @@ export async function submitAttendanceProof(selfieDataUrl: string) {
   return payload.proof;
 }
 
-export async function reviewAttendanceProof(id: string, status: Extract<AttendanceStatus, "sent_to_mainboard" | "rejected">) {
+export async function reviewAttendanceProof(id: string, status: Extract<AttendanceStatus, "sent_to_mainboard" | "rejected">, rejectionReason?: string) {
   const response = await fetch(`${apiBase()}/api/attendance/proofs/${encodeURIComponent(id)}/review`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...sessionHeaders()
     },
-    body: JSON.stringify({ status })
+    body: JSON.stringify({ status, rejectionReason })
   });
   const payload = (await response.json()) as AttendanceProofResponse;
   if (!response.ok) {
