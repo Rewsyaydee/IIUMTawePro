@@ -1,3 +1,5 @@
+import { getTelegramWebApp } from "./telegram";
+
 export interface Coordinates {
   lat: number;
   lng: number;
@@ -26,7 +28,34 @@ export function isWithinRadius(
   return calculateDistance(user, venue) <= radiusMeters;
 }
 
-export function getCurrentPosition(): Promise<Coordinates> {
+function getTelegramLocation(): Promise<Coordinates> {
+  return new Promise((resolve, reject) => {
+    const webApp = getTelegramWebApp();
+    const lm = webApp?.LocationManager;
+    if (!lm || typeof lm.getLocation !== "function") {
+      reject(new Error("NO_LOCATION_MANAGER"));
+      return;
+    }
+
+    const requestLocation = () => {
+      lm.getLocation((data) => {
+        if (data && typeof data.latitude === "number" && typeof data.longitude === "number") {
+          resolve({ lat: data.latitude, lng: data.longitude });
+        } else {
+          reject(new Error("Location permission denied. Please enable location access in Telegram settings."));
+        }
+      });
+    };
+
+    if (lm.isInited) {
+      requestLocation();
+    } else {
+      lm.init(() => requestLocation());
+    }
+  });
+}
+
+function getBrowserLocation(): Promise<Coordinates> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error("Geolocation is not supported by this browser."));
@@ -41,6 +70,15 @@ export function getCurrentPosition(): Promise<Coordinates> {
       (error) => reject(new Error(getGeoErrorMessage(error))),
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
     );
+  });
+}
+
+export function getCurrentPosition(): Promise<Coordinates> {
+  return getTelegramLocation().catch((err) => {
+    if (err?.message === "NO_LOCATION_MANAGER") {
+      return getBrowserLocation();
+    }
+    throw err;
   });
 }
 

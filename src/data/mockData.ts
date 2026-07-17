@@ -30,7 +30,9 @@ export const mockUsers: MockUser[] = [
     id: "u-student",
     telegramId: "guest",
     name: "Guest Student",
-    role: "student"
+    role: "student",
+    matricNumber: "2212345",
+    kulliyyah: "KICT"
   },
   {
     id: "u-committee",

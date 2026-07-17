@@ -143,7 +143,9 @@ export function mapSupabaseUser(row) {
     telegramId: row.telegram_id,
     name: row.name,
     role: row.role,
-    bureau: row.bureau || undefined
+    bureau: row.bureau || undefined,
+    matricNumber: row.matric_number || undefined,
+    kulliyyah: row.kulliyyah || undefined
   };
 }
 
@@ -168,7 +170,7 @@ export async function getUserByTelegramId(telegramId) {
 export async function upsertUserProfile({ telegramId, name, role, bureau }) {
   const normalizedRole = role || "student";
   const normalizedBureau = normalizedRole === "student" || normalizedRole === "mainboard" ? null : bureau || null;
-  const rows = await supabaseRequest("/users?on_conflict=telegram_id&select=id,telegram_id,name,role,bureau", {
+  const rows = await supabaseRequest("/users?on_conflict=telegram_id&select=id,telegram_id,name,role,bureau,matric_number,kulliyyah", {
     method: "POST",
     headers: {
       Prefer: "resolution=merge-duplicates,return=representation"

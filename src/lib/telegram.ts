@@ -14,6 +14,28 @@ type TelegramHaptics = {
 
 type TelegramThemeParams = Record<string, string | undefined>;
 
+type TelegramLocationData = {
+  latitude: number;
+  longitude: number;
+  altitude: number | null;
+  course: number | null;
+  speed: number | null;
+  horizontal_accuracy: number | null;
+  vertical_accuracy: number | null;
+  course_accuracy: number | null;
+  speed_accuracy: number | null;
+};
+
+type TelegramLocationManager = {
+  isInited: boolean;
+  isLocationAvailable: boolean;
+  isAccessRequested: boolean;
+  isAccessGranted: boolean;
+  init: (callback?: () => void) => void;
+  getLocation: (callback: (data: TelegramLocationData | null) => void) => void;
+  openSettings: () => void;
+};
+
 export type TelegramWebApp = {
   initData: string;
   initDataUnsafe?: {
@@ -35,6 +57,7 @@ export type TelegramWebApp = {
   BottomButton?: TelegramButton;
   SecondaryButton?: TelegramButton;
   HapticFeedback?: TelegramHaptics;
+  LocationManager?: TelegramLocationManager;
   isFullscreen?: boolean;
   ready: () => void;
   expand: () => void;

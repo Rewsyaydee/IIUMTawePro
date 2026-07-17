@@ -143,7 +143,9 @@ export function userFromTelegram({ telegramUser, role = "student", bureau, displ
     telegramId,
     name,
     role,
-    bureau: role === "student" || role === "mainboard" ? undefined : bureau
+    bureau: role === "student" || role === "mainboard" ? undefined : bureau,
+    matricNumber: undefined,
+    kulliyyah: undefined
   };
 }
 
