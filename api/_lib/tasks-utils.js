@@ -83,3 +83,47 @@ export async function updateTaskStatus({ id, status, user }) {
   }
   return record;
 }
+
+export async function updateTaskDetails({ id, fields, user }) {
+  const patch = { updated_at: new Date().toISOString() };
+  if (fields.title !== undefined) patch.title = fields.title;
+  if (fields.description !== undefined) patch.description = fields.description;
+  if (fields.dueDate !== undefined) patch.due_date = fields.dueDate;
+  if (fields.dueTime !== undefined) patch.due_time = fields.dueTime;
+  if (fields.assignedTo !== undefined) patch.assigned_to = fields.assignedTo;
+  if (fields.priority !== undefined) patch.priority = fields.priority;
+  if (fields.bureau !== undefined) patch.bureau = fields.bureau;
+  const rows = await supabaseRequest(`/poa_tasks?id=eq.${encodeURIComponent(id)}&select=${TASK_SELECT}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body: patch
+  });
+  const record = Array.isArray(rows) ? rows[0] : undefined;
+  if (record) {
+    await createAuditLog({
+      actor: user,
+      action: "edited_task",
+      tableName: "poa_tasks",
+      recordId: id,
+      details: `Task "${record.title}" details updated.`
+    });
+  }
+  return record;
+}
+
+export async function deleteTaskRecord({ id, user }) {
+  const existing = await supabaseRequest(`/poa_tasks?id=eq.${encodeURIComponent(id)}&select=title&limit=1`);
+  const title = (Array.isArray(existing) ? existing[0]?.title : undefined) || "Unknown";
+  await supabaseRequest(`/poa_tasks?id=eq.${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" }
+  });
+  await createAuditLog({
+    actor: user,
+    action: "deleted_task",
+    tableName: "poa_tasks",
+    recordId: id,
+    details: `Task "${title}" deleted.`
+  });
+  return { deleted: true };
+}

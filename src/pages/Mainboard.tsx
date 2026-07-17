@@ -159,7 +159,7 @@ function Mainboard() {
   const [inviteForm, setInviteForm] = useState({
     role: "committee" as AdminRole,
     bureau: "Catering" as Bureau,
-    expiresAt: "2026-03-15T23:59"
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
   });
   const [userForm, setUserForm] = useState({
     name: "New Committee",
@@ -169,6 +169,8 @@ function Mainboard() {
   });
   const [scheduleForm, setScheduleForm] = useState(defaultScheduleForm);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [emergencyError, setEmergencyError] = useState("");
+  const [noticeError, setNoticeError] = useState("");
   const [announcementForm, setAnnouncementForm] = useState({
     title: "",
     body: "",
@@ -235,8 +237,10 @@ function Mainboard() {
         });
       }
       setEmergencyForm((current) => ({ ...current, body: "" }));
+      setEmergencyError("");
       hapticSuccess();
-    } catch {
+    } catch (err) {
+      setEmergencyError(err instanceof Error ? err.message : "Emergency broadcast failed. Check bot token is configured.");
       hapticError();
     }
   };
@@ -262,8 +266,10 @@ function Mainboard() {
         });
       }
       setNoticeForm((current) => ({ ...current, body: "" }));
+      setNoticeError("");
       hapticSuccess();
-    } catch {
+    } catch (err) {
+      setNoticeError(err instanceof Error ? err.message : "Notification failed to send.");
       hapticError();
     }
   };
@@ -923,6 +929,13 @@ function Mainboard() {
 
   const renderNotices = () => (
     <>
+      {noticeError && (
+        <div className="banner banner-emergency" style={{ marginBottom: 12 }}>
+          <AlertTriangle size={18} />
+          <div><strong>Notice failed</strong><p>{noticeError}</p></div>
+          <button className="icon-button" onClick={() => setNoticeError("")}>×</button>
+        </div>
+      )}
       <form className="form-card" onSubmit={submitNotice}>
         <div className="form-title">
           <Megaphone size={20} aria-hidden="true" />
@@ -977,6 +990,13 @@ function Mainboard() {
         </button>
       </form>
 
+      {emergencyError && (
+        <div className="banner banner-emergency" style={{ marginBottom: 12 }}>
+          <AlertTriangle size={18} />
+          <div><strong>Emergency broadcast failed</strong><p>{emergencyError}</p></div>
+          <button className="icon-button" onClick={() => setEmergencyError("")}>×</button>
+        </div>
+      )}
       <form className="form-card emergency-card" onSubmit={submitEmergency}>
         <div className="form-title">
           <AlertTriangle size={20} aria-hidden="true" />
@@ -1034,7 +1054,7 @@ function Mainboard() {
           <span>{notifications.length} records</span>
         </div>
         <div className="notification-list">
-          {notifications.map((notification) => (
+          {notifications.slice(0, 20).map((notification) => (
             <article key={notification.id}>
               <BellRing size={16} aria-hidden="true" />
               <div>
@@ -1047,6 +1067,11 @@ function Mainboard() {
             </article>
           ))}
         </div>
+        {notifications.length > 20 && (
+          <p className="muted" style={{ textAlign: "center", padding: 8 }}>
+            Showing 20 of {notifications.length} notifications. Older entries omitted for performance.
+          </p>
+        )}
       </section>
     </>
   );

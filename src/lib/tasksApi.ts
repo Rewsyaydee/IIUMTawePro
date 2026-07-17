@@ -50,3 +50,12 @@ export async function updateTaskStatus(id: string, status: TaskStatus) {
   const payload = (await rpc("tasks.update", { id, status })) as TaskResponse;
   return payload.task;
 }
+
+export async function updateTaskDetails(id: string, fields: Partial<PoaTask>) {
+  const payload = (await rpc("tasks.edit", { id, ...fields })) as TaskResponse;
+  return payload.task;
+}
+
+export async function deleteTaskApi(id: string) {
+  await rpc("tasks.delete", { id });
+}

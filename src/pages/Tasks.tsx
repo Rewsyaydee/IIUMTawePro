@@ -1,10 +1,10 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ClipboardCheck, Plus } from "lucide-react";
+import { ClipboardCheck, PenLine, Plus, Trash2 } from "lucide-react";
 import { BUREAUS } from "../constants";
 import { authSessionChangedEvent, shouldUseApiAuth } from "../lib/apiAuth";
 import { hapticError, hapticImpact } from "../lib/telegram";
-import { createTask as createTaskApi, listTasks, updateTaskStatus as updateTaskStatusApi } from "../lib/tasksApi";
+import { createTask as createTaskApi, deleteTaskApi, listTasks, updateTaskDetails as updateTaskDetailsApi, updateTaskStatus as updateTaskStatusApi } from "../lib/tasksApi";
 import { StatusBadge } from "../components/StatusBadge";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
@@ -15,18 +15,21 @@ const priorities: Priority[] = ["low", "medium", "high", "critical"];
 
 function Tasks() {
   const { user } = useMockUser();
-  const { tasks, updateTaskStatus, addTask } = useMockData();
+  const { tasks, updateTaskStatus, addTask, updateTaskDetails, deleteTask } = useMockData();
   const apiMode = shouldUseApiAuth();
   const [remoteTasks, setRemoteTasks] = useState<PoaTask[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [authRefreshTick, setAuthRefreshTick] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
   const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const todayStr = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({
     bureau: user.bureau || "Welfare",
     title: "",
     description: "",
-    dueDate: "2026-07-14",
+    dueDate: todayStr,
     dueTime: "09:00",
     assignedTo: "",
     priority: "medium"
@@ -86,35 +89,39 @@ function Tasks() {
     event.preventDefault();
     setErrorMessage("");
 
+    const fields = {
+      bureau: form.bureau as Bureau,
+      title: form.title,
+      description: form.description,
+      dueDate: form.dueDate,
+      dueTime: form.dueTime,
+      assignedTo: form.assignedTo || user.name,
+      priority: form.priority as Priority
+    };
+
     try {
-      if (apiMode) {
-        const task = await createTaskApi({
-          bureau: form.bureau as Bureau,
-          title: form.title,
-          description: form.description,
-          dueDate: form.dueDate,
-          dueTime: form.dueTime,
-          assignedTo: form.assignedTo || user.name,
-          priority: form.priority as Priority
-        });
-        setRemoteTasks((items) => [task, ...items]);
+      if (editingId) {
+        if (apiMode) {
+          const updated = await updateTaskDetailsApi(editingId, fields);
+          setRemoteTasks((items) => items.map((item) => (item.id === editingId ? updated : item)));
+        } else {
+          updateTaskDetails(editingId, fields);
+        }
+        setEditingId(null);
       } else {
-        addTask({
-          bureau: form.bureau as Bureau,
-          title: form.title,
-          description: form.description,
-          dueDate: form.dueDate,
-          dueTime: form.dueTime,
-          assignedTo: form.assignedTo || user.name,
-          priority: form.priority as Priority
-        });
+        if (apiMode) {
+          const task = await createTaskApi(fields);
+          setRemoteTasks((items) => [task, ...items]);
+        } else {
+          addTask(fields);
+        }
       }
 
       setForm((current) => ({ ...current, title: "", description: "", assignedTo: "" }));
       setFormOpen(false);
       hapticImpact("medium");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Failed to create task.");
+      setErrorMessage(error instanceof Error ? error.message : "Failed to save task.");
       hapticError();
     }
   };
@@ -132,6 +139,36 @@ function Tasks() {
       setErrorMessage(error instanceof Error ? error.message : "Failed to update task.");
       hapticError();
     }
+  };
+
+  const handleDeleteTask = async (id: string) => {
+    try {
+      if (apiMode) {
+        await deleteTaskApi(id);
+        setRemoteTasks((items) => items.filter((item) => item.id !== id));
+      } else {
+        deleteTask(id);
+      }
+      setConfirmDelete(null);
+      hapticImpact("medium");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to delete task.");
+      hapticError();
+    }
+  };
+
+  const startEdit = (task: PoaTask) => {
+    setForm({
+      bureau: task.bureau,
+      title: task.title,
+      description: task.description,
+      dueDate: task.dueDate,
+      dueTime: task.dueTime,
+      assignedTo: task.assignedTo,
+      priority: task.priority
+    });
+    setEditingId(task.id);
+    setFormOpen(true);
   };
 
   return (
@@ -225,10 +262,17 @@ function Tasks() {
               ))}
             </select>
           </label>
-          <button className="primary-button full-width" type="submit">
-            <Plus size={16} aria-hidden="true" />
-            <span>Create task</span>
-          </button>
+          <div className="form-actions">
+            <button className="primary-button" type="submit">
+              <Plus size={16} aria-hidden="true" />
+              <span>{editingId ? "Save changes" : "Create task"}</span>
+            </button>
+            {editingId && (
+              <button className="outline-button" type="button" onClick={() => { setEditingId(null); setFormOpen(false); }}>
+                Cancel
+              </button>
+            )}
+          </div>
         </motion.form>
       )}
 
@@ -263,6 +307,26 @@ function Tasks() {
               <div className="task-meta">
                 <span>{task.bureau}</span>
                 <span>{task.assignedTo}</span>
+              </div>
+              <div className="review-actions" style={{ marginBottom: 8 }}>
+                <button type="button" className="outline-button" onClick={() => startEdit(task)}>
+                  <PenLine size={14} aria-hidden="true" />
+                  <span>Edit</span>
+                </button>
+                {confirmDelete === task.id ? (
+                  <div className="rejection-form">
+                    <span style={{ fontSize: "0.85rem" }}>Delete this task?</span>
+                    <div className="rejection-form-actions">
+                      <button type="button" className="outline-button" onClick={() => setConfirmDelete(null)}>No</button>
+                      <button type="button" className="danger-outline-button" onClick={() => handleDeleteTask(task.id)}>Yes, delete</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button type="button" className="danger-outline-button" onClick={() => setConfirmDelete(task.id)}>
+                    <Trash2 size={14} aria-hidden="true" />
+                    <span>Delete</span>
+                  </button>
+                )}
               </div>
               <div className="segmented-actions">
                 {statuses.map((status) => (

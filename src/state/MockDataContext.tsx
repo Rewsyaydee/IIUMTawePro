@@ -78,6 +78,8 @@ type MockDataContextValue = {
   updateReportStatus: (id: string, status: WellbeingReport["status"]) => void;
   updateTaskStatus: (id: string, status: TaskStatus) => void;
   addTask: (input: TaskInput) => PoaTask;
+  updateTaskDetails: (id: string, fields: Partial<PoaTask>) => void;
+  deleteTask: (id: string) => void;
   submitAttendanceProof: (input: AttendanceInput) => AttendanceProof;
   reviewAttendanceProof: (id: string, status: Extract<AttendanceStatus, "sent_to_mainboard" | "rejected">, rejectionReason?: string) => void;
   submitStudentAttendance: (input: { blockId: string; blockLabel: string; studentName: string; matricNumber: string; kulliyyah?: string; latitude: number; longitude: number; note?: string }) => StudentAttendance;
@@ -283,6 +285,27 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
         details: `${next.title} assigned to ${next.assignedTo}.`
       });
       return next;
+    };
+
+    const updateTaskDetails = (id: string, fields: Partial<PoaTask>) => {
+      setTasks((items) => items.map((item) => (item.id === id ? { ...item, ...fields } : item)));
+      recordAuditLog({
+        action: "Edited task",
+        table: "poa_tasks",
+        recordId: id,
+        details: `Task details updated.`
+      });
+    };
+
+    const deleteTask = (id: string) => {
+      const task = tasks.find((t) => t.id === id);
+      setTasks((items) => items.filter((item) => item.id !== id));
+      recordAuditLog({
+        action: "Deleted task",
+        table: "poa_tasks",
+        recordId: id,
+        details: task ? `Task "${task.title}" deleted.` : "Task deleted."
+      });
     };
 
     const submitAttendanceProof = (input: AttendanceInput) => {
@@ -643,6 +666,8 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
       updateReportStatus,
       updateTaskStatus,
       addTask,
+      updateTaskDetails,
+      deleteTask,
       submitAttendanceProof,
       reviewAttendanceProof,
       submitStudentAttendance,

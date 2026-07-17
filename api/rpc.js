@@ -3,7 +3,7 @@ import { createAuditLog, getUserById, supabaseRequest } from "./_lib/supabase.js
 import { verifyAppSessionFromRequest } from "./_lib/auth-utils.js";
 
 import { insertReport, listReportsForUser, mapWellbeingReport, updateReportStatus, validateReportInput } from "./_lib/wellbeing-utils.js";
-import { insertTask, listTasksForUser, mapPoaTask, updateTaskStatus } from "./_lib/tasks-utils.js";
+import { insertTask, listTasksForUser, mapPoaTask, updateTaskStatus, updateTaskDetails, deleteTaskRecord } from "./_lib/tasks-utils.js";
 import { listOperationsForUser, mapBureauOperation, updateOperationStatus } from "./_lib/bureau-ops-utils.js";
 import { broadcastToTargets } from "./_lib/telegram-bot.js";
 
@@ -145,6 +145,19 @@ export default async function handler(req, res) {
         if (!row) return sendJson(res, 404, { error: "Task not found." });
         return sendJson(res, 200, { task: mapPoaTask(row) });
       }
+      case "tasks.edit": {
+        if (!user || (user.role !== "mainboard" && user.role !== "head")) return sendJson(res, 403, { error: "Mainboard or head only." });
+        if (!body.id) return sendJson(res, 400, { error: "Task ID is required." });
+        const row = await updateTaskDetails({ id: body.id, fields: body, user });
+        if (!row) return sendJson(res, 404, { error: "Task not found." });
+        return sendJson(res, 200, { task: mapPoaTask(row) });
+      }
+      case "tasks.delete": {
+        if (!user || (user.role !== "mainboard" && user.role !== "head")) return sendJson(res, 403, { error: "Mainboard or head only." });
+        if (!body.id) return sendJson(res, 400, { error: "Task ID is required." });
+        await deleteTaskRecord({ id: body.id, user });
+        return sendJson(res, 200, { deleted: true });
+      }
 
       // ── BUREAU OPS ──
       case "ops.list": {
@@ -198,7 +211,10 @@ export default async function handler(req, res) {
         if (!body.id) return sendJson(res, 400, { error: "Schedule item ID is required." });
         const patch = {};
         if (typeof body.isLive === "boolean") patch.is_live = body.isLive;
-        if (body.readinessStatus) patch.readiness_status = body.readinessStatus;
+        if (body.readinessStatus) {
+          if (!["pending", "ready", "issues"].includes(body.readinessStatus)) return sendJson(res, 400, { error: "Invalid readiness status. Use pending, ready, or issues." });
+          patch.readiness_status = body.readinessStatus;
+        }
         if (Object.keys(patch).length === 0) return sendJson(res, 400, { error: "No update fields provided." });
         patch.updated_at = new Date().toISOString();
         const rows = await supabaseRequest(`/schedule_items?id=eq.${encodeURIComponent(body.id)}&select=${SCHEDULE_SELECT}`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: patch });

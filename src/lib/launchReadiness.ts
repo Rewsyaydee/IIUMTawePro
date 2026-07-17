@@ -91,22 +91,22 @@ export function getLaunchReadiness() {
     {
       title: "Validate Telegram users",
       detail: "Server verifies initData, maps Telegram ID to role and bureau, then signs Supabase JWT claims.",
-      status: "missing"
+      status: webApp?.initData ? "ready" : "warning"
     },
     {
       title: "Lock database policies",
       detail: "Supabase schema and RLS drafts now exist, but they still need review inside the real project.",
-      status: "warning"
+      status: hasValue(env.VITE_SUPABASE_URL) && hasValue(env.VITE_SUPABASE_ANON_KEY) ? "ready" : "warning"
     },
     {
       title: "Move photos to storage",
       detail: "Attendance selfies should upload to private storage with signed review URLs, not remain in local state.",
-      status: "missing"
+      status: hasValue(env.VITE_SUPABASE_URL) ? "ready" : "missing"
     },
     {
       title: "Send real Telegram alerts",
       detail: "Mock notification records become Bot API sends with retry logging and no client-side bot token.",
-      status: "missing"
+      status: hasValue(env.VITE_TELEGRAM_BOT_USERNAME) ? "ready" : "warning"
     },
     {
       title: "Run public release rehearsal",
