@@ -1,6 +1,8 @@
 export type { Venue, VenueCategory, Route, RouteStep } from "./types";
 export { venues, getVenue } from "./data/venues";
 export { routes, getRoute } from "./data/routes";
+export { locationCoords, getLocationCoord, hasExactCoords } from "./data/locations";
+export type { LocationCoord } from "./data/locations";
 export { allMahallahs, maleMahallahs, femaleMahallahs, mixedMahallahs, getMahallah } from "./data/mahallahs";
 export type { Mahallah } from "./data/mahallahs";
 export { mapAssetUrl, campusOverviewUrl } from "./data/mapAssets";
