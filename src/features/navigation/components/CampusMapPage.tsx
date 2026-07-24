@@ -13,6 +13,7 @@ import { campusOverviewUrl } from "../data/mapAssets";
 import { venues, getVenue } from "../data/venues";
 import { allMahallahs } from "../data/mahallahs";
 import { kulliyyahs } from "../data/kulliyyahs";
+import { getLocationCoord } from "../data/locations";
 import type { Route } from "../types";
 import { useRoutePlanner } from "../hooks/useRoutePlanner";
 import { RouteMapViewer } from "./RouteMapViewer";
@@ -104,6 +105,11 @@ function resolveDisplayName(code: string): string {
   return code;
 }
 
+function isKulliyyahOrMahallah(code: string): boolean {
+  const loc = getLocationCoord(code);
+  return loc !== undefined && (loc.type === "kulliyyah" || loc.type === "mahallah");
+}
+
 function CampusMapPage() {
   const options = useMemo(() => buildOptions(), []);
   const grouped = useMemo(() => groupOptions(options), [options]);
@@ -121,8 +127,7 @@ function CampusMapPage() {
     setActiveRoute(found || null);
   };
 
-  const fromName = fromCode ? resolveDisplayName(fromCode) : "";
-  const toName = toCode ? resolveDisplayName(toCode) : "";
+  const isExternalOnly = isKulliyyahOrMahallah(fromCode) || isKulliyyahOrMahallah(toCode);
 
   return (
     <section className="page-stack">
@@ -213,7 +218,18 @@ function CampusMapPage() {
             transition={{ duration: 0.2 }}
             style={{ display: "grid", gap: "14px" }}
           >
-            {activeRoute ? (
+            {isExternalOnly ? (
+              <div className="route-placeholder">
+                <div className="route-placeholder-image">
+                  <Navigation size={48} aria-hidden="true" />
+                  <p>External directions only</p>
+                  <span>
+                    Use the map links below for walking directions to{" "}
+                    <strong>{resolveDisplayName(toCode || fromCode)}</strong>.
+                  </span>
+                </div>
+              </div>
+            ) : activeRoute ? (
               <>
                 <RouteSummaryBar route={activeRoute} />
 
@@ -249,21 +265,21 @@ function CampusMapPage() {
               <div className="directions-buttons">
                 <button
                   className="directions-btn"
-                  onClick={() => openExternalMap(googleMapsWalkingUrl(fromName, toName))}
+                  onClick={() => openExternalMap(googleMapsWalkingUrl(fromCode, toCode))}
                 >
                   <MapPin size={15} />
                   <span>Google Maps</span>
                 </button>
                 <button
                   className="directions-btn"
-                  onClick={() => openExternalMap(wazeUrl(toName))}
+                  onClick={() => openExternalMap(wazeUrl(toCode))}
                 >
                   <Navigation size={15} />
                   <span>Waze</span>
                 </button>
                 <button
                   className="directions-btn"
-                  onClick={() => openExternalMap(appleMapsUrl(fromName, toName))}
+                  onClick={() => openExternalMap(appleMapsUrl(fromCode, toCode))}
                 >
                   <span style={{ fontSize: "16px", fontWeight: 900 }}>&#x2318;</span>
                   <span>Apple Maps</span>

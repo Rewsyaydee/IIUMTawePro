@@ -7,7 +7,8 @@ export const kulliyyahs = [
   { code: "koed", name: "Kulliyyah of Education", short: "KOED", search: "KOED IIUM Gombak", image_url: "" },
   { code: "aikol", name: "Ahmad Ibrahim Kulliyyah of Laws", short: "AIKOL", search: "AIKOL IIUM Gombak", image_url: "" },
   { code: "kaed", name: "Kulliyyah of Architecture & Environmental Design", short: "KAED", search: "KAED IIUM Gombak", image_url: "" },
-  { code: "ahaskirkhs", name: "Abdul Hamid Abu Sulayman Kulliyyah of Islamic Revealed Knowledge and Human Sciences", short: "AHAS KIRKHS", search: "AHAS KIRKHS IIUM Gombak", image_url: "" }
+  { code: "ahaskirkhs", name: "Abdul Hamid Abu Sulayman Kulliyyah of Islamic Revealed Knowledge and Human Sciences", short: "AHAS KIRKHS", search: "AHAS KIRKHS IIUM Gombak", image_url: "" },
+  { code: "celpad", name: "CELPAD", short: "CELPAD", search: "CELPAD IIUM Gombak", image_url: "" }
 ];
 
 export type Kulliyyah = typeof kulliyyahs[number];
