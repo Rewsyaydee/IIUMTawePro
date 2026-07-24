@@ -2,7 +2,17 @@ import type { ScheduleItem } from "../types";
 
 export type ScheduleStatus = "done" | "live" | "upcoming";
 
-const demoNow = new Date(2026, 6, 15, 10, 0);
+const EVENT_WEEK_MONDAY = new Date(2026, 6, 13); // July 13, 2026
+
+export function getVirtualScheduleDate(now: Date = new Date()): Date {
+  const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, 2=Tue, ... 6=Sat
+  const offset = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Mon→0, Tue→1, ..., Sun→6
+
+  const virtual = new Date(EVENT_WEEK_MONDAY);
+  virtual.setDate(EVENT_WEEK_MONDAY.getDate() + offset);
+  virtual.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+  return virtual;
+}
 
 export function scheduleDateTime(date: string, time: string) {
   const [year, month, day] = date.split("-").map(Number);
@@ -23,7 +33,7 @@ export function getScheduleClock(items: ScheduleItem[], now = new Date()) {
     return { now, isDemo: false };
   }
 
-  return { now: demoNow, isDemo: true };
+  return { now: getVirtualScheduleDate(now), isDemo: true };
 }
 
 export function getScheduleStatus(item: ScheduleItem, now: Date): ScheduleStatus {

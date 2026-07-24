@@ -2,6 +2,8 @@ function toMinutes(hours: number, minutes: number): number {
   return hours * 60 + minutes;
 }
 
+export { getVirtualScheduleDate } from "./scheduleTime";
+
 function isBetween(value: number, start: number, end: number): boolean {
   return value >= start && value < end;
 }

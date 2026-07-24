@@ -16,10 +16,10 @@ import { hapticError, hapticImpact, hapticSuccess } from "../lib/telegram";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 import type { AttendanceProof, ClockType, CommitteeDailyStatus } from "../types";
-import { getClockWindowMessage, getDailyAttendanceStatus, isWithinClockInWindow, isWithinClockOutWindow } from "../lib/attendanceTime";
+import { getClockWindowMessage, getDailyAttendanceStatus, getVirtualScheduleDate, isWithinClockInWindow, isWithinClockOutWindow } from "../lib/attendanceTime";
 
 function todayKey() {
-  const now = new Date();
+  const now = getVirtualScheduleDate();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
@@ -83,7 +83,7 @@ function Attendance() {
   };
 
   const clockWindow = useMemo(() => {
-    const now = new Date();
+    const now = getVirtualScheduleDate();
     return {
       ...getClockWindowMessage(now),
       isClockInOpen: isWithinClockInWindow(now),
@@ -108,7 +108,7 @@ function Attendance() {
   const canResubmitClockOut = ownClockOutProof?.status === "rejected";
 
   const dailyStatus: CommitteeDailyStatus = useMemo(
-    () => getDailyAttendanceStatus(clockInSubmitted, clockOutSubmitted),
+    () => getDailyAttendanceStatus(clockInSubmitted, clockOutSubmitted, getVirtualScheduleDate()),
     [clockInSubmitted, clockOutSubmitted]
   );
 
@@ -143,7 +143,7 @@ function Attendance() {
       return;
     }
 
-    const now = new Date();
+    const now = getVirtualScheduleDate();
     const inWindow =
       clockType === "clock-in" ? isWithinClockInWindow(now) : isWithinClockOutWindow(now);
 
