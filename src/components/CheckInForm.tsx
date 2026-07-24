@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle2, MapPin, Loader2, AlertCircle } from "lucide-react";
+import { ThinkingOrb } from "thinking-orbs";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 import { shouldUseApiAuth } from "../lib/apiAuth";
@@ -220,7 +221,7 @@ export function CheckInForm({ blockLabel, blockId, venueCodes, onDone }: CheckIn
         disabled={!canSubmit}
         onClick={handleSubmit}
       >
-        {submitting ? "Submitting..." : "Submit Check-In"}
+        {submitting ? <ThinkingOrb state="solving" size={20} /> : "Submit Check-In"}
       </button>
     </motion.div>
   );

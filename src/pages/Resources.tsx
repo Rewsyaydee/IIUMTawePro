@@ -1,7 +1,9 @@
-import { FileText, Phone, Shirt, Siren } from "lucide-react";
+import { FileText, Phone, Shirt, Siren, UtensilsCrossed } from "lucide-react";
 import { Link } from "react-router-dom";
 import { emergencyContacts } from "../data/mockData";
+import { couponCafes } from "../data/couponCafes";
 import { hapticImpact } from "../lib/telegram";
+import { motion } from "framer-motion";
 
 const brothersDressCode = [
   "White plain long-sleeve shirt, tucked in",
@@ -125,6 +127,39 @@ function Resources() {
                 <span>{contact.phone}</span>
               </div>
             </a>
+          ))}
+        </div>
+      </article>
+
+      <article className="resource-card stacked">
+        <div className="resource-heading">
+          <div className="resource-icon gold">
+            <UtensilsCrossed size={22} aria-hidden="true" />
+          </div>
+          <div>
+            <h3>Accepted Coupon Locations</h3>
+            <p>Cafes and eateries that accept Ta'aruf Week food coupons.</p>
+          </div>
+        </div>
+        <div className="coupon-cafe-grid">
+          {couponCafes.map((cafe, index) => (
+            <motion.div
+              className="coupon-cafe-card"
+              key={cafe.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.04 }}
+            >
+              <div className="coupon-cafe-name">
+                <UtensilsCrossed size={16} aria-hidden="true" />
+                <strong>{cafe.name}</strong>
+              </div>
+              <p className="coupon-cafe-location">{cafe.location}</p>
+              <div className="coupon-cafe-meta">
+                <span className="coupon-cafe-badge">{cafe.accepts}</span>
+                <span className="coupon-cafe-hours">{cafe.hours}</span>
+              </div>
+            </motion.div>
           ))}
         </div>
       </article>

@@ -20,6 +20,10 @@ export type Priority = "low" | "medium" | "high" | "critical";
 
 export type AttendanceStatus = "pending_review" | "sent_to_mainboard" | "rejected";
 
+export type ClockType = "clock-in" | "clock-out";
+
+export type CommitteeDailyStatus = "present" | "absent" | "pending";
+
 export type BureauOperationStatus = "pending" | "active" | "ready" | "issue" | "done";
 
 export type AdminRole = Exclude<Role, "student">;
@@ -129,6 +133,7 @@ export interface AttendanceProof {
   selfieDataUrl: string;
   submittedAt: string;
   status: AttendanceStatus;
+  clockType?: ClockType;
   reviewedBy?: string;
   reviewedAt?: string;
   rejectionReason?: string;

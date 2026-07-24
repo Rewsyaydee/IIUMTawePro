@@ -1,40 +1,128 @@
-import { useState } from "react";
-import { BookOpen, Building2, HeartPulse, Home, Map as MapIcon, MapPin, Navigation, Route as RouteIcon } from "lucide-react";
+import { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ArrowLeftRight,
+  ExternalLink,
+  Image as ImageIcon,
+  MapPin,
+  Navigation,
+  Route as RouteIcon,
+  Search
+} from "lucide-react";
 import { campusOverviewUrl } from "../data/mapAssets";
 import { venues, getVenue } from "../data/venues";
-import { routes } from "../data/routes";
-import type { Route, VenueCategory } from "../types";
+import { allMahallahs } from "../data/mahallahs";
+import { kulliyyahs } from "../data/kulliyyahs";
+import type { Route } from "../types";
 import { useRoutePlanner } from "../hooks/useRoutePlanner";
 import { RouteMapViewer } from "./RouteMapViewer";
-import { RoutePlannerModal } from "./RoutePlannerModal";
+import { RouteStepsList } from "./RouteStepsList";
+import { RouteSummaryBar } from "./RouteSummaryBar";
 import { EmptyState } from "../../../components/EmptyState";
-import { appleMapsUrl, googleMapsWalkingUrl, openExternalMap, wazeUrl } from "../utils/mapLinks";
+import {
+  appleMapsUrl,
+  googleMapsWalkingUrl,
+  openExternalMap,
+  wazeUrl
+} from "../utils/mapLinks";
 
-const categoryIcons: Record<VenueCategory, typeof MapPin> = {
-  hall: Building2,
-  mosque: BookOpen,
-  clinic: HeartPulse,
-  mahallah: Home,
-  admin: Building2,
-  open_area: MapPin
-};
+interface SelectOption {
+  code: string;
+  label: string;
+  group: string;
+  name: string;
+}
 
-const categoryLabels: Record<VenueCategory, string> = {
-  hall: "Halls & Auditoriums",
-  mosque: "Mosques",
-  clinic: "Health",
-  mahallah: "Mahallahs",
-  admin: "Admin",
-  open_area: "Other"
-};
+function buildOptions(): SelectOption[] {
+  const venueOptions: SelectOption[] = venues.map((v) => ({
+    code: v.code,
+    label: v.shortName,
+    group: "Venues",
+    name: v.name
+  }));
+
+  const kulliyyahOptions: SelectOption[] = kulliyyahs.map((k) => ({
+    code: k.code,
+    label: k.short,
+    group: "Kulliyyahs",
+    name: k.name
+  }));
+
+  const maleOptions: SelectOption[] = allMahallahs
+    .filter((m) => m.zone === "male")
+    .map((m) => ({
+      code: m.code,
+      label: m.short,
+      group: "Mahallahs (Male)",
+      name: m.name
+    }));
+
+  const femaleOptions: SelectOption[] = allMahallahs
+    .filter((m) => m.zone === "female")
+    .map((m) => ({
+      code: m.code,
+      label: m.short,
+      group: "Mahallahs (Female)",
+      name: m.name
+    }));
+
+  const mixedOptions: SelectOption[] = allMahallahs
+    .filter((m) => m.zone === "mixed")
+    .map((m) => ({
+      code: m.code,
+      label: m.short,
+      group: "Mahallahs (Mixed)",
+      name: m.name
+    }));
+
+  return [
+    ...venueOptions,
+    ...kulliyyahOptions,
+    ...maleOptions,
+    ...femaleOptions,
+    ...mixedOptions
+  ];
+}
+
+function groupOptions(options: SelectOption[]) {
+  const groups = new Map<string, SelectOption[]>();
+  for (const opt of options) {
+    const list = groups.get(opt.group) || [];
+    list.push(opt);
+    groups.set(opt.group, list);
+  }
+  return groups;
+}
+
+function resolveDisplayName(code: string): string {
+  const venue = getVenue(code);
+  if (venue) return venue.name;
+  const mahallah = allMahallahs.find((m) => m.code === code);
+  if (mahallah) return mahallah.name;
+  const k = kulliyyahs.find((k) => k.code === code);
+  if (k) return k.name;
+  return code;
+}
 
 function CampusMapPage() {
-  const visibleVenues = venues.filter((v) => v.category !== "open_area" || v.code === "bus-stop");
-  const categories = Array.from(new Set(visibleVenues.map((v) => v.category)));
+  const options = useMemo(() => buildOptions(), []);
+  const grouped = useMemo(() => groupOptions(options), [options]);
   const { lookup } = useRoutePlanner();
-  const [activeRoute, setActiveRoute] = useState<Route | null>(null);
 
-  const routeData = activeRoute;
+  const [fromCode, setFromCode] = useState("");
+  const [toCode, setToCode] = useState("");
+  const [activeRoute, setActiveRoute] = useState<Route | null>(null);
+  const [searched, setSearched] = useState(false);
+
+  const handleFindRoute = () => {
+    if (!fromCode || !toCode) return;
+    setSearched(true);
+    const found = lookup(fromCode, toCode);
+    setActiveRoute(found || null);
+  };
+
+  const fromName = fromCode ? resolveDisplayName(fromCode) : "";
+  const toName = toCode ? resolveDisplayName(toCode) : "";
 
   return (
     <section className="page-stack">
@@ -51,70 +139,147 @@ function CampusMapPage() {
         altText="IIUM Gombak Campus overview map with venue locations"
       />
 
-      {categories.map((category) => (
-        <div key={category}>
-          <h3 className="map-category-heading">{categoryLabels[category]}</h3>
-          <div className="map-venue-list">
-            {visibleVenues
-              .filter((v) => v.category === category)
-              .map((venue) => {
-                const Icon = categoryIcons[venue.category];
-                return (
-                  <article key={venue.id} className="map-venue-card">
-                    <span className={`map-venue-icon map-venue-${venue.category}`}>
-                      <Icon size={18} />
-                    </span>
-                    <div>
-                      <strong>{venue.name}</strong>
-                      <p>{venue.description}</p>
-                    </div>
-                  </article>
-                );
-              })}
+      <div className="route-selector">
+        <div className="route-selector-row">
+          <div className="route-selector-field">
+            <label className="route-selector-label">From</label>
+            <select
+              className="route-select"
+              value={fromCode}
+              onChange={(e) => {
+                setFromCode(e.target.value);
+                setSearched(false);
+              }}
+            >
+              <option value="">Select origin...</option>
+              {Array.from(grouped.entries()).map(([group, items]) => (
+                <optgroup key={group} label={group}>
+                  {items.map((opt) => (
+                    <option key={opt.code} value={opt.code}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+
+          <span className="route-selector-arrow">
+            <ArrowLeftRight size={18} aria-hidden="true" />
+          </span>
+
+          <div className="route-selector-field">
+            <label className="route-selector-label">To</label>
+            <select
+              className="route-select"
+              value={toCode}
+              onChange={(e) => {
+                setToCode(e.target.value);
+                setSearched(false);
+              }}
+            >
+              <option value="">Select destination...</option>
+              {Array.from(grouped.entries()).map(([group, items]) => (
+                <optgroup key={group} label={group}>
+                  {items.map((opt) => (
+                    <option key={opt.code} value={opt.code}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </div>
         </div>
-      ))}
 
-      <div>
-        <h3 className="map-category-heading">Available Routes</h3>
-        <div className="map-route-list">
-          {routes.map((route) => {
-            const from = getVenue(route.fromCode);
-            const to = getVenue(route.toCode);
-            const fromName = from?.name || route.fromCode;
-            const toName = to?.name || route.toCode;
-
-            return (
-              <article key={route.id} className="map-route-card">
-                <div className="map-route-card-main" onClick={() => setActiveRoute(route)}>
-                  <span className="map-route-icon">
-                    <RouteIcon size={18} />
-                  </span>
-                  <div className="map-route-info">
-                    <strong>{from?.shortName || route.fromCode} → {to?.shortName || route.toCode}</strong>
-                    <span>{route.durationMinutes} min · {route.distanceMeters}m</span>
-                  </div>
-                </div>
-                <div className="map-route-actions">
-                  <button className="map-route-nav-btn" type="button" onClick={() => setActiveRoute(route)}>
-                    <Navigation size={14} />
-                  </button>
-                  <button className="map-route-gmaps-btn" type="button" onClick={() => openExternalMap(googleMapsWalkingUrl(fromName, toName))}>
-                    <MapPin size={14} />
-                  </button>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+        <button
+          className="route-find-button"
+          type="button"
+          disabled={!fromCode || !toCode}
+          onClick={handleFindRoute}
+        >
+          <Search size={16} aria-hidden="true" />
+          <span>Find Route</span>
+        </button>
       </div>
 
-      {visibleVenues.length === 0 && (
-        <EmptyState icon={MapIcon} title="No venues loaded" body="Campus venue information will appear here." />
-      )}
+      <AnimatePresence mode="wait">
+        {searched && fromCode && toCode && (
+          <motion.div
+            key={`${fromCode}-${toCode}`}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            style={{ display: "grid", gap: "14px" }}
+          >
+            {activeRoute ? (
+              <>
+                <RouteSummaryBar route={activeRoute} />
 
-      {routeData && (
-        <RoutePlannerModal route={routeData} onClose={() => setActiveRoute(null)} />
+                <RouteMapViewer
+                  mapAssetUrl={activeRoute.mapAssetUrl}
+                  altText={`Route from ${activeRoute.fromCode} to ${activeRoute.toCode}`}
+                />
+
+                <RouteStepsList route={activeRoute} />
+
+                {activeRoute.transitionNotes && (
+                  <div className="route-transition-notes">
+                    <p>{activeRoute.transitionNotes}</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="route-placeholder">
+                <div className="route-placeholder-image">
+                  <ImageIcon size={48} aria-hidden="true" />
+                  <p>Route image coming soon</p>
+                  <span>
+                    No pre-computed route available for{" "}
+                    <strong>{resolveDisplayName(fromCode)}</strong> →{" "}
+                    <strong>{resolveDisplayName(toCode)}</strong>.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="directions-section">
+              <h3>Get Directions</h3>
+              <div className="directions-buttons">
+                <button
+                  className="directions-btn"
+                  onClick={() => openExternalMap(googleMapsWalkingUrl(fromName, toName))}
+                >
+                  <MapPin size={15} />
+                  <span>Google Maps</span>
+                </button>
+                <button
+                  className="directions-btn"
+                  onClick={() => openExternalMap(wazeUrl(toName))}
+                >
+                  <Navigation size={15} />
+                  <span>Waze</span>
+                </button>
+                <button
+                  className="directions-btn"
+                  onClick={() => openExternalMap(appleMapsUrl(fromName, toName))}
+                >
+                  <span style={{ fontSize: "16px", fontWeight: 900 }}>&#x2318;</span>
+                  <span>Apple Maps</span>
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {!searched && (
+        <EmptyState
+          icon={Search}
+          title="Select a route"
+          body="Choose an origin and destination above to find walking directions."
+        />
       )}
     </section>
   );

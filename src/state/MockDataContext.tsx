@@ -50,7 +50,7 @@ type GlobalNotificationInput = EmergencyInput & {
 
 type AnnouncementInput = Pick<Announcement, "title" | "body" | "type" | "links" | "tags">;
 
-type AttendanceInput = Pick<AttendanceProof, "selfieDataUrl">;
+type AttendanceInput = Pick<AttendanceProof, "selfieDataUrl" | "clockType">;
 
 type InviteInput = Pick<InviteCode, "role" | "bureau" | "expiresAt">;
 
@@ -324,12 +324,15 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
         bureau: user.bureau,
         selfieDataUrl: input.selfieDataUrl,
         submittedAt: now.toISOString(),
-        status: "pending_review"
+        status: "pending_review",
+        clockType: input.clockType
       };
 
       setAttendanceProofs((items) => {
-        const withoutToday = items.filter((item) => !(item.userId === user.id && item.date === date));
-        return [next, ...withoutToday];
+        const withoutTodaySameType = items.filter(
+          (item) => !(item.userId === user.id && item.date === date && item.clockType === input.clockType)
+        );
+        return [next, ...withoutTodaySameType];
       });
       setNotifications((items) => [
         {

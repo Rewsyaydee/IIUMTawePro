@@ -2746,6 +2746,93 @@ textarea {
   background: rgba(91, 158, 184, 0.12);
 }
 
+.time-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: rgba(15, 122, 92, 0.06);
+  border: 1px solid rgba(15, 122, 92, 0.18);
+  box-shadow: var(--shadow);
+}
+
+.time-status-bar.clock-in,
+.time-status-bar.clock-out {
+  border-color: rgba(15, 122, 92, 0.4);
+  background: linear-gradient(135deg, rgba(15, 122, 92, 0.12), rgba(185, 138, 45, 0.06));
+}
+
+.time-status-bar.past {
+  border-color: rgba(201, 61, 55, 0.24);
+  background: rgba(201, 61, 55, 0.04);
+}
+
+.time-status-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.time-status-left strong {
+  font-size: 0.95rem;
+  display: block;
+}
+
+.time-status-left p {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  color: var(--tg-subtitle-text-color);
+}
+
+.time-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.time-status-badge.open {
+  color: #0f7a5c;
+  background: rgba(15, 122, 92, 0.14);
+}
+
+.time-status-badge.closed {
+  color: #c93d37;
+  background: rgba(201, 61, 55, 0.12);
+}
+
+.daily-status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.daily-status-chip.present {
+  color: #0f7a5c;
+  background: rgba(15, 122, 92, 0.16);
+  border: 1px solid rgba(15, 122, 92, 0.3);
+}
+
+.daily-status-chip.absent {
+  color: #c93d37;
+  background: rgba(201, 61, 55, 0.14);
+  border: 1px solid rgba(201, 61, 55, 0.3);
+}
+
 .attendance-panel {
   display: grid;
   gap: 14px;
@@ -4003,6 +4090,123 @@ textarea {
   letter-spacing: 0.04em;
 }
 
+.route-selector {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--tg-section-bg-color);
+  box-shadow: var(--shadow);
+}
+
+.route-selector-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: 10px;
+}
+
+.route-selector-field {
+  display: grid;
+  gap: 6px;
+}
+
+.route-selector-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--tg-subtitle-text-color);
+}
+
+.route-select {
+  width: 100%;
+  min-height: 46px;
+  padding: 8px 36px 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(15, 122, 92, 0.04);
+  color: var(--tg-text-color);
+  font-size: 0.88rem;
+  font-family: inherit;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+}
+
+.route-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(15, 122, 92, 0.18);
+}
+
+.route-selector-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 46px;
+  color: var(--tg-subtitle-text-color);
+  flex-shrink: 0;
+}
+
+.route-find-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 20px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #0f7a5c, #0b5d46);
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(15, 122, 92, 0.24);
+  transition: opacity 0.2s, box-shadow 0.2s;
+}
+
+.route-find-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+.route-placeholder {
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.route-placeholder-image {
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  min-height: 260px;
+  padding: 32px 16px;
+  background: rgba(15, 122, 92, 0.03);
+  color: var(--tg-subtitle-text-color);
+  text-align: center;
+}
+
+.route-placeholder-image p {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--tg-text-color);
+}
+
+.route-placeholder-image span {
+  font-size: 0.84rem;
+  max-width: 300px;
+  line-height: 1.5;
+}
+
 .map-venue-list {
   display: grid;
   gap: 8px;
@@ -4716,4 +4920,86 @@ textarea {
   .timeline-event-info span {
     font-size: 0.74rem;
   }
+}
+
+.clock-type-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.clock-type-chip.clock-in {
+  color: #0f7a5c;
+  background: rgba(15, 122, 92, 0.14);
+}
+
+.clock-type-chip.clock-out {
+  color: #b98a2d;
+  background: rgba(185, 138, 45, 0.14);
+}
+
+.resource-icon.gold {
+  color: var(--gold-accent);
+  background: rgba(185, 138, 45, 0.14);
+}
+
+.coupon-cafe-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.coupon-cafe-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(15, 122, 92, 0.04);
+}
+
+.coupon-cafe-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--gold-accent);
+}
+
+.coupon-cafe-name strong {
+  font-size: 0.95rem;
+}
+
+.coupon-cafe-location {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--tg-subtitle-text-color);
+}
+
+.coupon-cafe-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.coupon-cafe-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #0f7a5c;
+  background: rgba(15, 122, 92, 0.12);
+}
+
+.coupon-cafe-hours {
+  font-size: 0.74rem;
+  color: var(--tg-hint-color);
 }

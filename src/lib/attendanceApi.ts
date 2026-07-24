@@ -1,4 +1,4 @@
-import type { AttendanceProof, AttendanceStatus } from "../types";
+import type { AttendanceProof, AttendanceStatus, ClockType } from "../types";
 import { getStoredSupabaseJwt } from "./apiAuth";
 
 type AttendanceListResponse = {
@@ -31,14 +31,14 @@ export async function listAttendanceProofs() {
   return payload.proofs;
 }
 
-export async function submitAttendanceProof(selfieDataUrl: string) {
+export async function submitAttendanceProof(selfieDataUrl: string, clockType?: ClockType) {
   const response = await fetch(`${apiBase()}/api/attendance/proofs`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...sessionHeaders()
     },
-    body: JSON.stringify({ selfieDataUrl })
+    body: JSON.stringify({ selfieDataUrl, clockType })
   });
   const payload = (await response.json()) as AttendanceProofResponse;
   if (!response.ok) {
