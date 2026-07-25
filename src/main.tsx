@@ -4,7 +4,10 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { MockDataProvider } from "./state/MockDataContext";
 import { MockUserProvider } from "./state/MockUserContext";
+import { getPerformanceClass } from "./lib/deviceInfo";
 import "./styles.css";
+
+document.documentElement.setAttribute("data-performance", getPerformanceClass());
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {

@@ -1,5 +1,8 @@
-const CANVAS_W = 1080;
-const CANVAS_H = 1920;
+import { isLowPerformance } from "./deviceInfo";
+
+const CANVAS_SCALE = isLowPerformance() ? 0.5 : 1;
+const CANVAS_W = Math.round(1080 * CANVAS_SCALE);
+const CANVAS_H = Math.round(1920 * CANVAS_SCALE);
 
 let testCanvas: HTMLCanvasElement | null = null;
 

@@ -5081,3 +5081,43 @@ textarea {
   cursor: not-allowed;
   opacity: 0.45;
 }
+
+[data-performance="LOW"] .glass-card {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-performance="LOW"] .app-header {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-performance="LOW"] .account-popover {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-performance="LOW"] .nft-card {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-performance="LOW"] .mainboard-popup {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-performance="LOW"] .banner-popup {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-performance="LOW"] .center-menu-backdrop {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-performance="LOW"] .route-planner-overlay {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
