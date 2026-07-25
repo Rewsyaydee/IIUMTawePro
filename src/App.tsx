@@ -16,6 +16,7 @@ const LaunchReadiness = lazy(() => import("./pages/LaunchReadiness"));
 const OfficialSchedulePdf = lazy(() => import("./pages/OfficialSchedulePdf"));
 const Announcements = lazy(() => import("./pages/Announcements"));
 const CampusMap = lazy(() => import("./features/navigation/components/CampusMapPage"));
+const Stories = lazy(() => import("./pages/Stories"));
 
 function App() {
   const [booting, setBooting] = useState(true);
@@ -124,6 +125,14 @@ function App() {
             element={
               <Suspense fallback={<LoadingScreen compact />}>
                 <LaunchReadiness />
+              </Suspense>
+            }
+          />
+          <Route
+            path="stories"
+            element={
+              <Suspense fallback={<LoadingScreen compact />}>
+                <Stories />
               </Suspense>
             }
           />

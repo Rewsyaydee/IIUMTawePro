@@ -10,6 +10,7 @@ import {
   Megaphone,
   ShieldAlert,
   Rocket,
+  Share2,
   X,
   CheckSquare,
   Heart
@@ -32,6 +33,7 @@ type CenterMenuItem = {
 const centerMenuByRole: Record<Role, CenterMenuItem[]> = {
   student: [
     { to: "/map", label: "Map", icon: Map },
+    { to: "/stories", label: "Stories", icon: Share2 },
     { to: "/resources", label: "Guides", icon: BookOpen },
     { to: "/announcements", label: "News", icon: Megaphone }
   ],
@@ -39,6 +41,7 @@ const centerMenuByRole: Record<Role, CenterMenuItem[]> = {
     { to: "/tasks", label: "Tasks", icon: ClipboardList },
     { to: "/bureau", label: "Ops", icon: Grid3X3 },
     { to: "/map", label: "Map", icon: Map },
+    { to: "/stories", label: "Stories", icon: Share2 },
     { to: "/resources", label: "Guides", icon: BookOpen },
     { to: "/announcements", label: "News", icon: Megaphone }
   ],
@@ -46,6 +49,7 @@ const centerMenuByRole: Record<Role, CenterMenuItem[]> = {
     { to: "/tasks", label: "Tasks", icon: ClipboardList },
     { to: "/bureau", label: "Ops", icon: Grid3X3 },
     { to: "/map", label: "Map", icon: Map },
+    { to: "/stories", label: "Stories", icon: Share2 },
     { to: "/resources", label: "Guides", icon: BookOpen },
     { to: "/announcements", label: "News", icon: Megaphone }
   ],
@@ -55,6 +59,7 @@ const centerMenuByRole: Record<Role, CenterMenuItem[]> = {
     { to: "/tasks", label: "Tasks", icon: ClipboardList },
     { to: "/bureau", label: "Ops", icon: Grid3X3 },
     { to: "/map", label: "Map", icon: Map },
+    { to: "/stories", label: "Stories", icon: Share2 },
     { to: "/resources", label: "Guides", icon: BookOpen },
     { to: "/announcements", label: "News", icon: Megaphone }
   ]

@@ -5003,3 +5003,81 @@ textarea {
   font-size: 0.74rem;
   color: var(--tg-hint-color);
 }
+
+.share-cards-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.share-card-item {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.share-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.share-card-top h3 {
+  margin: 0;
+  font-size: 1.08rem;
+}
+
+.share-card-top p {
+  margin: 2px 0 0;
+  font-size: 0.84rem;
+  color: var(--tg-subtitle-text-color);
+}
+
+.share-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.share-card-preview {
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.share-card-mock {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  background-size: cover;
+  background-position: center;
+}
+
+.share-card-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 22px;
+  color: #0a2e23;
+  background: #E5D3B3;
+  font-size: 0.94rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+}
+
+.share-card-button:active {
+  transform: scale(0.97);
+}
+
+.share-card-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
