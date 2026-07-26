@@ -1,5 +1,5 @@
 import { readJson, sendJson } from "./_lib/auth-utils.js";
-import { createAuditLog, getUserById, supabaseRequest } from "./_lib/supabase.js";
+import { createAuditLog, getUserById, getUserRecordByTelegramId, supabaseRequest } from "./_lib/supabase.js";
 import { verifyAppSessionFromRequest } from "./_lib/auth-utils.js";
 
 import { insertReport, listReportsForUser, mapWellbeingReport, updateReportStatus, validateReportInput } from "./_lib/wellbeing-utils.js";
@@ -125,14 +125,24 @@ async function resolveUser(req) {
   const session = verifyAppSessionFromRequest(req);
   if (!session.ok) return null;
 
-  // Stress test mode: trust JWT claims directly, skip DB lookup
+  // Stress test mode: resolve by telegram_id from JWT claims (DB users were seeded)
   if (process.env.STRESS_TEST_MODE === "true") {
-    return {
-      id: session.claims.app_user_id,
-      name: session.claims.name || "Test",
-      role: session.claims.app_role,
-      bureau: session.claims.bureau || undefined,
-    };
+    const telegramId = session.claims.telegram_id;
+    if (telegramId) {
+      const record = await getUserRecordByTelegramId(telegramId);
+      if (record && record.status === "active") {
+        return {
+          id: record.id,
+          telegramId: record.telegram_id,
+          name: record.name,
+          role: record.role,
+          bureau: record.bureau || undefined,
+          matricNumber: record.matric_number || undefined,
+          kulliyyah: record.kulliyyah || undefined,
+        };
+      }
+    }
+    return null;
   }
 
   return getUserById(session.claims.app_user_id);
