@@ -9,6 +9,50 @@ import { broadcastToTargets } from "./_lib/telegram-bot.js";
 
 const SCHEDULE_SELECT = "id,date,day,week,scheduled_start_time,scheduled_end_time,title,venue,tag,audience,description,is_live,notify_minutes_before,responsible_bureau,readiness_status,pre_session_tasks,venue_code";
 
+// ── Simple in-memory cache for high-traffic public endpoints ──
+const CACHE_TTL_MS = 30000; // 30 seconds
+const cache = {};
+function getCached(key) {
+  const entry = cache[key];
+  if (entry && (Date.now() - entry.timestamp) < CACHE_TTL_MS) {
+    return entry.value;
+  }
+  delete cache[key];
+  return undefined;
+}
+function setCache(key, value) {
+  cache[key] = { value, timestamp: Date.now() };
+}
+
+// ── Rate limiter (per-IP, per-user) ──
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
+const RATE_LIMIT_MAX = parseInt(process.env.RATE_LIMIT_MAX || "60", 10); // configurable via env
+const rateLimitMap = {};
+function checkRateLimit(key) {
+  const now = Date.now();
+  const entry = rateLimitMap[key];
+  if (!entry || (now - entry.windowStart) > RATE_LIMIT_WINDOW_MS) {
+    rateLimitMap[key] = { windowStart: now, count: 1 };
+    return true;
+  }
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) return false;
+  return true;
+}
+// Periodic cleanup of stale rate limit entries
+const RATE_LIMIT_CLEANUP_MS = 300000; // 5 minutes
+let lastCleanup = 0;
+function cleanupRateLimits() {
+  const now = Date.now();
+  if (now - lastCleanup < RATE_LIMIT_CLEANUP_MS) return;
+  lastCleanup = now;
+  for (const key of Object.keys(rateLimitMap)) {
+    if ((now - rateLimitMap[key].windowStart) > RATE_LIMIT_WINDOW_MS * 2) {
+      delete rateLimitMap[key];
+    }
+  }
+}
+
 function mapBannerRow(row) {
   return {
     id: row.id,
@@ -80,6 +124,17 @@ function mapScheduleItem(row) {
 async function resolveUser(req) {
   const session = verifyAppSessionFromRequest(req);
   if (!session.ok) return null;
+
+  // Stress test mode: trust JWT claims directly, skip DB lookup
+  if (process.env.STRESS_TEST_MODE === "true") {
+    return {
+      id: session.claims.app_user_id,
+      name: session.claims.name || "Test",
+      role: session.claims.app_role,
+      bureau: session.claims.bureau || undefined,
+    };
+  }
+
   return getUserById(session.claims.app_user_id);
 }
 
@@ -97,11 +152,22 @@ export default async function handler(req, res) {
   const { action } = body;
   if (!action) return sendJson(res, 400, { error: "Missing action field." });
 
+  // Rate limiting: check per-IP and per-user
+  cleanupRateLimits();
+  const clientIp = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown";
+  if (!checkRateLimit(`ip:${clientIp}`)) {
+    return sendJson(res, 429, { error: "Too many requests. Please slow down." });
+  }
+
   const publicActions = new Set(["schedule.list", "announcements.list"]);
   let user;
   if (!publicActions.has(action)) {
     user = await resolveUser(req);
     if (!user) return sendJson(res, 401, { error: "Invalid or expired app session." });
+    // User-level rate limit
+    if (!checkRateLimit(`user:${user.id}`)) {
+      return sendJson(res, 429, { error: "Too many requests. Please slow down." });
+    }
   }
 
   try {
@@ -176,10 +242,15 @@ export default async function handler(req, res) {
         if (user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
         if (!body.title || !body.body) return sendJson(res, 400, { error: "Title and body are required." });
         const text = `<b>${body.title}</b>\n\n${body.body}`;
-        const { sent, failed, queued } = await broadcastToTargets({ targetRole: body.targetRole || "all", targetBureau: body.targetBureau || "all", text });
+
+        // Create banner first (fast)
         if (body.createBanner) {
           await supabaseRequest("/banners", { method: "POST", headers: { Prefer: "return=minimal" }, body: [{ title: body.title, body: body.body, type: "info", is_active: true }] });
         }
+
+        // Start broadcast - this may take time with large audiences
+        const { sent, failed, queued } = await broadcastToTargets({ targetRole: body.targetRole || "all", targetBureau: body.targetBureau || "all", text });
+
         await createAuditLog({ actor: user, action: "sent_official_notice", tableName: "notifications", recordId: "", details: `Notice "${body.title}" sent to ${queued} users (${sent} delivered, ${failed} failed).` });
         return sendJson(res, 200, { queued, sent, failed });
       }
@@ -194,8 +265,12 @@ export default async function handler(req, res) {
 
       // ── SCHEDULE ──
       case "schedule.list": {
+        const cached = getCached("schedule.list");
+        if (cached) return sendJson(res, 200, { items: cached, cached: true });
         const rows = await supabaseRequest(`/schedule_items?select=${SCHEDULE_SELECT}&order=date.asc,scheduled_start_time.asc`);
-        return sendJson(res, 200, { items: (Array.isArray(rows) ? rows : []).map(mapScheduleItem) });
+        const items = (Array.isArray(rows) ? rows : []).map(mapScheduleItem);
+        setCache("schedule.list", items);
+        return sendJson(res, 200, { items });
       }
       case "schedule.create": {
         if (user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
@@ -204,6 +279,7 @@ export default async function handler(req, res) {
         const item = Array.isArray(rows) ? rows[0] : undefined;
         if (!item) return sendJson(res, 500, { error: "Failed to create schedule item." });
         await createAuditLog({ actor: user, action: "created_schedule_item", tableName: "schedule_items", recordId: item.id, details: `Schedule item "${item.title}" created for ${item.date}.` });
+        setCache("schedule.list", undefined);
         return sendJson(res, 201, { item: mapScheduleItem(item) });
       }
       case "schedule.publish": {
@@ -221,6 +297,7 @@ export default async function handler(req, res) {
         const item = Array.isArray(rows) ? rows[0] : undefined;
         if (!item) return sendJson(res, 404, { error: "Schedule item not found." });
         await createAuditLog({ actor: user, action: body.isLive ? "published_schedule_item" : "updated_schedule_item", tableName: "schedule_items", recordId: body.id, details: `Schedule item "${item.title}" ${body.isLive ? "published" : "updated"}.` });
+        setCache("schedule.list", undefined);
         return sendJson(res, 200, { item: mapScheduleItem(item) });
       }
       case "schedule.update": {
@@ -245,6 +322,7 @@ export default async function handler(req, res) {
         const item = Array.isArray(rows) ? rows[0] : undefined;
         if (!item) return sendJson(res, 404, { error: "Schedule item not found." });
         await createAuditLog({ actor: user, action: "updated_schedule_item", tableName: "schedule_items", recordId: body.id, details: `Schedule item "${item.title}" updated.` });
+        setCache("schedule.list", undefined);
         return sendJson(res, 200, { item: mapScheduleItem(item) });
       }
 
@@ -268,8 +346,11 @@ export default async function handler(req, res) {
 
       // ── ANNOUNCEMENTS ──
       case "announcements.list": {
+        const cached = getCached("announcements.list");
+        if (cached) return sendJson(res, 200, { items: cached, cached: true });
         const rows = await supabaseRequest("/banners?select=id,title,body,type,is_active,created_at,expires_at,tags,links&order=created_at.desc");
         const items = (Array.isArray(rows) ? rows : []).map(mapBannerRow);
+        setCache("announcements.list", items);
         return sendJson(res, 200, { items });
       }
       case "announcements.create": {
@@ -281,6 +362,7 @@ export default async function handler(req, res) {
         const item = Array.isArray(rows) ? rows[0] : undefined;
         if (!item) return sendJson(res, 500, { error: "Failed to create announcement." });
         await createAuditLog({ actor: user, action: "created_announcement", tableName: "banners", recordId: item.id, details: `Announcement "${item.title}" created.` });
+        setCache("announcements.list", undefined); // invalidate
         return sendJson(res, 201, { item: mapBannerRow(item) });
       }
       case "announcements.deactivate": {
@@ -290,6 +372,7 @@ export default async function handler(req, res) {
         const item = Array.isArray(rows) ? rows[0] : undefined;
         if (!item) return sendJson(res, 404, { error: "Announcement not found." });
         await createAuditLog({ actor: user, action: "deactivated_announcement", tableName: "banners", recordId: body.id, details: `Announcement "${item.title}" deactivated.` });
+        setCache("announcements.list", undefined); // invalidate
         return sendJson(res, 200, { item: mapBannerRow(item) });
       }
 

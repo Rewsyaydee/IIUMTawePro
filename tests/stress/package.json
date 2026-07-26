@@ -1,0 +1,16 @@
+{
+  "name": "tawe-pro-stress-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Stress tests for IIUM Tawe Pro - 4500 students, 180 committees",
+  "scripts": {
+    "test:auth": "k6 run k6-scripts/auth-flood.js --out json=auth-flood-results.json",
+    "test:schedule": "k6 run k6-scripts/schedule-read.js --out json=schedule-read-results.json",
+    "test:attendance": "k6 run k6-scripts/attendance-rush.js --out json=attendance-rush-results.json",
+    "test:mixed": "k6 run k6-scripts/mixed-rpc-burst.js --out json=mixed-rpc-results.json",
+    "test:notify": "k6 run k6-scripts/notification-blast.js --out json=notification-blast-results.json",
+    "test:sustained": "k6 run k6-scripts/sustained-load.js --out json=sustained-load-results.json",
+    "test:all": "powershell -ExecutionPolicy Bypass -File run-all.ps1",
+    "report": "node generate-report.mjs"
+  }
+}

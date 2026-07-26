@@ -1,4 +1,5 @@
 import { normaliseCode, sendJson } from "./_lib/auth-utils.js";
+import { getSupabaseServerConfig, supabaseRequest } from "./_lib/supabase.js";
 
 function present(value) {
   return typeof value === "string" && value.trim().length > 0;
@@ -11,7 +12,7 @@ function codeCount(name) {
     .filter(Boolean).length;
 }
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
     return sendJson(res, 405, { error: "Method not allowed." });
@@ -32,11 +33,37 @@ export default function handler(req, res) {
     .filter(([, value]) => value === false || value === 0)
     .map(([key]) => key);
 
+  // Database connectivity check
+  let dbStatus = "untested";
+  let dbLatencyMs = null;
+  let userCount = null;
+  try {
+    const start = Date.now();
+    const rows = await supabaseRequest("/users?select=id&limit=1");
+    dbLatencyMs = Date.now() - start;
+    dbStatus = "connected";
+
+    // Count active users (lightweight)
+    const countRows = await supabaseRequest("/users?select=id&status=eq.active&limit=1&head=true");
+    userCount = countRows?.[0]?.count || "unknown";
+  } catch (e) {
+    dbStatus = "error: " + (e.message || "unknown");
+  }
+
   return sendJson(res, 200, {
     ok: missing.length === 0,
     environment: process.env.VERCEL_ENV || process.env.VITE_APP_MODE || "local",
     checks,
     missing,
+    db: {
+      status: dbStatus,
+      latencyMs: dbLatencyMs,
+      activeUsers: userCount,
+    },
+    vercel: {
+      region: process.env.VERCEL_REGION || "unknown",
+      functionName: "health",
+    },
     timestamp: new Date().toISOString()
   });
 }

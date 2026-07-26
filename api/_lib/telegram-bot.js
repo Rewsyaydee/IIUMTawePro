@@ -48,20 +48,51 @@ export async function broadcastToTargets({ targetRole, targetBureau, text, maxRe
   const ids = await getTargetTelegramIds({ targetRole, targetBureau });
   const results = { queued: ids.length, sent: 0, failed: 0, failedIds: [] };
 
-  for (const id of ids) {
-    let sent = false;
-    for (let attempt = 0; attempt <= maxRetry; attempt++) {
-      try {
-        await sendTelegramMessage(id, text);
-        results.sent++;
-        sent = true;
-        break;
-      } catch {
-        if (attempt === maxRetry) {
+  // Process in concurrent batches to respect Telegram rate limits (~30 msg/sec)
+  // while staying within Vercel's 10s timeout (Hobby) or 60s (Pro)
+  const BATCH_SIZE = 25;
+  const BATCH_DELAY_MS = 1000; // 1s between batches
+  const CONCURRENCY = 8;       // Send 8 messages concurrently per batch
+
+  async function sendWithRetry(id, attempt = 0) {
+    try {
+      await sendTelegramMessage(id, text);
+      return { success: true, id };
+    } catch (err) {
+      if (attempt < maxRetry) {
+        await new Promise(r => setTimeout(r, 200));
+        return sendWithRetry(id, attempt + 1);
+      }
+      return { success: false, id };
+    }
+  }
+
+  for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+    const batch = ids.slice(i, i + BATCH_SIZE);
+
+    // Send concurrently within the batch
+    const concurrentBatches = [];
+    for (let j = 0; j < batch.length; j += CONCURRENCY) {
+      concurrentBatches.push(batch.slice(j, j + CONCURRENCY));
+    }
+
+    for (const subBatch of concurrentBatches) {
+      const promises = subBatch.map(id => sendWithRetry(id));
+      const outcomes = await Promise.all(promises);
+
+      for (const outcome of outcomes) {
+        if (outcome.success) {
+          results.sent++;
+        } else {
           results.failed++;
-          results.failedIds.push(id);
+          results.failedIds.push(outcome.id);
         }
       }
+    }
+
+    // Wait between batches to respect rate limit
+    if (i + BATCH_SIZE < ids.length) {
+      await new Promise(r => setTimeout(r, BATCH_DELAY_MS));
     }
   }
 
