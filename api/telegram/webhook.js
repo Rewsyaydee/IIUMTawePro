@@ -139,7 +139,7 @@ async function sendStart(chatId, userRecord) {
   if (!userRecord) {
     await callTelegram("sendMessage", {
       chat_id: chatId,
-      text: `✨ <b>Salam, ${html(name)}!</b> 👋\n\nWe're so glad you're here — welcome to the <b>Ta'aruf Week</b> family! 🕌\n\nThis bot is your companion for the entire Ta'aruf Week. I'll help you register, track attendance, and stay updated throughout the programme.\n\nLet's start with your <b>matric number</b> — just type it below, e.g. 2212345 ✍️`,
+      text: `✨ <b>Salam, ${html(name)}!</b> 👋\n\nWe're so glad you're here — welcome to the <b>Ta'aruf Week</b> family! 🕌\n\nThis bot is your companion for the entire Ta'aruf Week. I'll help you register, track attendance, and stay updated throughout the programme.\n\nLet's start with your <b>matric number</b> — just type it below, e.g. 2212345 ✍️\n\nJoin our community below! 👇\nhttps://t.me/taweprohelp`,
       parse_mode: "HTML",
       reply_markup: { remove_keyboard: true }
     });

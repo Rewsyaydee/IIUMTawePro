@@ -231,10 +231,12 @@ on conflict (id) do nothing;
 
 create policy "Public read access for story cards"
   on storage.objects for select
+  to anon
   using (bucket_id = 'story-cards');
 
 create policy "Authenticated upload access for story cards"
   on storage.objects for insert
+  to anon
   with check (bucket_id = 'story-cards');
 
 -- Smart Schedule Navigator: static venue registry

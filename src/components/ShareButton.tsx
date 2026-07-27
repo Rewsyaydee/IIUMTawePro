@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Download, Share2, AlertTriangle } from "lucide-react";
+import { Download, Share2, X, Save } from "lucide-react";
 import { ThinkingOrb } from "thinking-orbs";
-import { uploadAndShareStory, getShareCaption, downloadImageAsFile, isInTelegram } from "../lib/shareToStory";
+import { uploadAndShareStory, getShareCaption, downloadImageAsFile } from "../lib/shareToStory";
 import type {
   WrappedData,
   AchievementData,
@@ -65,14 +65,16 @@ export function ShareButton<K extends CardTemplate>({
 }) {
   const [sharing, setSharing] = useState(false);
   const [done, setDone] = useState(false);
-  const [lastBlob, setLastBlob] = useState<Blob | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [lastFilename, setLastFilename] = useState("");
+  const [lastBlob, setLastBlob] = useState<Blob | null>(null);
   const [error, setError] = useState("");
 
   const handleShare = async () => {
     if (sharing || disabled) return;
     setSharing(true);
     setDone(false);
+    setPreviewUrl(null);
     setLastBlob(null);
     setError("");
     try {
@@ -88,8 +90,14 @@ export function ShareButton<K extends CardTemplate>({
 
       if (result.success) {
         setDone(true);
+        const url = URL.createObjectURL(blob);
+        setPreviewUrl(url);
+        setLastBlob(blob);
+        setLastFilename(`tawe-${template}-${Date.now()}.png`);
       } else {
         setError(result.error || "Something went wrong.");
+        const url = URL.createObjectURL(blob);
+        setPreviewUrl(url);
         setLastBlob(blob);
         setLastFilename(`tawe-${template}-${Date.now()}.png`);
       }
@@ -106,6 +114,14 @@ export function ShareButton<K extends CardTemplate>({
     downloadImageAsFile(lastBlob, lastFilename);
   };
 
+  const dismissPreview = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(null);
+    setError("");
+  };
+
   if (disabled) {
     return (
       <button className={className} type="button" disabled>
@@ -116,7 +132,7 @@ export function ShareButton<K extends CardTemplate>({
   }
 
   return (
-    <div className="share-button-group">
+    <>
       <button
         className={className}
         type="button"
@@ -140,32 +156,45 @@ export function ShareButton<K extends CardTemplate>({
 
       {error && (
         <div className="share-error-banner" role="alert">
-          <AlertTriangle size={16} aria-hidden="true" />
           <span>{error}</span>
-          {lastBlob && (
-            <button
-              type="button"
-              className="share-download-fallback"
-              onClick={handleDownload}
-            >
-              <Download size={14} aria-hidden="true" />
-              <span>Save image</span>
-            </button>
-          )}
         </div>
       )}
 
-      {done && (
-        <button
-          type="button"
-          className="share-download-fallback"
-          onClick={handleDownload}
-          style={{ marginTop: 6 }}
-        >
-          <Download size={14} aria-hidden="true" />
-          <span>Save image</span>
-        </button>
+      {previewUrl && (
+        <div className="share-preview-overlay" role="dialog" aria-label="Share image preview">
+          <button
+            className="share-preview-close"
+            type="button"
+            onClick={dismissPreview}
+            aria-label="Close preview"
+          >
+            <X size={24} />
+          </button>
+
+          {done ? (
+            <p className="share-preview-status" style={{ color: "#22a879" }}>Shared to your Story!</p>
+          ) : (
+            <p className="share-preview-status">Long-press the image to save it to your gallery</p>
+          )}
+
+          <div className="share-preview-image-wrap">
+            <img
+              src={previewUrl}
+              alt={`${template} share card`}
+              className="share-preview-image"
+            />
+          </div>
+
+          <button
+            type="button"
+            className="share-preview-download"
+            onClick={handleDownload}
+          >
+            <Save size={18} aria-hidden="true" />
+            <span>Download</span>
+          </button>
+        </div>
       )}
-    </div>
+    </>
   );
 }

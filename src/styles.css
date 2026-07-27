@@ -5126,6 +5126,86 @@ textarea {
   background: rgba(229, 211, 179, 0.16);
 }
 
+.share-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom) 16px;
+}
+
+.share-preview-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.share-preview-close:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.share-preview-status {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.share-preview-image-wrap {
+  max-width: 90vw;
+  max-height: 65vh;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 40px rgba(0, 0, 0, 0.5);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.share-preview-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 65vh;
+  object-fit: contain;
+  -webkit-touch-callout: default;
+  touch-action: manipulation;
+}
+
+.share-preview-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 12px 28px;
+  border-radius: 12px;
+  border: 1px solid rgba(229, 211, 179, 0.4);
+  background: rgba(229, 211, 179, 0.1);
+  color: #E5D3B3;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.share-preview-download:active {
+  background: rgba(229, 211, 179, 0.2);
+}
+
 [data-performance="LOW"] .glass-card {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;

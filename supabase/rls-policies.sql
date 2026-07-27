@@ -237,6 +237,18 @@ with check (
   and app_private.claim_role() in ('committee', 'head')
 );
 
+create policy "Public read access for story cards"
+on storage.objects
+for select
+to anon
+using (bucket_id = 'story-cards');
+
+create policy "Authenticated upload access for story cards"
+on storage.objects
+for insert
+to anon
+with check (bucket_id = 'story-cards');
+
 -- Smart Schedule Navigator RLS
 alter table public.static_locations enable row level security;
 alter table public.static_routes enable row level security;
