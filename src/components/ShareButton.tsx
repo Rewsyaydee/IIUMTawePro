@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Download, Share2, X, Save } from "lucide-react";
+import { Download, Send, X, Save } from "lucide-react";
 import { ThinkingOrb } from "thinking-orbs";
-import { uploadAndShareStory, getShareCaption, downloadImageAsFile } from "../lib/shareToStory";
+import { shareToChat, downloadImageAsFile } from "../lib/shareToStory";
 import type {
   WrappedData,
   AchievementData,
@@ -85,8 +85,7 @@ export function ShareButton<K extends CardTemplate>({
         return;
       }
 
-      const caption = getShareCaption(template);
-      const result = await uploadAndShareStory(blob, caption);
+      const result = await shareToChat(blob);
 
       if (result.success) {
         setDone(true);
@@ -125,8 +124,8 @@ export function ShareButton<K extends CardTemplate>({
   if (disabled) {
     return (
       <button className={className} type="button" disabled>
-        <Share2 size={18} aria-hidden="true" />
-        <span>{label || "Share to Story"}</span>
+        <Send size={18} aria-hidden="true" />
+        <span>{label || "Send to Chat"}</span>
       </button>
     );
   }
@@ -143,13 +142,13 @@ export function ShareButton<K extends CardTemplate>({
           <ThinkingOrb state="solving" size={20} />
         ) : done ? (
           <>
-            <Share2 size={18} aria-hidden="true" />
-            <span>Shared!</span>
+            <Send size={18} aria-hidden="true" />
+            <span>Sent!</span>
           </>
         ) : (
           <>
-            <Share2 size={18} aria-hidden="true" />
-            <span>{label || "Share to Story"}</span>
+            <Send size={18} aria-hidden="true" />
+            <span>{label || "Send to Chat"}</span>
           </>
         )}
       </button>
@@ -172,7 +171,7 @@ export function ShareButton<K extends CardTemplate>({
           </button>
 
           {done ? (
-            <p className="share-preview-status" style={{ color: "#22a879" }}>Shared to your Story!</p>
+            <p className="share-preview-status" style={{ color: "#22a879" }}>Sent!</p>
           ) : (
             <p className="share-preview-status">Long-press the image to save it to your gallery</p>
           )}
