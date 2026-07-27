@@ -54,7 +54,9 @@ where (
     and tablename = 'objects'
     and policyname in (
       'attendance selfie owner can read object',
-      'committee can upload attendance selfie'
+      'committee can upload attendance selfie',
+      'Public read access for story cards',
+      'Authenticated upload access for story cards'
     )
   )
 order by schemaname, tablename, policyname;
@@ -75,13 +77,14 @@ where n.nspname = 'app_private'
   )
 order by p.proname;
 
--- 4) Private storage bucket for attendance selfies should exist.
+-- 4) Storage buckets: private selfies, public story cards.
 select
   id,
   name,
   public
 from storage.buckets
-where id = 'attendance-selfies';
+where id in ('attendance-selfies', 'story-cards')
+order by id;
 
 -- 5) One-screen summary. Supabase may only show the last SELECT result,
 -- so this final checklist is the easiest result to read.
@@ -110,7 +113,9 @@ expected_functions(function_name) as (
 expected_storage_policies(policyname) as (
   values
     ('attendance selfie owner can read object'),
-    ('committee can upload attendance selfie')
+    ('committee can upload attendance selfie'),
+    ('Public read access for story cards'),
+    ('Authenticated upload access for story cards')
 ),
 summary as (
   select
@@ -141,8 +146,8 @@ summary as (
   select
     'storage selfie policies' as check_name,
     count(*)::text as actual,
-    '2' as expected,
-    count(*) = 2 as passed
+    '4' as expected,
+    count(*) = 4 as passed
   from pg_policies
   where schemaname = 'storage'
     and tablename = 'objects'
@@ -169,6 +174,16 @@ summary as (
     coalesce(bool_or(public = false), false) as passed
   from storage.buckets
   where id = 'attendance-selfies'
+
+  union all
+
+  select
+    'story cards bucket is public' as check_name,
+    coalesce(bool_or(public = true)::text, 'false') as actual,
+    'true' as expected,
+    coalesce(bool_or(public = true), false) as passed
+  from storage.buckets
+  where id = 'story-cards'
 )
 select
   case when passed then 'PASS' else 'FAIL' end as status,

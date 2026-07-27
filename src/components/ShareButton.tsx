@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Share2 } from "lucide-react";
+import { Download, Share2, AlertTriangle } from "lucide-react";
 import { ThinkingOrb } from "thinking-orbs";
-import { uploadAndShareStory, getShareCaption } from "../lib/shareToStory";
+import { uploadAndShareStory, getShareCaption, downloadImageAsFile, isInTelegram } from "../lib/shareToStory";
 import type {
   WrappedData,
   AchievementData,
@@ -65,45 +65,107 @@ export function ShareButton<K extends CardTemplate>({
 }) {
   const [sharing, setSharing] = useState(false);
   const [done, setDone] = useState(false);
+  const [lastBlob, setLastBlob] = useState<Blob | null>(null);
+  const [lastFilename, setLastFilename] = useState("");
+  const [error, setError] = useState("");
 
   const handleShare = async () => {
     if (sharing || disabled) return;
     setSharing(true);
     setDone(false);
+    setLastBlob(null);
+    setError("");
     try {
       const renderFn = renderers[template];
       const blob = await renderFn(data);
-      if (!blob) return;
+      if (!blob) {
+        setError("Could not generate the image. Please try again.");
+        return;
+      }
+
       const caption = getShareCaption(template);
-      const success = await uploadAndShareStory(blob, caption);
-      if (success) setDone(true);
+      const result = await uploadAndShareStory(blob, caption);
+
+      if (result.success) {
+        setDone(true);
+      } else {
+        setError(result.error || "Something went wrong.");
+        setLastBlob(blob);
+        setLastFilename(`tawe-${template}-${Date.now()}.png`);
+      }
     } catch (err) {
       console.error("Share failed", err);
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setSharing(false);
     }
   };
 
+  const handleDownload = () => {
+    if (!lastBlob) return;
+    downloadImageAsFile(lastBlob, lastFilename);
+  };
+
+  if (disabled) {
+    return (
+      <button className={className} type="button" disabled>
+        <Share2 size={18} aria-hidden="true" />
+        <span>{label || "Share to Story"}</span>
+      </button>
+    );
+  }
+
   return (
-    <button
-      className={className}
-      type="button"
-      disabled={disabled || sharing}
-      onClick={handleShare}
-    >
-      {sharing ? (
-        <ThinkingOrb state="solving" size={20} />
-      ) : done ? (
-        <>
-          <Share2 size={18} aria-hidden="true" />
-          <span>Shared!</span>
-        </>
-      ) : (
-        <>
-          <Share2 size={18} aria-hidden="true" />
-          <span>{label || "Share to Story"}</span>
-        </>
+    <div className="share-button-group">
+      <button
+        className={className}
+        type="button"
+        disabled={sharing}
+        onClick={handleShare}
+      >
+        {sharing ? (
+          <ThinkingOrb state="solving" size={20} />
+        ) : done ? (
+          <>
+            <Share2 size={18} aria-hidden="true" />
+            <span>Shared!</span>
+          </>
+        ) : (
+          <>
+            <Share2 size={18} aria-hidden="true" />
+            <span>{label || "Share to Story"}</span>
+          </>
+        )}
+      </button>
+
+      {error && (
+        <div className="share-error-banner" role="alert">
+          <AlertTriangle size={16} aria-hidden="true" />
+          <span>{error}</span>
+          {lastBlob && (
+            <button
+              type="button"
+              className="share-download-fallback"
+              onClick={handleDownload}
+            >
+              <Download size={14} aria-hidden="true" />
+              <span>Save image</span>
+            </button>
+          )}
+        </div>
       )}
-    </button>
+
+      {done && (
+        <button
+          type="button"
+          className="share-download-fallback"
+          onClick={handleDownload}
+          style={{ marginTop: 6 }}
+        >
+          <Download size={14} aria-hidden="true" />
+          <span>Save image</span>
+        </button>
+      )}
+    </div>
   );
 }

@@ -225,6 +225,18 @@ insert into storage.buckets (id, name, public)
 values ('attendance-selfies', 'attendance-selfies', false)
 on conflict (id) do nothing;
 
+insert into storage.buckets (id, name, public)
+values ('story-cards', 'story-cards', true)
+on conflict (id) do nothing;
+
+create policy "Public read access for story cards"
+  on storage.objects for select
+  using (bucket_id = 'story-cards');
+
+create policy "Authenticated upload access for story cards"
+  on storage.objects for insert
+  with check (bucket_id = 'story-cards');
+
 -- Smart Schedule Navigator: static venue registry
 create table if not exists public.static_locations (
   id uuid primary key default gen_random_uuid(),

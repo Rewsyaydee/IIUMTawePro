@@ -1,0 +1,488 @@
+{
+  "files": {
+    "README.md": {
+      "fingerprint": "02ce86e96532878a",
+      "bytes": 19212
+    },
+    "api\\_lib\\attendance-utils.js": {
+      "fingerprint": "5cdef114e14b7382",
+      "bytes": 5844
+    },
+    "api\\_lib\\auth-utils.js": {
+      "fingerprint": "ed883e6347518a18",
+      "bytes": 7915
+    },
+    "api\\_lib\\bureau-ops-utils.js": {
+      "fingerprint": "5ea901dc00d26c6a",
+      "bytes": 1653
+    },
+    "api\\_lib\\invite-code-utils.js": {
+      "fingerprint": "767287511309e87e",
+      "bytes": 1226
+    },
+    "api\\_lib\\supabase.js": {
+      "fingerprint": "70fd1d4060e46a51",
+      "bytes": 6567
+    },
+    "api\\_lib\\tasks-utils.js": {
+      "fingerprint": "7a03572d28f0f368",
+      "bytes": 4561
+    },
+    "api\\_lib\\telegram-bot.js": {
+      "fingerprint": "6d63735fc4385ab3",
+      "bytes": 3272
+    },
+    "api\\_lib\\wellbeing-utils.js": {
+      "fingerprint": "b3ac11fa5e541d6d",
+      "bytes": 3984
+    },
+    "api\\attendance\\proofs.js": {
+      "fingerprint": "ead5096de27d1494",
+      "bytes": 2864
+    },
+    "api\\attendance\\proofs\\[id]\\review.js": {
+      "fingerprint": "85d1eeb176ec27f7",
+      "bytes": 2769
+    },
+    "api\\auth\\telegram.js": {
+      "fingerprint": "96a864246c1c8384",
+      "bytes": 3686
+    },
+    "api\\health.js": {
+      "fingerprint": "856e2fd3a6db0ac4",
+      "bytes": 2732
+    },
+    "api\\invites\\redeem.js": {
+      "fingerprint": "662cfa8f31121f2f",
+      "bytes": 3332
+    },
+    "api\\rpc.js": {
+      "fingerprint": "c775eb25ec03e811",
+      "bytes": 29582
+    },
+    "api\\telegram\\webhook.js": {
+      "fingerprint": "d0ca3e684a49ca55",
+      "bytes": 20700
+    },
+    "docs\\auth-bridge.md": {
+      "fingerprint": "cb76c15771d6948b",
+      "bytes": 2390
+    },
+    "docs\\backend-wiring-checklist.md": {
+      "fingerprint": "b78e154dfc995ef0",
+      "bytes": 4269
+    },
+    "docs\\branding-notes.md": {
+      "fingerprint": "2b8b7517c9497241",
+      "bytes": 1108
+    },
+    "docs\\committee-source-summary.md": {
+      "fingerprint": "74eb271b1342c6a5",
+      "bytes": 1033
+    },
+    "docs\\deployment-plan.md": {
+      "fingerprint": "d51efd4b0ea7ad29",
+      "bytes": 2378
+    },
+    "docs\\post-github-launch-checklist.md": {
+      "fingerprint": "25f3138c01f975bc",
+      "bytes": 7746
+    },
+    "docs\\production-contract.md": {
+      "fingerprint": "76e6994bc2bd4377",
+      "bytes": 6280
+    },
+    "docs\\server-endpoints.md": {
+      "fingerprint": "2f300ca67216a1fd",
+      "bytes": 5709
+    },
+    "docs\\telegram-bot-webhook.md": {
+      "fingerprint": "497e6c440856297f",
+      "bytes": 1970
+    },
+    "milestone.md": {
+      "fingerprint": "918512ec1c8e386d",
+      "bytes": 14595
+    },
+    "package.json": {
+      "fingerprint": "10db7690a96d07ac",
+      "bytes": 798
+    },
+    "public\\sw.js": {
+      "fingerprint": "7709921f0a5f0728",
+      "bytes": 1703
+    },
+    "src\\App.tsx": {
+      "fingerprint": "8b425e9f42a1b502",
+      "bytes": 4500
+    },
+    "src\\components\\AccessCodeGate.tsx": {
+      "fingerprint": "2fa35de6f4713c45",
+      "bytes": 6028
+    },
+    "src\\components\\AppShell.tsx": {
+      "fingerprint": "b29cd37c9b3345c1",
+      "bytes": 10325
+    },
+    "src\\components\\CheckInForm.tsx": {
+      "fingerprint": "45beb54e1f56d407",
+      "bytes": 7384
+    },
+    "src\\components\\ColorSweepText.tsx": {
+      "fingerprint": "8ed149c8b63975fa",
+      "bytes": 804
+    },
+    "src\\components\\EmptyState.tsx": {
+      "fingerprint": "da458682cda41a18",
+      "bytes": 316
+    },
+    "src\\components\\EventCarousel.tsx": {
+      "fingerprint": "fb6ebc4b4e9b0b8d",
+      "bytes": 7399
+    },
+    "src\\components\\LoadingScreen.tsx": {
+      "fingerprint": "d682a0f255da62f0",
+      "bytes": 708
+    },
+    "src\\components\\MenuTile.tsx": {
+      "fingerprint": "4a93caaf4c67e67a",
+      "bytes": 894
+    },
+    "src\\components\\RoleSwitcher.tsx": {
+      "fingerprint": "c83a235ed245fbd5",
+      "bytes": 1306
+    },
+    "src\\components\\ShareButton.tsx": {
+      "fingerprint": "0bf28002ab267fa9",
+      "bytes": 2966
+    },
+    "src\\components\\StatusBadge.tsx": {
+      "fingerprint": "5ddacb06422ce31c",
+      "bytes": 471
+    },
+    "src\\components\\StreakWidget.tsx": {
+      "fingerprint": "398dc8303afa1d8d",
+      "bytes": 1735
+    },
+    "src\\components\\StudentAttendanceView.tsx": {
+      "fingerprint": "091f459f697df94d",
+      "bytes": 5573
+    },
+    "src\\constants.ts": {
+      "fingerprint": "53f84cff828fbc68",
+      "bytes": 749
+    },
+    "src\\data\\couponCafes.ts": {
+      "fingerprint": "b4939513e1b317f3",
+      "bytes": 1102
+    },
+    "src\\data\\eventSchedule.ts": {
+      "fingerprint": "a75e1950c2e1d47d",
+      "bytes": 14696
+    },
+    "src\\data\\mockData.ts": {
+      "fingerprint": "440fb6e0c18ffcea",
+      "bytes": 19377
+    },
+    "src\\features\\navigation\\components\\CampusMapPage.tsx": {
+      "fingerprint": "07586420fd7fd8dd",
+      "bytes": 9771
+    },
+    "src\\features\\navigation\\components\\KulliyyahPicker.tsx": {
+      "fingerprint": "9a50966d24bee834",
+      "bytes": 2452
+    },
+    "src\\features\\navigation\\components\\NavigateButton.tsx": {
+      "fingerprint": "a11eff01c4d37a4f",
+      "bytes": 464
+    },
+    "src\\features\\navigation\\components\\RouteMapViewer.tsx": {
+      "fingerprint": "637670d29444b148",
+      "bytes": 1641
+    },
+    "src\\features\\navigation\\components\\RoutePlannerModal.tsx": {
+      "fingerprint": "05f845ccf06e7792",
+      "bytes": 2673
+    },
+    "src\\features\\navigation\\components\\RouteStepsList.tsx": {
+      "fingerprint": "2ffbaf7ecbe30951",
+      "bytes": 899
+    },
+    "src\\features\\navigation\\components\\RouteSummaryBar.tsx": {
+      "fingerprint": "5f613cdec0f73f93",
+      "bytes": 1275
+    },
+    "src\\features\\navigation\\components\\TransitionReminderBanner.tsx": {
+      "fingerprint": "c5a32f18ee9259a9",
+      "bytes": 1189
+    },
+    "src\\features\\navigation\\data\\kulliyyahs.ts": {
+      "fingerprint": "4171fafdbcef930c",
+      "bytes": 1595
+    },
+    "src\\features\\navigation\\data\\locations.ts": {
+      "fingerprint": "8c5e558d65f13344",
+      "bytes": 5078
+    },
+    "src\\features\\navigation\\data\\mahallahs.ts": {
+      "fingerprint": "4864b0cd3c9ae828",
+      "bytes": 2205
+    },
+    "src\\features\\navigation\\data\\mapAssets.ts": {
+      "fingerprint": "f167dfe1098ec266",
+      "bytes": 233
+    },
+    "src\\features\\navigation\\data\\routes.ts": {
+      "fingerprint": "7c74434912756098",
+      "bytes": 5038
+    },
+    "src\\features\\navigation\\data\\venues.ts": {
+      "fingerprint": "17580534ea170f09",
+      "bytes": 3028
+    },
+    "src\\features\\navigation\\hooks\\useRoutePlanner.ts": {
+      "fingerprint": "c0e7171e6bcca15e",
+      "bytes": 456
+    },
+    "src\\features\\navigation\\hooks\\useScheduleTransition.ts": {
+      "fingerprint": "9c526e9600948844",
+      "bytes": 1831
+    },
+    "src\\features\\navigation\\index.ts": {
+      "fingerprint": "2cec269bdaabf42d",
+      "bytes": 1247
+    },
+    "src\\features\\navigation\\types.ts": {
+      "fingerprint": "d9a2a84a63b42969",
+      "bytes": 571
+    },
+    "src\\features\\navigation\\utils\\mapLinks.ts": {
+      "fingerprint": "d81fade243999551",
+      "bytes": 1504
+    },
+    "src\\lib\\announcementsApi.ts": {
+      "fingerprint": "2663b3187e7129e5",
+      "bytes": 1724
+    },
+    "src\\lib\\apiAuth.ts": {
+      "fingerprint": "ce951c26a82cde62",
+      "bytes": 3038
+    },
+    "src\\lib\\attendanceApi.ts": {
+      "fingerprint": "f70fce41c52096d4",
+      "bytes": 2169
+    },
+    "src\\lib\\attendanceTime.ts": {
+      "fingerprint": "ae4021045f1b5350",
+      "bytes": 2644
+    },
+    "src\\lib\\bureauOpsApi.ts": {
+      "fingerprint": "2c7d455a3bf8783b",
+      "bytes": 1288
+    },
+    "src\\lib\\deviceInfo.ts": {
+      "fingerprint": "e659616a3ec589ab",
+      "bytes": 1307
+    },
+    "src\\lib\\launchReadiness.ts": {
+      "fingerprint": "73648ee69ce671a6",
+      "bytes": 4620
+    },
+    "src\\lib\\locationVerify.ts": {
+      "fingerprint": "412091e89c97e00a",
+      "bytes": 2903
+    },
+    "src\\lib\\notifyApi.ts": {
+      "fingerprint": "44aa7eba8c54f58b",
+      "bytes": 1289
+    },
+    "src\\lib\\scheduleApi.ts": {
+      "fingerprint": "f0a73dcb0e06a2b3",
+      "bytes": 1750
+    },
+    "src\\lib\\scheduleTime.ts": {
+      "fingerprint": "73ef7b7acdb235d7",
+      "bytes": 3770
+    },
+    "src\\lib\\shareTemplates.ts": {
+      "fingerprint": "6ca7779db143b01a",
+      "bytes": 14765
+    },
+    "src\\lib\\shareToStory.ts": {
+      "fingerprint": "ae989d8b218e1c58",
+      "bytes": 2563
+    },
+    "src\\lib\\studentAttendanceApi.ts": {
+      "fingerprint": "7a5946392f004031",
+      "bytes": 2035
+    },
+    "src\\lib\\tasksApi.ts": {
+      "fingerprint": "dcbbc8b64ca8d7f0",
+      "bytes": 1728
+    },
+    "src\\lib\\telegram.ts": {
+      "fingerprint": "e73ca1d5f2eca9a3",
+      "bytes": 4700
+    },
+    "src\\lib\\themes.ts": {
+      "fingerprint": "241b7934af3690b6",
+      "bytes": 1808
+    },
+    "src\\lib\\usersApi.ts": {
+      "fingerprint": "305a09b8c66da432",
+      "bytes": 1273
+    },
+    "src\\lib\\wellbeingApi.ts": {
+      "fingerprint": "a42d050521087bac",
+      "bytes": 1520
+    },
+    "src\\main.tsx": {
+      "fingerprint": "7d21a46733d43803",
+      "bytes": 1068
+    },
+    "src\\pages\\Announcements.tsx": {
+      "fingerprint": "f2d6b880bbd1b965",
+      "bytes": 8647
+    },
+    "src\\pages\\Attendance.tsx": {
+      "fingerprint": "303c1c38374b38b2",
+      "bytes": 19948
+    },
+    "src\\pages\\BureauOps.tsx": {
+      "fingerprint": "8a196b55ac4370e1",
+      "bytes": 9942
+    },
+    "src\\pages\\Dashboard.tsx": {
+      "fingerprint": "314f0e96102485bf",
+      "bytes": 3790
+    },
+    "src\\pages\\LaunchReadiness.tsx": {
+      "fingerprint": "1149ae7f6f645a6b",
+      "bytes": 6172
+    },
+    "src\\pages\\Mainboard.tsx": {
+      "fingerprint": "1e90e1ecb0844b2e",
+      "bytes": 50132
+    },
+    "src\\pages\\OfficialSchedulePdf.tsx": {
+      "fingerprint": "330e3cafa84f59bc",
+      "bytes": 1697
+    },
+    "src\\pages\\Resources.tsx": {
+      "fingerprint": "4bdc5b59c02b43a6",
+      "bytes": 5994
+    },
+    "src\\pages\\Schedule.tsx": {
+      "fingerprint": "233b9311f685299a",
+      "bytes": 9975
+    },
+    "src\\pages\\Stories.tsx": {
+      "fingerprint": "77f8f067e8ac98f7",
+      "bytes": 8898
+    },
+    "src\\pages\\Tasks.tsx": {
+      "fingerprint": "f15d8650a34dfaaf",
+      "bytes": 13248
+    },
+    "src\\pages\\Wellbeing.tsx": {
+      "fingerprint": "3e3ac74fafbb2fd4",
+      "bytes": 10322
+    },
+    "src\\state\\MockDataContext.tsx": {
+      "fingerprint": "9b50be8c7720ffee",
+      "bytes": 24175
+    },
+    "src\\state\\MockUserContext.tsx": {
+      "fingerprint": "c289f3dd9a52911e",
+      "bytes": 3647
+    },
+    "src\\types.ts": {
+      "fingerprint": "9ea694230434414a",
+      "bytes": 5159
+    },
+    "src\\vite-env.d.ts": {
+      "fingerprint": "8ca0fab1a16b8bee",
+      "bytes": 38
+    },
+    "supabase\\README.md": {
+      "fingerprint": "f1efe90dab0d4e5e",
+      "bytes": 1047
+    },
+    "tests\\stress\\k6-scripts\\attendance-rush.js": {
+      "fingerprint": "e402ad8611729bce",
+      "bytes": 2362
+    },
+    "tests\\stress\\k6-scripts\\auth-flood.js": {
+      "fingerprint": "83582e82ac6587e3",
+      "bytes": 1371
+    },
+    "tests\\stress\\k6-scripts\\mixed-rpc-burst.js": {
+      "fingerprint": "cc692cfa2cf63cdd",
+      "bytes": 2193
+    },
+    "tests\\stress\\k6-scripts\\notification-blast.js": {
+      "fingerprint": "83388a0cb86bb121",
+      "bytes": 1596
+    },
+    "tests\\stress\\k6-scripts\\schedule-read.js": {
+      "fingerprint": "62af71a2505860cf",
+      "bytes": 1214
+    },
+    "tests\\stress\\k6-scripts\\setup.js": {
+      "fingerprint": "84d91f2abb14b72d",
+      "bytes": 5061
+    },
+    "tests\\stress\\k6-scripts\\sustained-load.js": {
+      "fingerprint": "bf38c6d45ce40be7",
+      "bytes": 1475
+    },
+    "tests\\stress\\package.json": {
+      "fingerprint": "28ee673afc32beb0",
+      "bytes": 895
+    },
+    "tests\\stress\\results\\attendance-rush.json": {
+      "fingerprint": "9af2b7b429487e47",
+      "bytes": 29710927
+    },
+    "tests\\stress\\results\\auth-flood.json": {
+      "fingerprint": "f574187dc1a1c06d",
+      "bytes": 16081426
+    },
+    "tests\\stress\\results\\mixed-rpc-burst.json": {
+      "fingerprint": "313648409059189f",
+      "bytes": 19942802
+    },
+    "tests\\stress\\results\\notification-blast.json": {
+      "fingerprint": "68a13d4bdc9e18e2",
+      "bytes": 20502
+    },
+    "tests\\stress\\results\\schedule-read.json": {
+      "fingerprint": "2b0bf273939bc61d",
+      "bytes": 185113016
+    },
+    "tests\\stress\\results\\sustained-load.json": {
+      "fingerprint": "e98b81e41f617a5b",
+      "bytes": 143716913
+    },
+    "tests\\stress\\students.json": {
+      "fingerprint": "1c8e782dfd60eded",
+      "bytes": 2458072
+    },
+    "tools\\extract_schedule.py": {
+      "fingerprint": "862746cf417e6d9d",
+      "bytes": 4548
+    },
+    "tsconfig.json": {
+      "fingerprint": "3bdaae0ea26722e6",
+      "bytes": 504
+    },
+    "vercel.json": {
+      "fingerprint": "a82916f7732ff04b",
+      "bytes": 308
+    },
+    "vite.config.ts": {
+      "fingerprint": "497354efb3693268",
+      "bytes": 138
+    }
+  }
+}
