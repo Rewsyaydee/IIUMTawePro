@@ -40,6 +40,40 @@ export async function uploadAndShareStory(
   return { success: true, downloadUrl: url };
 }
 
+export async function shareToChat(
+  imageBlob: Blob
+): Promise<ShareResult> {
+  const webApp = getTelegramWebApp();
+  if (!webApp) {
+    return { success: false, error: "Open this app inside Telegram to share to a chat." };
+  }
+
+  if (typeof webApp.shareMessage !== "function") {
+    return { success: false, error: "Your Telegram version does not support sharing to chats yet. Please update Telegram." };
+  }
+
+  const url = await uploadImageToStorage(imageBlob);
+  if (!url) {
+    return { success: false, error: "Could not upload the image. Check your connection and try again." };
+  }
+
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      resolve({ success: false, error: "Sharing timed out. Please try again.", downloadUrl: url });
+    }, 30000);
+
+    webApp.shareMessage!(url, (sent: boolean) => {
+      clearTimeout(timeout);
+      if (sent) {
+        hapticSuccess();
+        resolve({ success: true, downloadUrl: url });
+      } else {
+        resolve({ success: false, downloadUrl: url });
+      }
+    });
+  });
+}
+
 async function uploadImageToStorage(blob: Blob): Promise<string | null> {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     console.warn("No Supabase config — skipping upload");

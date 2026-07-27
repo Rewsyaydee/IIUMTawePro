@@ -108,29 +108,6 @@ function Stories() {
     };
   }, [userAttendances, schedule]);
 
-  const topVenues = useMemo(() => {
-    const counts = new Map<string, number>();
-    userAttendances.forEach((a) => {
-      const item = schedule.find((s) => s.id === a.scheduleItemId);
-      if (item?.venue) counts.set(item.venue, (counts.get(item.venue) || 0) + 1);
-    });
-    return [...counts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([v]) => v);
-  }, [userAttendances, schedule]);
-
-  const topActivities = useMemo(() => {
-    const counts = new Map<string, number>();
-    userAttendances.forEach((a) => {
-      counts.set(a.eventTitle, (counts.get(a.eventTitle) || 0) + 1);
-    });
-    return [...counts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([t]) => t);
-  }, [userAttendances]);
-
   const wrappedData: WrappedData = {
     username: user.name.split(" ")[0],
     attendedCount,
@@ -140,9 +117,7 @@ function Stories() {
     totalVenues: gpsVenues,
     firstCheckInPlace: firstCheckIn?.place || "N/A",
     firstCheckInTime: firstCheckIn?.time || "N/A",
-    weekProgress,
-    topVenues,
-    topActivities
+    weekProgress
   };
 
   const achievementData: AchievementData = {

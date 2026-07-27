@@ -70,8 +70,10 @@ export type TelegramWebApp = {
   showConfirm: (message: string, callback: (confirmed: boolean) => void) => void;
   openLink: (url: string) => void;
   shareToStory?: (mediaUrl: string, params?: { text?: string; widget_link?: { url: string; name?: string } }) => void;
-  onEvent: (eventType: string, eventHandler: () => void) => void;
-  offEvent: (eventType: string, eventHandler: () => void) => void;
+  shareMessage?: (mediaUrl: string, callback?: (sent: boolean) => void) => void;
+  downloadFile?: (params: { url: string; file_name: string }) => void;
+  onEvent: (eventType: string, eventHandler: (...args: any[]) => void) => void;
+  offEvent: (eventType: string, eventHandler: (...args: any[]) => void) => void;
 };
 
 declare global {
