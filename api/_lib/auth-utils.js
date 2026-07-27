@@ -101,9 +101,9 @@ function envCodes(name, fallback = []) {
 
 export function resolveAccessCode({ code, selectedRole, selectedBureau }) {
   const normalized = normaliseCode(code);
-  const staffCodes = envCodes("COMMITTEE_ACCESS_CODES", ["OiAkuNakTaweNi"]);
-  const headCodes = envCodes("HEAD_ACCESS_CODES", []);
-  const mainboardCodes = envCodes("MAINBOARD_ACCESS_CODES", []);
+  const staffCodes = envCodes("COMMITTEE_ACCESS_CODES");
+  const headCodes = envCodes("HEAD_ACCESS_CODES");
+  const mainboardCodes = envCodes("MAINBOARD_ACCESS_CODES");
 
   if (staffCodes.includes(normalized)) {
     const role = selectedRole === "head" ? "head" : "committee";
@@ -206,7 +206,15 @@ export function verifyAppSessionToken(token) {
   const expected = crypto.createHmac("sha256", secret).update(`${encodedHeader}.${encodedPayload}`).digest("base64url");
   const expectedBuffer = Buffer.from(expected);
   const signatureBuffer = Buffer.from(signature);
-  if (expectedBuffer.length !== signatureBuffer.length || !crypto.timingSafeEqual(expectedBuffer, signatureBuffer)) {
+
+  // Constant-time comparison: pad the shorter buffer to match length
+  let a = expectedBuffer, b = signatureBuffer;
+  if (a.length < b.length) {
+    a = Buffer.concat([a, Buffer.alloc(b.length - a.length)]);
+  } else if (b.length < a.length) {
+    b = Buffer.concat([b, Buffer.alloc(a.length - b.length)]);
+  }
+  if (!crypto.timingSafeEqual(a, b)) {
     return { ok: false, reason: "Invalid app session signature." };
   }
 

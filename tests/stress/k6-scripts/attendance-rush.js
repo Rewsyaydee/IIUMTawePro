@@ -51,13 +51,14 @@ export function setup() {
 export default function () {
   const idx = __VU * 10000 + __ITER;
   const userId = getStudentUserId(idx);
-  const eventId = randomEventId();
+  const uniqueId = `stress-${Date.now()}-${__VU}-${__ITER}`;
+  const eventId = uniqueId;
   const loc = randomLocation();
   const headers = getStudentHeaders(idx);
 
   const req = rpcCall("attendance.submit", {
     scheduleItemId: eventId,
-    eventTitle: `Test Event ${eventId}`,
+    eventTitle: `Stress Test ${uniqueId}`,
     studentName: `Student #${idx}`,
     matricNumber: `${2000000 + (idx % 4500)}`,
     latitude: loc.lat,

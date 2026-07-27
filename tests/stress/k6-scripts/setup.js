@@ -59,17 +59,27 @@ export function getAuthHeaders(userId, name) {
   };
 }
 
-// ── Real JWT helpers (loaded from students.json) ──
+// ── Real JWT helpers (loaded from students.json at init stage) ──
 let studentJwts = null;
 let mainboardJwt = null;
 let committeeJwt = null;
 
-export function loadStudentTokens() {
-  if (studentJwts) return;
+// Load tokens at init stage (module scope, before any VU executes)
+try {
   const data = JSON.parse(open("../students.json"));
   studentJwts = data.students;
   mainboardJwt = data.mainboard.jwt;
   committeeJwt = data.committee.jwt;
+} catch (e) {
+  console.error("Failed to load students.json:", e);
+  studentJwts = [];
+}
+
+export function loadStudentTokens() {
+  // Tokens already loaded at init stage
+  if (!studentJwts || studentJwts.length === 0) {
+    throw new Error("No student tokens available. Run generate-tokens.mjs first.");
+  }
 }
 
 export function getStudentJwt(index) {

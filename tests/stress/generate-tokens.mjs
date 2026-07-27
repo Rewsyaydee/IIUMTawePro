@@ -49,15 +49,15 @@ for (let i = 1; i <= STUDENTS; i++) {
   if (i % 1000 === 0) process.stdout.write(`  ${i}/${STUDENTS}...`);
 }
 
-const mb = { userId: stableUuid("stress-mainboard"), telegramId: "stress-mb-999", name: "MBStress", role: "mainboard", bureau: "" };
-const cm = { userId: stableUuid("stress-committee"), telegramId: "stress-cm-888", name: "CMStress", role: "committee", bureau: "PrepTech" };
+const mb = { id: stableUuid("stress-mainboard"), telegramId: "stress-mb-999", name: "MBStress", role: "mainboard", bureau: "" };
+const cm = { id: stableUuid("stress-committee"), telegramId: "stress-cm-888", name: "CMStress", role: "committee", bureau: "PrepTech" };
 
 writeFileSync(join(__dirname, "students.json"), JSON.stringify({
   generatedAt: new Date().toISOString(),
   total: students.length,
   students,
-  mainboard: { userId: mb.userId, jwt: signJwt(mb) },
-  committee: { userId: cm.userId, jwt: signJwt(cm) },
+  mainboard: { userId: mb.id, jwt: signJwt(mb) },
+  committee: { userId: cm.id, jwt: signJwt(cm) },
 }, null, 2), "utf8");
 
 console.log(`\nDone. ${students.length} student JWTs + mainboard + committee in students.json`);

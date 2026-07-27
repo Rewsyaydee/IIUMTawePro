@@ -126,6 +126,7 @@ export async function updateReportStatus({ id, status, user }) {
 export function validateReportInput({ studentName, phone, category, notes }) {
   if (!studentName || !String(studentName).trim()) return "Student name is required.";
   if (!phone || !String(phone).trim()) return "Phone is required.";
+  if (!/^[\d\s\-+()]{7,20}$/.test(String(phone).trim())) return "Invalid phone number format.";
   if (!category || !String(category).trim()) return "Category is required.";
   if (!notes || !String(notes).trim()) return "Notes are required.";
   return null;

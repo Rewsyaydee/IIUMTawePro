@@ -1,4 +1,4 @@
-import { readJson, sendJson } from "./_lib/auth-utils.js";
+import { readJson, sendJson, ROLES, BUREAUS } from "./_lib/auth-utils.js";
 import { createAuditLog, getUserById, getUserRecordByTelegramId, supabaseRequest } from "./_lib/supabase.js";
 import { verifyAppSessionFromRequest } from "./_lib/auth-utils.js";
 
@@ -51,6 +51,10 @@ function cleanupRateLimits() {
       delete rateLimitMap[key];
     }
   }
+}
+
+function escapeHtml(str) {
+  return String(str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function mapBannerRow(row) {
@@ -163,8 +167,9 @@ export default async function handler(req, res) {
   if (!action) return sendJson(res, 400, { error: "Missing action field." });
 
   // Rate limiting: check per-IP and per-user
+  // Use Vercel-trusted headers: x-real-ip is set by Vercel edge (not client-spoofable)
   cleanupRateLimits();
-  const clientIp = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown";
+  const clientIp = req.headers["x-real-ip"] || req.headers["x-vercel-forwarded-for"] || req.headers["x-forwarded-for"] || "unknown";
   if (!checkRateLimit(`ip:${clientIp}`)) {
     return sendJson(res, 429, { error: "Too many requests. Please slow down." });
   }
@@ -216,6 +221,7 @@ export default async function handler(req, res) {
         return sendJson(res, 201, { task: mapPoaTask(row) });
       }
       case "tasks.update": {
+        if (!user || (user.role !== "mainboard" && user.role !== "head" && user.role !== "committee")) return sendJson(res, 403, { error: "Mainboard, head or committee only." });
         if (!["todo", "in_progress", "done", "blocked"].includes(body.status)) return sendJson(res, 400, { error: "Invalid status." });
         const row = await updateTaskStatus({ id: body.id, status: body.status, user });
         if (!row) return sendJson(res, 404, { error: "Task not found." });
@@ -241,6 +247,7 @@ export default async function handler(req, res) {
         return sendJson(res, 200, { operations: (Array.isArray(rows) ? rows : []).map(mapBureauOperation) });
       }
       case "ops.update": {
+        if (user.role !== "mainboard" && user.role !== "head" && user.role !== "committee") return sendJson(res, 403, { error: "Mainboard, head or committee only." });
         if (!["pending", "active", "ready", "issue", "done"].includes(body.status)) return sendJson(res, 400, { error: "Invalid status." });
         const row = await updateOperationStatus({ id: body.id, status: body.status, user });
         if (!row) return sendJson(res, 404, { error: "Operation not found." });
@@ -251,7 +258,7 @@ export default async function handler(req, res) {
       case "notify.send": {
         if (user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
         if (!body.title || !body.body) return sendJson(res, 400, { error: "Title and body are required." });
-        const text = `<b>${body.title}</b>\n\n${body.body}`;
+        const text = `<b>${escapeHtml(body.title)}</b>\n\n${escapeHtml(body.body)}`;
 
         // Create banner first (fast)
         if (body.createBanner) {
@@ -267,7 +274,7 @@ export default async function handler(req, res) {
       case "notify.emergency": {
         if (user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
         if (!body.title || !body.body) return sendJson(res, 400, { error: "Title and body are required." });
-        const text = `\u{1F6A8} <b>EMERGENCY</b>\n\n<b>${body.title}</b>\n\n${body.body}`;
+        const text = `\u{1F6A8} <b>EMERGENCY</b>\n\n<b>${escapeHtml(body.title)}</b>\n\n${escapeHtml(body.body)}`;
         const { sent, failed, queued } = await broadcastToTargets({ targetRole: body.targetRole || "all", targetBureau: body.targetBureau || "all", text });
         await createAuditLog({ actor: user, action: "sent_emergency_broadcast", tableName: "banners", recordId: "", details: `EMERGENCY "${body.title}" sent to ${queued} users (${sent} delivered, ${failed} failed).` });
         return sendJson(res, 200, { queued, sent, failed });
@@ -285,6 +292,8 @@ export default async function handler(req, res) {
       case "schedule.create": {
         if (user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
         if (!body.title || !body.date || !body.scheduledStartTime || !body.scheduledEndTime) return sendJson(res, 400, { error: "Title, date, start and end time are required." });
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(body.date)) return sendJson(res, 400, { error: "Invalid date format. Use YYYY-MM-DD." });
+        if (!["preparation", "event_week"].includes(body.week)) body.week = "event_week";
         const rows = await supabaseRequest(`/schedule_items?select=${SCHEDULE_SELECT}`, { method: "POST", headers: { Prefer: "return=representation" }, body: [{ date: body.date, day: body.day || "", week: body.week || "event_week", scheduled_start_time: body.scheduledStartTime, scheduled_end_time: body.scheduledEndTime, title: body.title, venue: body.venue || "TBC", tag: body.tag || "Programme", audience: body.audience || "All", description: body.description || null, is_live: false, notify_minutes_before: body.notifyMinutesBefore || 30, responsible_bureau: body.responsibleBureau || null, readiness_status: "pending", pre_session_tasks: JSON.stringify(body.preSessionTasks || []), venue_code: body.venueCode || null }] });
         const item = Array.isArray(rows) ? rows[0] : undefined;
         if (!item) return sendJson(res, 500, { error: "Failed to create schedule item." });
@@ -403,6 +412,8 @@ export default async function handler(req, res) {
       case "users.update": {
         if (!user || user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
         if (!body.id) return sendJson(res, 400, { error: "User ID is required." });
+        if (body.role !== undefined && !ROLES.includes(body.role)) return sendJson(res, 400, { error: "Invalid role." });
+        if (body.bureau && !BUREAUS.includes(body.bureau)) return sendJson(res, 400, { error: "Invalid bureau." });
         const patch = { updated_at: new Date().toISOString() };
         if (body.role !== undefined) patch.role = body.role;
         if (body.bureau !== undefined) patch.bureau = body.bureau || null;
@@ -436,6 +447,9 @@ export default async function handler(req, res) {
       case "attendance.submit": {
         if (!user || user.role !== "student") return sendJson(res, 403, { error: "Students only." });
         if (!body.scheduleItemId || !body.latitude || !body.longitude) return sendJson(res, 400, { error: "Event ID and location are required." });
+        const lat = Number(body.latitude), lng = Number(body.longitude);
+        if (!isFinite(lat) || lat < -90 || lat > 90) return sendJson(res, 400, { error: "Invalid latitude." });
+        if (!isFinite(lng) || lng < -180 || lng > 180) return sendJson(res, 400, { error: "Invalid longitude." });
         const rows = await supabaseRequest("/student_attendance?select=id,user_id,schedule_item_id,status", {
           method: "POST",
           headers: { Prefer: "return=representation" },
@@ -446,8 +460,8 @@ export default async function handler(req, res) {
             student_name: body.studentName || user.name,
             matric_number: body.matricNumber || "",
             kulliyyah: body.kulliyyah || null,
-            latitude: body.latitude,
-            longitude: body.longitude,
+            latitude: lat,
+            longitude: lng,
             status: body.status || "present",
             excuse: body.excuse || null
           }]

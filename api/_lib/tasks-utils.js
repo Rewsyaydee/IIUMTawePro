@@ -31,11 +31,13 @@ export async function listTasksForUser(user) {
 }
 
 export async function insertTask({ user, task }) {
+  // Non-mainboard users can only create tasks for their own bureau
+  const bureau = user.role === "mainboard" ? task.bureau : user.bureau;
   const rows = await supabaseRequest(`/poa_tasks?select=${TASK_SELECT}`, {
     method: "POST",
     headers: { Prefer: "return=representation" },
     body: [{
-      bureau: task.bureau,
+      bureau,
       title: task.title,
       description: task.description,
       due_date: task.dueDate,
@@ -62,7 +64,11 @@ export async function insertTask({ user, task }) {
 }
 
 export async function updateTaskStatus({ id, status, user }) {
-  const rows = await supabaseRequest(`/poa_tasks?id=eq.${encodeURIComponent(id)}&select=${TASK_SELECT}`, {
+  let bureauFilter = "";
+  if (user.role !== "mainboard" && user.bureau) {
+    bureauFilter = `&bureau=eq.${encodeURIComponent(user.bureau)}`;
+  }
+  const rows = await supabaseRequest(`/poa_tasks?id=eq.${encodeURIComponent(id)}${bureauFilter}&select=${TASK_SELECT}`, {
     method: "PATCH",
     headers: { Prefer: "return=representation" },
     body: {

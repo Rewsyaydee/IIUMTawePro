@@ -24,11 +24,11 @@ export default async function handler(req, res) {
 
   try {
     const body = await readJson(req);
-    const hasInviteCode = Boolean(body.inviteCode && String(body.inviteCode).trim());
     const verification = verifyTelegramInitData(body.initData || "");
-    if (!verification.ok && !hasInviteCode) {
+    if (!verification.ok) {
       return sendJson(res, 401, { error: verification.reason });
     }
+    const hasInviteCode = Boolean(body.inviteCode && String(body.inviteCode).trim());
 
     let role = "student";
     let bureau;

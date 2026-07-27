@@ -18,6 +18,10 @@ export default async function handler(req, res) {
     return sendJson(res, 405, { error: "Method not allowed." });
   }
 
+  // Check if caller has the health secret for full response
+  const healthSecret = process.env.HEALTH_SECRET;
+  const authorized = !healthSecret || req.headers["x-health-secret"] === healthSecret;
+
   const checks = {
     telegramBotToken: present(process.env.TELEGRAM_BOT_TOKEN),
     supabaseUrl: present(process.env.VITE_SUPABASE_URL) || present(process.env.SUPABASE_URL),
@@ -32,6 +36,14 @@ export default async function handler(req, res) {
   const missing = Object.entries(checks)
     .filter(([, value]) => value === false || value === 0)
     .map(([key]) => key);
+
+  // Unauthorized callers get minimal response only
+  if (!authorized) {
+    return sendJson(res, 200, {
+      ok: missing.length === 0,
+      timestamp: new Date().toISOString()
+    });
+  }
 
   // Database connectivity check
   let dbStatus = "untested";

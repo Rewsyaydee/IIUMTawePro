@@ -30,7 +30,8 @@ export async function listOperationsForUser(user) {
 
 export async function updateOperationStatus({ id, status, user }) {
   let filter = "";
-  if (user.role !== "mainboard" && user.bureau) {
+  if (user.role !== "mainboard") {
+    if (!user.bureau) return null;
     filter = `&bureau=eq.${encodeURIComponent(user.bureau)}`;
   }
   const rows = await supabaseRequest(`/bureau_operations?id=eq.${encodeURIComponent(id)}${filter}&select=${OP_SELECT}`, {
