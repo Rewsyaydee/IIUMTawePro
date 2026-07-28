@@ -36,6 +36,13 @@ type TelegramLocationManager = {
   openSettings: () => void;
 };
 
+type TelegramStorage = {
+  getItem: (key: string) => Promise<string | null>;
+  setItem: (key: string, value: string) => Promise<boolean>;
+  removeItem: (key: string) => Promise<boolean>;
+  getKeys: () => Promise<string[]>;
+};
+
 export type TelegramWebApp = {
   initData: string;
   initDataUnsafe?: {
@@ -58,6 +65,8 @@ export type TelegramWebApp = {
   SecondaryButton?: TelegramButton;
   HapticFeedback?: TelegramHaptics;
   LocationManager?: TelegramLocationManager;
+  SecureStorage?: TelegramStorage;
+  DeviceStorage?: TelegramStorage;
   isFullscreen?: boolean;
   ready: () => void;
   expand: () => void;

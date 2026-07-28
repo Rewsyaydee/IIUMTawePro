@@ -239,6 +239,8 @@ create policy "Authenticated upload access for story cards"
   to anon
   with check (bucket_id = 'story-cards');
 
+grant usage on schema app_private to anon;
+
 -- Smart Schedule Navigator: static venue registry
 create table if not exists public.static_locations (
   id uuid primary key default gen_random_uuid(),

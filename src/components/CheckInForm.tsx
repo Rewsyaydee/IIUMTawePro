@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle2, MapPin, Loader2, AlertCircle } from "lucide-react";
 import { ThinkingOrb } from "thinking-orbs";
@@ -9,6 +9,19 @@ import { submitStudentAttendance as apiSubmit } from "../lib/studentAttendanceAp
 import { getCurrentPosition, isWithinRadius, type Coordinates } from "../lib/locationVerify";
 import { getVenue } from "../features/navigation/data/venues";
 import { hapticError, hapticSuccess } from "../lib/telegram";
+
+const OFFLINE_QUEUE_KEY = "tawe_offline_checkins";
+
+type OfflineEntry = {
+  scheduleItemId: string;
+  eventTitle: string;
+  studentName: string;
+  matricNumber: string;
+  kulliyyah: string;
+  latitude: number;
+  longitude: number;
+  savedAt: number;
+};
 
 type GpsStatus = "idle" | "scanning" | "success" | "failed";
 
@@ -40,6 +53,38 @@ export function CheckInForm({ blockLabel, blockId, venueCodes, onDone }: CheckIn
     .map((v) => ({ lat: v!.lat!, lng: v!.lng! }));
 
   const noGpsNeeded = venueCoords.length === 0;
+
+  useEffect(() => {
+    if (!apiMode) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const raw = localStorage.getItem(OFFLINE_QUEUE_KEY);
+        if (!raw || cancelled) return;
+        const queue: OfflineEntry[] = JSON.parse(raw);
+        if (!Array.isArray(queue) || queue.length === 0) return;
+        const remaining: OfflineEntry[] = [];
+        for (const entry of queue) {
+          try {
+            await apiSubmit({
+              scheduleItemId: entry.scheduleItemId,
+              eventTitle: entry.eventTitle,
+              studentName: entry.studentName,
+              matricNumber: entry.matricNumber,
+              kulliyyah: entry.kulliyyah,
+              latitude: entry.latitude,
+              longitude: entry.longitude,
+              status: "present"
+            });
+          } catch {
+            remaining.push(entry);
+          }
+        }
+        if (!cancelled) localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(remaining));
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const handleVerifyLocation = async () => {
     setGpsStatus("scanning");
@@ -103,7 +148,24 @@ export function CheckInForm({ blockLabel, blockId, venueCodes, onDone }: CheckIn
       hapticSuccess();
       setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to submit.");
+      if (apiMode) {
+        try {
+          const raw = localStorage.getItem(OFFLINE_QUEUE_KEY);
+          const queue: OfflineEntry[] = raw ? JSON.parse(raw) : [];
+          queue.push({
+            scheduleItemId: blockId,
+            eventTitle: blockLabel,
+            studentName: fullName,
+            matricNumber,
+            kulliyyah,
+            latitude: gpsCoords?.lat || 0,
+            longitude: gpsCoords?.lng || 0,
+            savedAt: Date.now()
+          });
+          localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+        } catch {}
+      }
+      setError(err instanceof Error ? err.message : "Failed to submit. Saved offline — will retry later.");
       hapticError();
     } finally {
       setSubmitting(false);

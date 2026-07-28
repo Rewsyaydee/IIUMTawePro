@@ -27,18 +27,12 @@ function upsertUser(items: MockUser[], next: MockUser) {
   return [next, ...items.filter((item) => item.id !== next.id)];
 }
 
-function initialUsers() {
-  const session = loadAuthSession();
-  if (!session.user) return mockUsers;
-  return upsertUser(mockUsers, session.user);
-}
-
 export function MockUserProvider({ children }: { children: React.ReactNode }) {
-  const [users, setUsers] = useState(initialUsers);
+  const [users, setUsers] = useState(mockUsers);
   const [userId, setUserIdState] = useState(() => {
-    const session = loadAuthSession();
-    return localStorage.getItem(storageKey) || session.user?.id || mockUsers[0].id;
+    return localStorage.getItem(storageKey) || mockUsers[0].id;
   });
+  const [ready, setReady] = useState(false);
 
   const setUserId = (id: string) => {
     localStorage.setItem(storageKey, id);
@@ -46,7 +40,27 @@ export function MockUserProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    if (!shouldUseApiAuth()) return;
+    let cancelled = false;
+
+    (async () => {
+      const session = await loadAuthSession();
+      if (cancelled) return;
+
+      if (session.user) {
+        const loadedUser = session.user;
+        setUsers((items) => upsertUser(items, loadedUser));
+      }
+      if (session.user?.id) {
+        setUserId(session.user.id);
+      }
+      setReady(true);
+    })();
+
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!ready || !shouldUseApiAuth()) return;
 
     let cancelled = false;
     authenticateTelegram()
@@ -57,7 +71,7 @@ export function MockUserProvider({ children }: { children: React.ReactNode }) {
       })
       .catch((error) => {
         console.warn("Telegram auth bridge failed", error);
-        clearAuthSession();
+        if (!cancelled) clearAuthSession();
         setUsers(mockUsers);
         setUserId(mockUsers[0].id);
       });
@@ -65,7 +79,7 @@ export function MockUserProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [ready]);
 
   const addMockUser = (input: NewMockUserInput) => {
     const next: MockUser = {

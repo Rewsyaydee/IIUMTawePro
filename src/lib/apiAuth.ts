@@ -1,5 +1,6 @@
 import type { Bureau, MockUser, Role } from "../types";
 import { getTelegramWebApp } from "./telegram";
+import { getSessionJwt, setSessionJwt, removeSessionJwt, getUserProfile, setUserProfile, removeUserProfile, clearSecureSession } from "./secureStore";
 
 type RedeemAccessInput = {
   code: string;
@@ -28,33 +29,53 @@ export function shouldUseApiAuth() {
   return import.meta.env.VITE_ENABLE_MOCKS === "false" || import.meta.env.VITE_API_AUTH_BRIDGE === "true";
 }
 
-export function loadAuthSession() {
+export async function loadAuthSession() {
   if (typeof window === "undefined") return {};
   try {
-    const userText = localStorage.getItem(authUserStorageKey);
-    const user = userText ? (JSON.parse(userText) as MockUser) : undefined;
-    const supabaseJwt = localStorage.getItem(authJwtStorageKey);
-    return { user, supabaseJwt };
+    const jwt = await getSessionJwt();
+    const user = await getUserProfile();
+    if (jwt) localStorage.setItem(authJwtStorageKey, jwt);
+    if (user) localStorage.setItem(authUserStorageKey, JSON.stringify(user));
+    return { user: user ?? undefined, supabaseJwt: jwt };
   } catch {
-    return {};
+    try {
+      const userText = localStorage.getItem(authUserStorageKey);
+      const user = userText ? (JSON.parse(userText) as MockUser) : undefined;
+      const supabaseJwt = localStorage.getItem(authJwtStorageKey);
+      return { user, supabaseJwt };
+    } catch {
+      return {};
+    }
   }
 }
 
-export function saveAuthSession(session: ApiAuthResponse) {
+export async function saveAuthSession(session: ApiAuthResponse) {
   if (typeof window === "undefined") return;
-  if (session.user) {
-    localStorage.setItem(authUserStorageKey, JSON.stringify(session.user));
-  }
-  if (session.supabaseJwt) {
-    localStorage.setItem(authJwtStorageKey, session.supabaseJwt);
-  } else {
-    localStorage.removeItem(authJwtStorageKey);
+  try {
+    if (session.user) {
+      await setUserProfile(session.user);
+      localStorage.setItem(authUserStorageKey, JSON.stringify(session.user));
+    }
+    if (session.supabaseJwt) {
+      await setSessionJwt(session.supabaseJwt);
+      localStorage.setItem(authJwtStorageKey, session.supabaseJwt);
+    } else {
+      await removeSessionJwt();
+      localStorage.removeItem(authJwtStorageKey);
+    }
+  } catch {
+    if (session.user) localStorage.setItem(authUserStorageKey, JSON.stringify(session.user));
+    if (session.supabaseJwt) localStorage.setItem(authJwtStorageKey, session.supabaseJwt);
+    else localStorage.removeItem(authJwtStorageKey);
   }
   window.dispatchEvent(new Event(authSessionChangedEvent));
 }
 
-export function clearAuthSession() {
+export async function clearAuthSession() {
   if (typeof window === "undefined") return;
+  try {
+    await clearSecureSession();
+  } catch { /* ignore */ }
   localStorage.removeItem(authUserStorageKey);
   localStorage.removeItem(authJwtStorageKey);
   window.dispatchEvent(new Event(authSessionChangedEvent));
@@ -95,6 +116,6 @@ async function postAuth(path: string, body: Record<string, unknown>): Promise<Ap
   if (!response.ok) {
     throw new Error(payload.error || "Authentication failed.");
   }
-  saveAuthSession(payload);
+  await saveAuthSession(payload);
   return payload;
 }

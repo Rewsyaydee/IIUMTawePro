@@ -109,21 +109,38 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
   const [reports, setReports] = useState(initialReports);
   const [tasks, setTasks] = useState(initialTasks);
   const [attendanceProofs, setAttendanceProofs] = useState(initialAttendanceProofs);
-  const [studentAttendances, setStudentAttendances] = useState<StudentAttendance[]>(() => {
-    try {
-      const stored = localStorage.getItem("tawepro-student-attendances");
-      if (stored) {
-        const parsed = JSON.parse(stored) as StudentAttendance[];
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return initialStudentAttendances;
-  });
+  const [studentAttendances, setStudentAttendances] = useState<StudentAttendance[]>(initialStudentAttendances);
 
   useEffect(() => {
-    try {
-      localStorage.setItem("tawepro-student-attendances", JSON.stringify(studentAttendances));
-    } catch {}
+    let cancelled = false;
+    (async () => {
+      const storage = window.Telegram?.WebApp?.DeviceStorage;
+      if (storage) {
+        try {
+          const raw = await storage.getItem("tawe_student_att");
+          if (raw && !cancelled) {
+            const parsed = JSON.parse(raw) as StudentAttendance[];
+            if (Array.isArray(parsed) && parsed.length > 0) setStudentAttendances(parsed);
+          }
+          return;
+        } catch {}
+      }
+      try {
+        const stored = localStorage.getItem("tawepro-student-attendances");
+        if (stored && !cancelled) {
+          const parsed = JSON.parse(stored) as StudentAttendance[];
+          if (Array.isArray(parsed) && parsed.length > 0) setStudentAttendances(parsed);
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    const raw = JSON.stringify(studentAttendances);
+    const storage = window.Telegram?.WebApp?.DeviceStorage;
+    if (storage) storage.setItem("tawe_student_att", raw).catch(() => {});
+    try { localStorage.setItem("tawepro-student-attendances", raw); } catch {}
   }, [studentAttendances]);
   const [bureauOperations, setBureauOperations] = useState(initialBureauOperations);
   const [banners, setBanners] = useState(initialBanners);
