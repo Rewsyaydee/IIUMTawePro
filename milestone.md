@@ -1,6 +1,6 @@
 # TWA Event Ops — IIUM Ta'aruf Week Mini App
 
-Phase 7–8 production-ready Telegram Mini App for IIUM Ta'aruf Week Semester 2, 2025/2026 (July 13–19, 2026).
+Phase 7–9 production-ready Telegram Mini App for IIUM Ta'aruf Week Semester 2, 2025/2026 (July 13–19, 2026).
 
 ## Tech Stack
 
@@ -23,6 +23,13 @@ Phase 7–8 production-ready Telegram Mini App for IIUM Ta'aruf Week Semester 2,
 - **Auto-filled check-in** — matric number and kulliyyah from bot registration flow into `mapSupabaseUser`, pre-filled in GPS check-in form
 - **Service worker** — offline caching for core assets + map images
 - **Telegram native** — haptic feedback, theme sync, fullscreen, confirm dialogs, LocationManager
+- **Share to Chat** — 5 card templates rendered to 1080×1920 PNG via Canvas, uploaded to Supabase `story-cards` bucket, prepared via `savePreparedInlineMessage` Bot API call, shared natively via `webApp.shareMessage()` to any chat
+- **SecureStorage** — encrypted JWT + user profile at rest via Telegram's native encrypted storage, with silent localStorage fallback
+- **DeviceStorage** — offline caching for schedule, tasks, announcements, bureau ops, and student attendance via `useDeviceCache` hook with configurable TTL
+- **downloadFile** — native Telegram download popup for share images and official schedule PDF, replacing browser `a.click()` workaround
+- **Performance detection** — Telegram Android User-Agent parsing for hardware class (LOW/AVERAGE/HIGH) with automatic backdrop-filter disable and canvas resolution scaling on low-end devices
+- **Offline check-in queue** — failed GPS submissions queued in localStorage and auto-retried on next app launch
+- **Share surfaces** — Stories page (`/stories`), check-in success screen, streak widget, center menu "Share TawePro"
 
 ### Dashboard & Event Carousel
 
@@ -101,6 +108,7 @@ Phase 7–8 production-ready Telegram Mini App for IIUM Ta'aruf Week Semester 2,
 | `/attendance` | Student | GPS check-in form + attendance streak view |
 | `/map` | All | Campus overview + venue directory + routes list |
 | `/resources` | All | Dress code, emergency contacts, PDF link |
+| `/stories` | All | 5 shareable cards (Wrapped, Achievement, Schedule, Check-In, Invite) |
 | `/wellbeing` | All | Report form; Welfare dashboard if authorized |
 
 ## Committee Pages
@@ -130,13 +138,19 @@ Single RPC router (`api/rpc.js`) dispatches by `action` field — Vercel Hobby p
 | `user.onboard` | Student matric/kulliyyah registration | Student |
 | `attendance.submit/student.list/mainboard.list/review` | Student attendance | Role-scoped |
 
-Standalone endpoints: `api/auth/telegram`, `api/invites/redeem`, `api/health`, `api/telegram/webhook`, `api/attendance/proofs`, `api/attendance/proofs/[id]/review`.
+Standalone endpoints: `api/auth/telegram`, `api/invites/redeem`, `api/health`, `api/telegram/webhook`, `api/attendance/proofs`, `api/attendance/proofs/[id]/review`, `api/prepare-share`.
 
 ## Supabase Schema
 
 10 tables: `users`, `invite_codes`, `schedule_items`, `wellbeing_reports`, `poa_tasks`, `attendance_proofs`, `bureau_operations`, `banners`, `notifications`, `audit_log`.
 
-Plus: `static_locations`, `static_routes` (navigation), `student_attendance` (session check-in), `attendance-selfies` storage bucket.
+Plus: `static_locations`, `static_routes` (navigation), `student_attendance` (session check-in), `attendance-selfies` storage bucket (private), `story-cards` storage bucket (public, for share card uploads).
+
+### Phase 9 Schema Changes
+
+- `story-cards` storage bucket: public, with `to anon` RLS policies for select and insert
+- `grant usage on schema app_private to anon` — allows anonymous storage access without crashing policy evaluation
+- `users` table: `SecureStorage` stores encrypted JWT + profile alongside localStorage fallback
 
 ### Phase 8 Schema Changes
 
@@ -158,11 +172,16 @@ src/
 ├── lib/                         # API modules: apiAuth, telegram, locationVerify,
 │                                #   wellbeingApi, tasksApi, bureauOpsApi, scheduleApi,
 │                                #   announcementsApi, attendanceApi, notifyApi,
-│                                #   studentAttendanceApi, usersApi (Phase 8)
+│                                #   studentAttendanceApi, usersApi
+│                                #   shareTemplates, shareToStory (Phase 9)
+│                                #   secureStore, deviceCache, deviceInfo (Phase 9)
+│                                #   apiHooks (Phase 9)
 ├── pages/                       # Dashboard, Schedule, Attendance, Announcements,
 │                                #   Wellbeing, Tasks, BureauOps, Mainboard, etc.
+│                                #   Stories (Phase 9)
 ├── components/                  # AppShell, CheckInForm, ColorSweepText, EventCarousel,
 │                                #   StudentAttendanceView, StreakWidget, StatusBadge, etc.
+│                                #   ShareButton (Phase 9)
 ├── state/                       # MockDataContext, MockUserContext
 └── data/                        # mockData, eventSchedule (53 items), scheduleTime
 
@@ -175,6 +194,7 @@ api/
 ├── invites/redeem.js
 ├── attendance/proofs.js + [id]/review.js
 ├── telegram/webhook.js          # Bot: /start, /unlock, /help
+├── prepare-share.js             # Bot API savePreparedInlineMessage (Phase 9)
 └── health.js
 
 public/assets/maps/
@@ -272,3 +292,22 @@ npm run smoke:auth   # Auth bridge smoke test
 - Double user add on API access code redeem eliminated
 - `registration_step` CHECK constraint updated for unlock flow
 - README.md and milestone.md documentation updates
+
+### Phase 9 (Telegram Bot API 8.0+ Integration)
+- **Share to Chat** — 5 card templates (Wrapped, Achievement, Schedule, Check-In, Invite) rendered via Canvas to 1080×1920 PNG, uploaded to public `story-cards` Supabase bucket, prepared via `savePreparedInlineMessage` Bot API call, shared natively via `webApp.shareMessage()` with 60s timeout
+- **Share to Story** — `uploadAndShareStory()` posts directly to Telegram Story via `webApp.shareToStory()` with caption and widget link
+- **`api/prepare-share.js`** — Vercel serverless function: accepts `{ imageUrl, userId, caption }`, calls Bot API `savePreparedInlineMessage` with `InlineQueryResultPhoto`, returns `{ messageId }`
+- **`src/lib/shareTemplates.ts`** — 5 Canvas renderers at 1080×1920 with brand header, gold divider, hashtag footer, and `roundRect` helper
+- **`src/lib/shareToStory.ts`** — upload pipeline (Supabase Storage), `shareToChat()` (prepare-share → shareMessage), `uploadAndShareStory()` (shareToStory), `downloadImageAsFile()` (downloadFile with browser fallback)
+- **`src/components/ShareButton.tsx`** — reusable Send button with thinking-orb loading, inline error banner, and fullscreen image preview overlay with close button, native download, and copy link
+- **`src/pages/Stories.tsx`** — 5-card grid with real attendance/schedule/venue/GPS data, staggered `framer-motion` animations, and ShareButton per card
+- **Share surfaces** — check-in success screen (`CheckInForm.tsx`), streak widget Send button (`StreakWidget.tsx`), center menu "Share TawePro" (`AppShell.tsx`)
+- **SecureStorage** — `src/lib/secureStore.ts`: encrypted JWT + user profile at rest via `webApp.SecureStorage`, with `localStorage` fallback; `apiAuth.ts` dual-storage pattern (SecureStorage source of truth, localStorage sync cache)
+- **DeviceStorage** — `src/lib/deviceCache.ts`: `useDeviceCache<T>()` React hook with TTL; `src/lib/apiHooks.ts`: cache-enabled hooks for schedule, tasks, announcements, bureau ops, and attendance; `MockDataContext.tsx` student attendance migrated to DeviceStorage
+- **Offline check-in queue** — `CheckInForm.tsx`: failed GPS submissions saved to localStorage queue, auto-retried on mount
+- **downloadFile** — `downloadImageAsFile()` uses `webApp.downloadFile()` native popup; Official Schedule PDF page offers native "Download PDF" button
+- **Performance detection** — `src/lib/deviceInfo.ts`: parses Telegram Android User-Agent for manufacturer, model, performance class; sets `data-performance` attribute on `<html>`; CSS disables `backdrop-filter: blur()` on LOW devices; canvas resolution halved on LOW
+- **Community link** — `webhook.js` `/start` message includes `https://t.me/taweprohelp` join link
+- **Supabase fixes** — `story-cards` bucket with `to anon` RLS policies for select and insert; `grant usage on schema app_private to anon` — prevents policy evaluation crashes on anonymous storage access
+- **Harden storage calls** — all Telegram storage API calls use `typeof` function checks + `try/catch` wrapping to survive unsupported features (SecureStorage returning UNSUPPORTED on older clients)
+- **Button label defaults** — switched from "Share to Story" to "Send to Chat" with Send icon across all share surfaces

@@ -15,6 +15,7 @@
   <img src="https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" />
   <img src="https://img.shields.io/badge/Supabase-Backend-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
+  <img src="https://img.shields.io/badge/Bot_API-8.0-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" alt="Bot API 8.0" />
 </p>
 
 ---
@@ -174,6 +175,42 @@ This isn't just a student app. It's a **full event management platform** with fo
 
 ---
 
+### 📤 Share to Chat (Bot API 8.0+)
+
+Students can create beautiful shareable cards and forward them to any Telegram chat with one tap. The full pipeline:
+
+- **5 card templates** — Tawe Wrapped (attendance stats), Achievement (milestone progress), Daily Schedule (today's sessions), GPS Check-In (venue verified), and Invite (bot link)
+- **Canvas render** — 1080×1920 PNG cards with gold/green branding, dynamic user data, and Inter typography
+- **Supabase Storage upload** — cards uploaded to a public `story-cards` bucket for HTTPS access
+- **Prepared inline messages** — `api/prepare-share.js` serverless function calls Bot API `savePreparedInlineMessage` with `InlineQueryResultPhoto`, returns a `messageId`
+- **Native share sheet** — `webApp.shareMessage(messageId)` opens Telegram's native chat picker — select a friend, group, or channel
+- **Share surfaces** — Stories page (`/stories`) with 5 cards, check-in success screen, streak widget, and center menu "Share TawePro" button
+
+---
+
+### 🔒 Encrypted Storage (SecureStorage + DeviceStorage)
+
+- **SecureStorage** — Supabase JWT tokens and user profile (name, matric, telegramId, role) stored encrypted at rest via Telegram's native `SecureStorage` API. Falls back to `localStorage` on unsupported clients
+- **DeviceStorage** — schedule, tasks, announcements, bureau operations, and student attendance cached offline via `useDeviceCache` hook with configurable TTL (5–30 min). Campus WiFi drops? App still loads instantly
+- **Offline check-in queue** — failed GPS submissions saved to localStorage, auto-retried on next app launch
+
+---
+
+### 💾 Native Downloads (downloadFile)
+
+- **"Save Image"** button on share previews uses `webApp.downloadFile()` — Telegram's native download popup with proper filename, no browser `a.click()` workaround
+- **"Download PDF"** button on official schedule page saves the 2026 programme schedule directly to device
+
+---
+
+### ⚡ Performance Detection
+
+- **Telegram Android User-Agent parsing** — detects `LOW` / `AVERAGE` / `HIGH` hardware class from the SDK
+- On `LOW` devices: `backdrop-filter: blur()` disabled on all glass cards (biggest GPU win), canvas resolution halved from 1080×1920 to 540×960 for share cards
+- iOS defaults to `HIGH` (no hardware hints exposed)
+
+---
+
 ## 🏗️ Architecture
 
 ```
@@ -189,19 +226,24 @@ This isn't just a student app. It's a **full event management platform** with fo
 │  - Navigation      │                  │               │
 │  - Announcements   │                  │               │
 │  - Wellbeing       │                  │               │
+│  - Share to Chat ✨ │                  │               │
 ├──────────────────────────────────────────────────────┤
 │  Components: CheckInForm · ColorSweepText ·           │
 │  EventCarousel · StudentAttendanceView · StreakWidget │
+│  ShareButton · SharePreview · ShareTemplates          │
 ├──────────────────────────────────────────────────────┤
+│  Storage: SecureStorage (JWT) · DeviceStorage (cache) │
+│  Performance: deviceInfo (LOW/AVG/HIGH detection)     │
 │  Location: LocationManager API → geolocation fallback  │
 ├──────────────────────────────────────────────────────┤
 │              api/rpc.js (Single Router)                │
-│              18 actions / 1 function                   │
+│              23 actions / 1 function                   │
 ├──────────────────────────────────────────────────────┤
 │  api/telegram/webhook.js — Bot: /start /unlock /help   │
+│  api/prepare-share.js — savePreparedInlineMessage ✨    │
 ├──────────────────────────────────────────────────────┤
 │              Supabase (PostgreSQL + Storage)           │
-│        10 tables · RLS Policies · JWT Auth             │
+│      10 tables + story-cards bucket · RLS · JWT Auth   │
 └──────────────────────────────────────────────────────┘
 ```
 
@@ -281,6 +323,22 @@ This isn't just a student app. It's a **full event management platform** with fo
 - [x] Telegram auth bridge with Supabase JWT + RLS
 - [x] Auto-filled matric/kulliyyah from bot registration → check-in form
 - [x] Deployed on Vercel, ready for production
+- [x] Community link (t.me/taweprohelp) in bot `/start` message
+
+### Sharing & Export (Bot API 8.0+)
+- [x] 5 shareable card templates (Wrapped, Achievement, Schedule, Check-In, Invite)
+- [x] Canvas rendering pipeline (1080×1920 → PNG blob → Supabase upload)
+- [x] `savePreparedInlineMessage` serverless function → `shareMessage` native chat share sheet
+- [x] `shareToStory` direct story posting with widget link
+- [x] `downloadFile` native Telegram download popup (images + PDFs)
+- [x] Share surfaces: Stories page, check-in success, streak widget, center menu
+
+### Storage & Offline
+- [x] SecureStorage — encrypted JWT + user profile at rest
+- [x] DeviceStorage — offline cache for schedule, tasks, announcements, attendance
+- [x] `useDeviceCache` hook with configurable TTL (5–30 min)
+- [x] Offline check-in queue — failed submissions auto-retry on reconnect
+- [x] Device performance detection — LOW/AVERAGE/HIGH → blur disable + canvas scaling
 
 ---
 
@@ -352,7 +410,7 @@ The `registration_step` column uses a CHECK constraint that allows: `matric`, `k
 | Location | Telegram LocationManager API + Browser Geolocation |
 | Maps | Google Maps / Waze / Apple Maps URLs |
 | Notifications | Telegram Bot API |
-| Caching | Service Worker (CacheStorage) |
+| Caching | Service Worker (CacheStorage) + Telegram DeviceStorage + SecureStorage |
 | Hosting | Vercel |
 
 ---
