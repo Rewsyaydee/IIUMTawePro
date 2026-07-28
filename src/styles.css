@@ -5130,24 +5130,23 @@ textarea {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: rgba(0, 0, 0, 0.92);
+  background: rgba(0, 0, 0, 0.94);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom) 16px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .share-preview-close {
-  position: absolute;
-  top: 16px;
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 12px);
   right: 16px;
-  z-index: 10;
-  width: 44px;
-  height: 44px;
+  z-index: 10000;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: none;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -5156,19 +5155,34 @@ textarea {
 }
 
 .share-preview-close:active {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
 }
 
-.share-preview-status {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.9rem;
-  margin-bottom: 12px;
+.share-preview-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: calc(env(safe-area-inset-top) + 60px) 16px calc(env(safe-area-inset-bottom) + 24px) 16px;
+}
+
+.share-preview-error {
+  max-width: 400px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+  font-size: 0.85rem;
   text-align: center;
+  line-height: 1.4;
 }
 
 .share-preview-image-wrap {
   max-width: 90vw;
-  max-height: 65vh;
+  max-height: 55vh;
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 4px 40px rgba(0, 0, 0, 0.5);
@@ -5180,30 +5194,37 @@ textarea {
   display: block;
   width: 100%;
   height: auto;
-  max-height: 65vh;
+  max-height: 55vh;
   object-fit: contain;
   -webkit-touch-callout: default;
   touch-action: manipulation;
 }
 
-.share-preview-download {
+.share-preview-hint {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+  margin-top: 14px;
+  text-align: center;
+}
+
+.share-preview-copy {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-top: 20px;
-  padding: 12px 28px;
-  border-radius: 12px;
-  border: 1px solid rgba(229, 211, 179, 0.4);
-  background: rgba(229, 211, 179, 0.1);
+  margin-top: 14px;
+  padding: 11px 24px;
+  border-radius: 10px;
+  border: 1px solid rgba(229, 211, 179, 0.3);
+  background: rgba(229, 211, 179, 0.08);
   color: #E5D3B3;
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
 }
 
-.share-preview-download:active {
-  background: rgba(229, 211, 179, 0.2);
+.share-preview-copy:active {
+  background: rgba(229, 211, 179, 0.16);
 }
 
 [data-performance="LOW"] .glass-card {

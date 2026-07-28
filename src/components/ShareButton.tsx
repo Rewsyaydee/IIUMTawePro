@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Download, Send, X, Save } from "lucide-react";
+import { Send, X, Copy, Check } from "lucide-react";
 import { ThinkingOrb } from "thinking-orbs";
-import { shareToChat, downloadImageAsFile } from "../lib/shareToStory";
+import { shareToChat } from "../lib/shareToStory";
 import type {
   WrappedData,
   AchievementData,
@@ -66,17 +66,16 @@ export function ShareButton<K extends CardTemplate>({
   const [sharing, setSharing] = useState(false);
   const [done, setDone] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [lastFilename, setLastFilename] = useState("");
-  const [lastBlob, setLastBlob] = useState<Blob | null>(null);
   const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const handleShare = async () => {
     if (sharing || disabled) return;
     setSharing(true);
     setDone(false);
     setPreviewUrl(null);
-    setLastBlob(null);
     setError("");
+    setCopied(false);
     try {
       const renderFn = renderers[template];
       const blob = await renderFn(data);
@@ -89,34 +88,35 @@ export function ShareButton<K extends CardTemplate>({
 
       if (result.success) {
         setDone(true);
-        const url = URL.createObjectURL(blob);
-        setPreviewUrl(url);
-        setLastBlob(blob);
-        setLastFilename(`tawe-${template}-${Date.now()}.png`);
       } else {
+        console.error("[shareToChat] failed:", {
+          template,
+          error: result.error,
+          downloadUrl: result.downloadUrl
+        });
         setError(result.error || "Something went wrong.");
-        const url = URL.createObjectURL(blob);
-        setPreviewUrl(url);
-        setLastBlob(blob);
-        setLastFilename(`tawe-${template}-${Date.now()}.png`);
+        if (result.downloadUrl) setPreviewUrl(result.downloadUrl);
       }
     } catch (err) {
-      console.error("Share failed", err);
+      console.error("[ShareButton] unexpected error:", err);
       setError("An unexpected error occurred. Please try again.");
     } finally {
       setSharing(false);
     }
   };
 
-  const handleDownload = () => {
-    if (!lastBlob) return;
-    downloadImageAsFile(lastBlob, lastFilename);
+  const handleCopyLink = async () => {
+    if (!previewUrl) return;
+    try {
+      await navigator.clipboard.writeText(previewUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Could not copy to clipboard.");
+    }
   };
 
   const dismissPreview = () => {
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-    }
     setPreviewUrl(null);
     setError("");
   };
@@ -153,7 +153,7 @@ export function ShareButton<K extends CardTemplate>({
         )}
       </button>
 
-      {error && (
+      {error && !previewUrl && (
         <div className="share-error-banner" role="alert">
           <span>{error}</span>
         </div>
@@ -167,31 +167,46 @@ export function ShareButton<K extends CardTemplate>({
             onClick={dismissPreview}
             aria-label="Close preview"
           >
-            <X size={24} />
+            <X size={22} />
           </button>
 
-          {done ? (
-            <p className="share-preview-status" style={{ color: "#22a879" }}>Sent!</p>
-          ) : (
-            <p className="share-preview-status">Long-press the image to save it to your gallery</p>
-          )}
+          <div className="share-preview-body">
+            {error && (
+              <div className="share-preview-error" role="alert">
+                <span>{error}</span>
+              </div>
+            )}
 
-          <div className="share-preview-image-wrap">
-            <img
-              src={previewUrl}
-              alt={`${template} share card`}
-              className="share-preview-image"
-            />
+            <div className="share-preview-image-wrap">
+              <img
+                src={previewUrl}
+                alt={`${template} share card`}
+                className="share-preview-image"
+              />
+            </div>
+
+            <p className="share-preview-hint">
+              Long-press the image to save it to your gallery
+            </p>
+
+            <button
+              type="button"
+              className="share-preview-copy"
+              onClick={handleCopyLink}
+            >
+              {copied ? (
+                <>
+                  <Check size={16} aria-hidden="true" />
+                  <span>Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy size={16} aria-hidden="true" />
+                  <span>Copy image link</span>
+                </>
+              )}
+            </button>
           </div>
-
-          <button
-            type="button"
-            className="share-preview-download"
-            onClick={handleDownload}
-          >
-            <Save size={18} aria-hidden="true" />
-            <span>Download</span>
-          </button>
         </div>
       )}
     </>
