@@ -1,9 +1,12 @@
+import { Send } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 
 export function StreakWidget() {
   const { schedule, studentAttendances } = useMockData();
   const { user } = useMockUser();
+  const navigate = useNavigate();
 
   const requiredEvents = schedule.filter((s) => s.isAttendanceRequired);
   const totalRequired = requiredEvents.length || 9;
@@ -41,6 +44,15 @@ export function StreakWidget() {
           {remaining > 0 ? `${remaining} events left to claim` : "Kit eligibility unlocked!"}
         </span>
       </div>
+
+      <button
+        className="streak-share-btn"
+        type="button"
+        onClick={() => navigate("/stories")}
+        title="Share your progress"
+      >
+        <Send size={16} aria-hidden="true" />
+      </button>
     </div>
   );
 }

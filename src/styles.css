@@ -765,6 +765,24 @@ textarea {
   font-style: italic;
 }
 
+.streak-share-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(229, 211, 179, 0.2);
+  background: rgba(229, 211, 179, 0.08);
+  color: #E5D3B3;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.streak-share-btn:active {
+  background: rgba(229, 211, 179, 0.18);
+}
+
 .event-carousel {
   display: flex;
   gap: 12px;
@@ -1329,6 +1347,27 @@ textarea {
   border-radius: 12px;
   color: var(--gold-accent);
   background: rgba(229, 211, 179, 0.1);
+}
+
+.center-menu-share-app {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 14px 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(229, 211, 179, 0.3);
+  background: rgba(229, 211, 179, 0.08);
+  color: #E5D3B3;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.center-menu-share-app:active {
+  background: rgba(229, 211, 179, 0.16);
 }
 
 .filter-bar {
@@ -5207,6 +5246,15 @@ textarea {
   text-align: center;
 }
 
+.share-preview-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.share-preview-download,
 .share-preview-copy {
   display: inline-flex;
   align-items: center;

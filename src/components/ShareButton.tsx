@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Send, X, Copy, Check } from "lucide-react";
+import { Send, X, Copy, Check, Download } from "lucide-react";
 import { ThinkingOrb } from "thinking-orbs";
-import { shareToChat } from "../lib/shareToStory";
+import { shareToChat, downloadImageAsFile } from "../lib/shareToStory";
 import type {
   WrappedData,
   AchievementData,
@@ -68,6 +68,8 @@ export function ShareButton<K extends CardTemplate>({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [lastBlob, setLastBlob] = useState<Blob | null>(null);
+  const [lastFilename, setLastFilename] = useState("");
 
   const handleShare = async () => {
     if (sharing || disabled) return;
@@ -76,6 +78,7 @@ export function ShareButton<K extends CardTemplate>({
     setPreviewUrl(null);
     setError("");
     setCopied(false);
+    setLastBlob(null);
     try {
       const renderFn = renderers[template];
       const blob = await renderFn(data);
@@ -83,6 +86,8 @@ export function ShareButton<K extends CardTemplate>({
         setError("Could not generate the image. Please try again.");
         return;
       }
+      setLastBlob(blob);
+      setLastFilename(`tawe-${template}-${Date.now()}.png`);
 
       const result = await shareToChat(blob);
 
@@ -103,6 +108,11 @@ export function ShareButton<K extends CardTemplate>({
     } finally {
       setSharing(false);
     }
+  };
+
+  const handleDownload = () => {
+    if (!lastBlob) return;
+    downloadImageAsFile(lastBlob, lastFilename);
   };
 
   const handleCopyLink = async () => {
@@ -189,23 +199,33 @@ export function ShareButton<K extends CardTemplate>({
               Long-press the image to save it to your gallery
             </p>
 
-            <button
-              type="button"
-              className="share-preview-copy"
-              onClick={handleCopyLink}
-            >
-              {copied ? (
-                <>
-                  <Check size={16} aria-hidden="true" />
-                  <span>Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Copy size={16} aria-hidden="true" />
-                  <span>Copy image link</span>
-                </>
-              )}
-            </button>
+            <div className="share-preview-actions">
+              <button
+                type="button"
+                className="share-preview-download"
+                onClick={handleDownload}
+              >
+                <Download size={16} aria-hidden="true" />
+                <span>Save Image</span>
+              </button>
+              <button
+                type="button"
+                className="share-preview-copy"
+                onClick={handleCopyLink}
+              >
+                {copied ? (
+                  <>
+                    <Check size={16} aria-hidden="true" />
+                    <span>Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={16} aria-hidden="true" />
+                    <span>Copy link</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

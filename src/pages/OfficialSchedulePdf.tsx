@@ -14,6 +14,17 @@ function openOfficialPdf() {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
+function downloadPdf() {
+  hapticImpact("medium");
+  const url = new URL(pdfPath, window.location.origin).href;
+  const webApp = getTelegramWebApp();
+  if (webApp && typeof webApp.downloadFile === "function") {
+    webApp.downloadFile({ url, file_name: "taaruf-schedule-2026.pdf" });
+    return;
+  }
+  openOfficialPdf();
+}
+
 function OfficialSchedulePdf() {
   return (
     <section className="page-stack">
@@ -39,10 +50,16 @@ function OfficialSchedulePdf() {
           </div>
         </div>
         <iframe className="pdf-frame" src={`${pdfPath}#toolbar=1&navpanes=0`} title="Official Ta'aruf programme schedule PDF" />
-        <button className="primary-button full-width" type="button" onClick={openOfficialPdf}>
-          <Download size={16} aria-hidden="true" />
-          <span>Open full PDF</span>
-        </button>
+        <div className="pdf-actions" style={{ display: "flex", gap: 10 }}>
+          <button className="primary-button" style={{ flex: 1 }} type="button" onClick={openOfficialPdf}>
+            <FileText size={16} aria-hidden="true" />
+            <span>Open</span>
+          </button>
+          <button className="primary-button" style={{ flex: 1 }} type="button" onClick={downloadPdf}>
+            <Download size={16} aria-hidden="true" />
+            <span>Download PDF</span>
+          </button>
+        </div>
       </section>
     </section>
   );

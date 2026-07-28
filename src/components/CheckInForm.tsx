@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2, MapPin, Loader2, AlertCircle } from "lucide-react";
+import { CheckCircle2, MapPin, Loader2, AlertCircle, Send } from "lucide-react";
 import { ThinkingOrb } from "thinking-orbs";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
@@ -9,6 +9,7 @@ import { submitStudentAttendance as apiSubmit } from "../lib/studentAttendanceAp
 import { getCurrentPosition, isWithinRadius, type Coordinates } from "../lib/locationVerify";
 import { getVenue } from "../features/navigation/data/venues";
 import { hapticError, hapticSuccess } from "../lib/telegram";
+import { shareToChat } from "../lib/shareToStory";
 
 const OFFLINE_QUEUE_KEY = "tawe_offline_checkins";
 
@@ -46,6 +47,23 @@ export function CheckInForm({ blockLabel, blockId, venueCodes, onDone }: CheckIn
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [sharingCheckIn, setSharingCheckIn] = useState(false);
+
+  const handleShareCheckIn = async () => {
+    const { renderCheckInCard } = await import("../lib/shareTemplates");
+    const blob = await renderCheckInCard({
+      username: user.name.split(" ")[0],
+      eventTitle: blockLabel,
+      venue: getVenue(venueCodes[0])?.name || "IIUM Campus",
+      time: new Date().toLocaleString("en-MY", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" }),
+      lat: gpsCoords?.lat || 0,
+      lng: gpsCoords?.lng || 0
+    });
+    if (!blob) return;
+    setSharingCheckIn(true);
+    await shareToChat(blob);
+    setSharingCheckIn(false);
+  };
 
   const venueCoords = venueCodes
     .map((code) => getVenue(code))
@@ -183,11 +201,22 @@ export function CheckInForm({ blockLabel, blockId, venueCodes, onDone }: CheckIn
           <CheckCircle2 size={48} color="var(--gold-accent)" />
           <h3>Check-In Successful</h3>
           <p>Your attendance for <strong>{blockLabel}</strong> has been recorded.</p>
-          {onDone && (
-            <button className="check-in-submit" onClick={onDone}>
-              Back to Schedule
+          <div className="check-in-success-actions" style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap", justifyContent: "center" }}>
+            {onDone && (
+              <button className="check-in-submit" style={{ width: "auto", paddingLeft: 20, paddingRight: 20 }} onClick={onDone}>
+                Back to Schedule
+              </button>
+            )}
+            <button
+              className="check-in-submit"
+              style={{ width: "auto", paddingLeft: 20, paddingRight: 20, background: "rgba(229,211,179,0.15)", color: "#E5D3B3" }}
+              disabled={sharingCheckIn}
+              onClick={handleShareCheckIn}
+            >
+              <Send size={16} style={{ marginRight: 6 }} aria-hidden="true" />
+              {sharingCheckIn ? "Sharing..." : "Share Check-In"}
             </button>
-          )}
+          </div>
         </div>
       </motion.div>
     );

@@ -141,6 +141,15 @@ async function uploadImageToStorage(blob: Blob): Promise<string | null> {
 }
 
 export function downloadImageAsFile(blob: Blob, filename: string): void {
+  const webApp = getTelegramWebApp();
+  if (webApp && typeof webApp.downloadFile === "function") {
+    const url = URL.createObjectURL(blob);
+    webApp.downloadFile({ url, file_name: filename }, (accepted) => {
+      URL.revokeObjectURL(url);
+      if (accepted) hapticSuccess();
+    });
+    return;
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

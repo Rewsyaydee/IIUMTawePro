@@ -11,6 +11,7 @@ import {
   ShieldAlert,
   Rocket,
   Share2,
+  Send,
   X,
   CheckSquare,
   Heart
@@ -277,6 +278,19 @@ export function AppShell() {
                   );
                 })}
               </div>
+
+              <button
+                className="center-menu-share-app"
+                type="button"
+                onClick={() => {
+                  hapticImpact("medium");
+                  setCenterMenuOpen(false);
+                  navigate("/stories");
+                }}
+              >
+                <Send size={18} aria-hidden="true" />
+                <span>Share TawePro</span>
+              </button>
             </motion.div>
           </>
         )}
