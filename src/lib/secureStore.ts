@@ -8,96 +8,54 @@ function getStorage() {
   return getTelegramWebApp()?.SecureStorage;
 }
 
-function safeLsGet(key: string): string | null {
+async function storageGet(key: string): Promise<string | null> {
+  const s = getStorage();
+  if (s && typeof s.getItem === "function") {
+    try { return await s.getItem(key); } catch { /* fall through */ }
+  }
   try { return localStorage.getItem(key); } catch { return null; }
 }
 
-function safeLsSet(key: string, value: string): void {
-  try { localStorage.setItem(key, value); } catch { /* quota exceeded */ }
+async function storageSet(key: string, value: string): Promise<void> {
+  const s = getStorage();
+  if (s && typeof s.setItem === "function") {
+    try { await s.setItem(key, value); return; } catch { /* fall through */ }
+  }
+  try { localStorage.setItem(key, value); } catch { /* quota */ }
 }
 
-function safeLsRemove(key: string): void {
+async function storageRemove(key: string): Promise<void> {
+  const s = getStorage();
+  if (s && typeof s.removeItem === "function") {
+    try { await s.removeItem(key); } catch { /* fall through */ }
+  }
   try { localStorage.removeItem(key); } catch { /* ignore */ }
 }
 
 export async function getSessionJwt(): Promise<string | null> {
-  const storage = getStorage();
-  if (storage) {
-    try {
-      return await storage.getItem(JWT_KEY);
-    } catch {
-      return safeLsGet(JWT_KEY);
-    }
-  }
-  return safeLsGet(JWT_KEY);
+  return storageGet(JWT_KEY);
 }
 
 export async function setSessionJwt(jwt: string): Promise<void> {
-  const storage = getStorage();
-  if (storage) {
-    try {
-      await storage.setItem(JWT_KEY, jwt);
-    } catch {
-      safeLsSet(JWT_KEY, jwt);
-    }
-  } else {
-    safeLsSet(JWT_KEY, jwt);
-  }
+  await storageSet(JWT_KEY, jwt);
 }
 
 export async function removeSessionJwt(): Promise<void> {
-  const storage = getStorage();
-  if (storage) {
-    try {
-      await storage.removeItem(JWT_KEY);
-    } catch {
-      safeLsRemove(JWT_KEY);
-    }
-  } else {
-    safeLsRemove(JWT_KEY);
-  }
+  await storageRemove(JWT_KEY);
 }
 
 export async function getUserProfile(): Promise<MockUser | null> {
-  const storage = getStorage();
-  if (storage) {
-    try {
-      const raw = await storage.getItem(PROFILE_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      const raw = safeLsGet(PROFILE_KEY);
-      return raw ? JSON.parse(raw) : null;
-    }
-  }
-  const raw = safeLsGet(PROFILE_KEY);
-  return raw ? JSON.parse(raw) : null;
+  const raw = await storageGet(PROFILE_KEY);
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
 }
 
 export async function setUserProfile(user: MockUser): Promise<void> {
-  const raw = JSON.stringify(user);
-  const storage = getStorage();
-  if (storage) {
-    try {
-      await storage.setItem(PROFILE_KEY, raw);
-    } catch {
-      safeLsSet(PROFILE_KEY, raw);
-    }
-  } else {
-    safeLsSet(PROFILE_KEY, raw);
-  }
+  await storageSet(PROFILE_KEY, JSON.stringify(user));
 }
 
 export async function removeUserProfile(): Promise<void> {
-  const storage = getStorage();
-  if (storage) {
-    try {
-      await storage.removeItem(PROFILE_KEY);
-    } catch {
-      safeLsRemove(PROFILE_KEY);
-    }
-  } else {
-    safeLsRemove(PROFILE_KEY);
-  }
+  await storageRemove(PROFILE_KEY);
 }
 
 export async function clearSecureSession(): Promise<void> {

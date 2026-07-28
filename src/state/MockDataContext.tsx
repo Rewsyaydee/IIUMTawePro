@@ -139,7 +139,7 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const raw = JSON.stringify(studentAttendances);
     const storage = window.Telegram?.WebApp?.DeviceStorage;
-    if (storage) storage.setItem("tawe_student_att", raw).catch(() => {});
+    if (storage) { try { storage.setItem("tawe_student_att", raw); } catch {} }
     try { localStorage.setItem("tawepro-student-attendances", raw); } catch {}
   }, [studentAttendances]);
   const [bureauOperations, setBureauOperations] = useState(initialBureauOperations);

@@ -9,7 +9,7 @@ function getStorage() {
 
 async function typedGetItem(key: string): Promise<string | null> {
   const storage = getStorage();
-  if (storage) {
+  if (storage && typeof storage.getItem === "function") {
     try { return await storage.getItem(key); } catch { /* fall through */ }
   }
   try { return localStorage.getItem(key); } catch { return null; }
@@ -17,7 +17,7 @@ async function typedGetItem(key: string): Promise<string | null> {
 
 async function typedSetItem(key: string, value: string): Promise<void> {
   const storage = getStorage();
-  if (storage) {
+  if (storage && typeof storage.setItem === "function") {
     try { await storage.setItem(key, value); return; } catch { /* fall through */ }
   }
   try { localStorage.setItem(key, value); } catch { /* quota */ }
