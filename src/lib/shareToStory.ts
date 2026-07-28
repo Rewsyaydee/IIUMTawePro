@@ -41,7 +41,8 @@ export async function uploadAndShareStory(
 }
 
 export async function shareToChat(
-  imageBlob: Blob
+  imageBlob: Blob,
+  caption?: string
 ): Promise<ShareResult> {
   const webApp = getTelegramWebApp();
   if (!webApp) {
@@ -52,17 +53,46 @@ export async function shareToChat(
     return { success: false, error: "Your Telegram version does not support sharing to chats yet. Please update Telegram." };
   }
 
+  const userId = webApp.initDataUnsafe?.user?.id;
+  if (!userId) {
+    return { success: false, error: "Could not identify your Telegram account. Please try again." };
+  }
+
   const url = await uploadImageToStorage(imageBlob);
   if (!url) {
     return { success: false, error: "Could not upload the image. Check your connection and try again." };
   }
 
+  let messageId: string;
+  try {
+    const apiBase = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+    const response = await fetch(`${apiBase}/api/prepare-share`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageUrl: url, userId, caption })
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    messageId = data.messageId;
+    if (!messageId) {
+      throw new Error("No messageId returned from server.");
+    }
+  } catch (err) {
+    console.error("Prepare share failed:", err);
+    return { success: false, error: "Could not prepare the share message. Please try again.", downloadUrl: url };
+  }
+
   return new Promise((resolve) => {
     const timeout = setTimeout(() => {
       resolve({ success: false, error: "Sharing timed out. Please try again.", downloadUrl: url });
-    }, 30000);
+    }, 60000);
 
-    webApp.shareMessage!(url, (sent: boolean) => {
+    webApp.shareMessage!(messageId, (sent: boolean) => {
       clearTimeout(timeout);
       if (sent) {
         hapticSuccess();
