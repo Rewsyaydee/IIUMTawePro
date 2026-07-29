@@ -29,16 +29,23 @@ export function generateMockScores(): LeaderboardScore[] {
   for (const mh of allMahallahs) {
     const isMale = mh.zone === "male";
     const namePool = isMale ? MALE_NAMES : FEMALE_NAMES;
-    const studentCount = rand(5, 8);
+
+    // Fixed podium: Ali #1, Bilal #2, Uthman #3
+    const podiumRank = { "mh-ali": 1, "mh-bilal": 2, "mh-uthman": 3 }[mh.code];
+    const studentCount = podiumRank ? 8 : rand(5, 8);
+    const checkinBoost = podiumRank ? 7 : rand(3, 6);
+    const qualityBoost = podiumRank
+      ? [0.5, 0.3, 0.15, 0.05] // Ali: 50% early_bird
+      : [0.25, 0.35, 0.25, 0.15]; // others: random
 
     for (let s = 0; s < studentCount; s++) {
       const userId = `mu-${mh.code}-${s + 1}`;
       usedUserIds.add(userId);
       const name = pick(namePool);
 
-      // Each student: 3-6 check-ins per day, 7 rolling days
+      // Each student: N check-ins per day, 7 rolling days
       for (let day = 0; day < 7; day++) {
-        const checkinsToday = rand(3, 6);
+        const checkinsToday = podiumRank ? checkinBoost : rand(3, 6);
         const date = sessionDay(day);
 
         for (let c = 0; c < checkinsToday; c++) {
@@ -48,13 +55,12 @@ export function generateMockScores(): LeaderboardScore[] {
           const [sh, sm] = [sessionHour, sessionMin];
           const startMin = sh * 60 + sm;
 
-          const windows = [
-            { delta: rand(5, 15),   window: "early_bird" as const, base: 150 },
-            { delta: rand(-4, 4),   window: "on_time" as const,    base: 100 },
-            { delta: rand(-14, -5), window: "late_grace" as const, base: 50 },
-            { delta: rand(-30, -16), window: "standard" as const,  base: 10 }
-          ];
-          const chosen = pick(windows);
+          const r = Math.random();
+          const boost = podiumRank
+            ? (r < qualityBoost[0] ? "early_bird" : r < qualityBoost[0] + qualityBoost[1] ? "on_time" : r < qualityBoost[0] + qualityBoost[1] + qualityBoost[2] ? "late_grace" : "standard")
+            : pick(["early_bird", "early_bird", "on_time", "on_time", "on_time", "late_grace", "late_grace", "standard"] as const);
+          const baseMap = { early_bird: { delta: rand(5, 15), base: 150 }, on_time: { delta: rand(-4, 4), base: 100 }, late_grace: { delta: rand(-14, -5), base: 50 }, standard: { delta: rand(-30, -16), base: 10 } };
+          const chosen = baseMap[boost];
           const submitMin = startMin - chosen.delta;
           const submitHour = Math.floor(submitMin / 60);
           const submitM = submitMin % 60;
@@ -72,7 +78,7 @@ export function generateMockScores(): LeaderboardScore[] {
             points: chosen.base * programCount,
             basePoints: chosen.base,
             programCount,
-            arrivalWindow: chosen.window,
+            arrivalWindow: boost,
             submittedAt
           });
         }

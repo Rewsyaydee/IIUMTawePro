@@ -132,7 +132,7 @@ function Leaderboard() {
             : `${(entry as LeaderboardEntry).score}`;
           const checkins = isMahallahTab
             ? `${(entry as MahallahRanking).totalCheckins} check-ins`
-            : `${(entry as LeaderboardEntry).checkins} sessions`;
+            : `${getMahallahShort((entry as LeaderboardEntry).mahallah)} · ${(entry as LeaderboardEntry).checkins} sessions`;
 
           return (
             <motion.div
