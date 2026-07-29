@@ -24,6 +24,11 @@ function App() {
   useEffect(() => {
     setupTelegramShell();
     const timer = window.setTimeout(() => setBooting(false), 950);
+
+    // Ping notification checker — runs every time someone opens the app
+    const apiBase = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+    fetch(`${apiBase}/api/cron/notifications`, { method: "GET" }).catch(() => {});
+
     return () => window.clearTimeout(timer);
   }, []);
 

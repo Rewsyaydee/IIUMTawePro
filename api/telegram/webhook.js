@@ -488,6 +488,10 @@ export default async function handler(req, res) {
   try {
     const update = await readJson(req);
 
+    // Fire-and-forget: ping notification checker on every bot interaction
+    const baseUrl = appBaseUrl();
+    fetch(`${baseUrl}/api/cron/notifications`, { method: "GET" }).catch(() => {});
+
     // Handle callback queries (inline keyboard taps)
     const callback = update.callback_query;
     if (callback) {
