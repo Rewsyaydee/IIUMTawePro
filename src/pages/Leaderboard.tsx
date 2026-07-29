@@ -6,7 +6,10 @@ import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 import { buildIndividualRanking, buildMahallahRanking, getMahallahShort } from "../lib/leaderboard";
 import { getMockUserNames } from "../data/leaderboardMock";
+import { allMahallahs } from "../features/navigation/data/mahallahs";
 import type { LeaderboardEntry, MahallahRanking } from "../types";
+
+const mahallahImgCache = new Map(allMahallahs.map((m) => [m.code, m.image_url]));
 
 type Tab = "day" | "week" | "mahallah";
 
@@ -96,9 +99,11 @@ function Leaderboard() {
               <span className="podium-rank-num">{rank}</span>
               <div className="podium-avatar" style={{ width: size, height: size }}>
                 {isMahallahTab ? (
-                  <span className="podium-avatar-text" style={{ fontSize: size * 0.3 }}>
-                    {getMahallahShort((entry as MahallahRanking).mahallah)}
-                  </span>
+                  <img
+                    src={mahallahImgCache.get((entry as MahallahRanking).mahallah) || ""}
+                    alt={label}
+                    className="podium-avatar-img"
+                  />
                 ) : (
                   <span className="podium-avatar-text" style={{ fontSize: size * 0.35 }}>
                     {label.charAt(0)}
@@ -141,7 +146,15 @@ function Leaderboard() {
                 <TrendingUp size={12} className="rank-trend" />
               </div>
               <div className="rank-card-avatar">
-                <span className="rank-card-avatar-text">{label.charAt(0)}</span>
+                {isMahallahTab ? (
+                  <img
+                    src={mahallahImgCache.get((entry as MahallahRanking).mahallah) || ""}
+                    alt={label}
+                    className="rank-card-avatar-img"
+                  />
+                ) : (
+                  <span className="rank-card-avatar-text">{label.charAt(0)}</span>
+                )}
               </div>
               <div className="rank-card-mid">
                 <span className="rank-card-name">{label}</span>
