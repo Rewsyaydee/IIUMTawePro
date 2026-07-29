@@ -1,9 +1,6 @@
 import { getBotToken } from "../_lib/telegram-bot.js";
 import { supabaseRequest } from "../_lib/supabase.js";
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
-}
+import { sendJson } from "../_lib/auth-utils.js";
 
 function timeInKL() {
   const now = new Date();
@@ -44,14 +41,6 @@ async function getProgress() {
   return {};
 }
 
-async function saveProgress(key, value) {
-  await supabaseRequest("/schedule_items", {
-    method: "POST",
-    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-    body: [{ id: PROGRESS_KEY, ...key === "page" ? { extra: { page: value } } : { extra: { [SESSION_KEY]: value } } }]
-  });
-}
-
 async function getUsersByTier(tier) {
   const rows = await supabaseRequest(
     `/users?notify_tier=eq.${encodeURIComponent(tier)}&status=eq.active&select=telegram_id&limit=500`
@@ -77,40 +66,36 @@ function morningTriggerTime(sessions) {
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
-    return new Response(JSON.stringify({ error: "Method not allowed." }), { status: 405 });
-  }
-
-  // Verify cron secret (optional hardening)
-  const authHeader = req.headers?.authorization;
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return new Response(JSON.stringify({ error: "Unauthorized." }), { status: 401 });
+    return sendJson(res, 405, { error: "Method not allowed." });
   }
 
   const { hour, minute, date } = timeInKL();
   const sessions = await getTodaySessions(date);
 
+  const mt = morningTriggerTime(sessions);
+  console.log(`[notify-check] KL: ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}, date: ${date}, sessions: ${sessions.length}, morningTrigger: ${mt ? `${mt.hour}:${mt.minute}` : "none"}, triggers: morning=${!!(mt && hour === mt.hour && minute === mt.minute)}, evening=${hour === 13 && minute === 40}`);
+
   if (sessions.length === 0) {
-    return new Response(JSON.stringify({ ok: true, message: "No sessions today." }), { status: 200 });
+    return sendJson(res, 200, { ok: true, message: "No sessions today." });
   }
 
   let sent = 0;
   const results = [];
 
   // ── Morning: 30 min before first session (Daily + Session tiers) ──
-  const mt = morningTriggerTime(sessions);
   if (mt && hour === mt.hour && minute === mt.minute) {
     const s = sessions[0];
     const dailyIds = await getUsersByTier("daily");
     const sessionIds = await getUsersByTier("session");
     const ids = [...new Set([...dailyIds, ...sessionIds])];
-    const text = `🌅 <b>Ta'aruf Week Morning!</b>\n\nFirst session today: <b>${s.title}</b>\n📍 ${s.venue}\n🕐 ${s.scheduled_start_time.slice(0, 5)}\n\n👉 Open TawePro: t.me/iiumtaweprobot`;
+    const text = `🌅 <b>Ta'aruf Week Morning!</b>\n\nFirst session today: <b>${html(s.title)}</b>\n📍 ${html(s.venue)}\n🕐 ${s.scheduled_start_time.slice(0, 5)}\n\n👉 Open TawePro: t.me/iiumtaweprobot`;
     let morningSent = 0;
     for (const id of ids) {
       try { await sendOne(id, text); morningSent++; } catch {}
     }
     sent += morningSent;
     results.push({ tier: "morning", queued: ids.length, sent: morningSent });
+    console.log(`[notify-check] morning sent: ${morningSent}/${ids.length}`);
   }
 
   // ── Session: 1:40 PM evening reminder ──
@@ -120,7 +105,7 @@ export default async function handler(req, res) {
       const h = parseInt(s.scheduled_start_time?.split(":")[0] || "0");
       return h >= 13;
     });
-    const eveningList = eveningSessions.slice(0, 3).map((s) => `• ${s.scheduled_start_time?.slice(0, 5)} — ${s.title} (${s.venue})`).join("\n");
+    const eveningList = eveningSessions.slice(0, 3).map((s) => `• ${s.scheduled_start_time?.slice(0, 5)} — ${html(s.title)} (${html(s.venue)})`).join("\n");
     const text = `🕐 <b>Evening Sessions Reminder</b>\n\nUpcoming today:\n${eveningList || "No evening sessions."}\n\n👉 Open TawePro: t.me/iiumtaweprobot`;
     let eveningSent = 0;
     for (const id of ids) {
@@ -128,6 +113,7 @@ export default async function handler(req, res) {
     }
     if (eveningSent > 0) sent += eveningSent;
     results.push({ tier: "session", queued: ids.length, sent: eveningSent });
+    console.log(`[notify-check] evening sent: ${eveningSent}/${ids.length}`);
   }
 
   // ── Live: sessions starting in the next 5–10 minutes ──
@@ -138,34 +124,26 @@ export default async function handler(req, res) {
     const sessionMin = sh * 60 + sm;
     const diff = sessionMin - nowMin;
 
-    // Only notify if session is 5–10 min away
     if (diff < 5 || diff > 10) continue;
 
-    // Check if we already started processing this session
     const prog = await getProgress();
-    const inProgress = prog[SESSION_KEY] === s.id;
-    if (inProgress) continue;
+    if (prog[SESSION_KEY] === s.id) continue;
 
-    // Mark session as in-progress
-    await saveProgress(SESSION_KEY, s.id);
-
-    // Paginate: get the next page of users
-    const page = prog.page || 0;
-    const allIds = await getUsersByTier("live"); // limited to 500 per query
-
-    // For simplicity: send all in one tick (up to 500 users)
-    // If more than 500 in Live tier, subsequent ticks will hit remaining
-    const batch = allIds.slice(page * 500, (page + 1) * 500);
-    const text = `⏰ <b>Session Starting Soon!</b>\n\n<b>${s.title}</b>\n📍 ${s.venue}\n🕐 Starting in ${diff} min\n\n👉 Open TawePro to check in: t.me/iiumtaweprobot`;
+    const ids = await getUsersByTier("live");
+    const text = `⏰ <b>Session Starting Soon!</b>\n\n<b>${html(s.title)}</b>\n📍 ${html(s.venue)}\n🕐 Starting in ${diff} min\n\n👉 Open TawePro to check in: t.me/iiumtaweprobot`;
 
     let batchSent = 0;
-    for (const id of batch) {
+    for (const id of ids) {
       try { await sendOne(id, text); batchSent++; } catch {}
     }
-
-    if (batch.length > 0 && batchSent > 0) sent += batchSent;
-    results.push({ tier: "live", session: s.title, queued: batch.length, sent: batchSent });
+    if (batchSent > 0) sent += batchSent;
+    results.push({ tier: "live", session: s.title, queued: ids.length, sent: batchSent });
+    console.log(`[notify-check] live "${s.title}" sent: ${batchSent}/${ids.length}`);
   }
 
-  return new Response(JSON.stringify({ ok: true, sent, details: results }), { status: 200 });
+  return sendJson(res, 200, { ok: true, sent, details: results });
+}
+
+function html(value = "") {
+  return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
