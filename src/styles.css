@@ -536,6 +536,20 @@ textarea {
   resize: vertical;
 }
 
+.checkin-reminder-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  margin: 0 16px;
+  border-radius: 10px;
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  color: #fcd34d;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
 .main-surface {
   min-height: 52vh;
 }

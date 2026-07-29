@@ -22,6 +22,7 @@ import { hapticImpact } from "../lib/telegram";
 import { applyRoleTheme } from "../lib/themes";
 import { getTelegramWebApp } from "../lib/telegram";
 import { useMockUser } from "../state/MockUserContext";
+import { CheckInReminder } from "./CheckInReminder";
 import type { Role } from "../types";
 import { RoleSwitcher } from "./RoleSwitcher";
 
@@ -185,6 +186,7 @@ export function AppShell() {
       </header>
 
       <RoleSwitcher />
+      <CheckInReminder />
 
       <main className="main-surface">
         <div className="route-frame" key={location.pathname}>

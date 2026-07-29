@@ -94,6 +94,31 @@ function dashboardKeyboard() {
   };
 }
 
+function notifyKeyboard(currentTier) {
+  const tiers = [
+    { value: "daily",   label: "🌅 Daily — One notification every morning" },
+    { value: "session", label: "🕘 Session — Morning + 1:40 PM reminders" },
+    { value: "live",    label: "🔔 Live — Every programme as it begins" },
+    { value: "off",     label: "🔕 Off — No notifications" }
+  ];
+  const rows = tiers.map((t) => [{
+    text: `${t.value === currentTier ? "✅ " : ""}${t.label}`,
+    callback_data: `set_notify:${t.value}`
+  }]);
+  return { inline_keyboard: rows };
+}
+
+async function handleNotifications(chatId, userRecord) {
+  const current = userRecord?.notify_tier || "off";
+  const tierNames = { daily: "Daily", session: "Session", live: "Live", off: "Off" };
+  await callTelegram("sendMessage", {
+    chat_id: chatId,
+    text: `🔔 <b>Notification Settings</b>\n\nCurrent: <b>${tierNames[current] || "Off"}</b>\n\nChoose when you want to receive session reminders:\n\n• <b>Daily</b> — 30 min before the first session each morning\n• <b>Session</b> — Morning + 1:40 PM reminder\n• <b>Live</b> — 5–10 min before every session starts\n• <b>Off</b> — No notifications\n\nTap a tier below to update: 👇`,
+    parse_mode: "HTML",
+    reply_markup: notifyKeyboard(current)
+  });
+}
+
 async function upsertUser(telegramId, firstName, lastName, username) {
   const name = [firstName, lastName].filter(Boolean).join(" ").trim() || "Guest Student";
   const rows = await supabaseRequest("/users?on_conflict=telegram_id&select=id,telegram_id,name,role,bureau,matric_number,kulliyyah,registration_step", {
@@ -429,6 +454,20 @@ async function handleCallback(chatId, userRecord, data) {
     });
     return;
   }
+
+  // Notification tier selected
+  if (data.startsWith("set_notify:")) {
+    const tier = data.split(":")[1];
+    if (!["off", "daily", "session", "live"].includes(tier)) return;
+    await updateUserRegistration(userRecord.telegram_id, { notify_tier: tier });
+    const tierNames = { daily: "Daily", session: "Session", live: "Live", off: "Off" };
+    await callTelegram("sendMessage", {
+      chat_id: chatId,
+      text: `✅ <b>Notification updated!</b>\n\nYou'll now receive: <b>${tierNames[tier]}</b> reminders.\n\nChange anytime with /notifications`,
+      parse_mode: "HTML"
+    });
+    return;
+  }
 }
 
 export default async function handler(req, res) {
@@ -500,11 +539,21 @@ export default async function handler(req, res) {
       return sendJson(res, 200, { ok: true, handled: "unlock" });
     }
 
+    // /notifications command
+    if (text.startsWith("/notifications")) {
+      let userRecord = await getUserRecordByTelegramId(telegramId);
+      if (!userRecord) {
+        userRecord = await upsertUser(telegramId, from.first_name, from.last_name, from.username);
+      }
+      await handleNotifications(chatId, userRecord);
+      return sendJson(res, 200, { ok: true, handled: "notifications" });
+    }
+
     // /help command
     if (text.startsWith("/help")) {
       await callTelegram("sendMessage", {
         chat_id: chatId,
-        text: `🤖 <b>Bot Commands</b>\n\n<b>/start</b> — View your profile & dashboard\n<b>/unlock CODE</b> — Unlock committee access\n\nYou can also:\n• Tap the buttons below any message to open the app\n• Update your matric number or kulliyyah anytime\n• Check your attendance progress\n\nNeed help? Contact the Mainboard team.`,
+        text: `🤖 <b>Bot Commands</b>\n\n<b>/start</b> — View your profile & dashboard\n<b>/unlock CODE</b> — Unlock committee access\n<b>/notifications</b> — Subscribe to session reminders\n\nYou can also:\n• Tap the buttons below any message to open the app\n• Update your matric number or kulliyyah anytime\n• Check your attendance progress\n\n📢 Join our community: https://t.me/taweprohelp`,
         parse_mode: "HTML",
         reply_markup: { remove_keyboard: true }
       });

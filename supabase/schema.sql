@@ -316,3 +316,6 @@ alter table public.banners add column if not exists links jsonb default '[]';
 
 -- Phase 8: add rejection reason to attendance proofs
 alter table public.attendance_proofs add column if not exists rejection_reason text;
+
+-- Phase 9: notification tier for bot-side session reminders
+alter table public.users add column if not exists notify_tier text default 'off' check (notify_tier in ('off', 'daily', 'session', 'live'));
