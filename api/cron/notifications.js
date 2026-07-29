@@ -8,7 +8,8 @@ function todayStr() {
 function timeInKL() {
   const now = new Date();
   const kl = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" }));
-  return { hour: kl.getHours(), minute: kl.getMinutes(), date: kl.toISOString().slice(0, 10) };
+  const date = `${kl.getFullYear()}-${String(kl.getMonth() + 1).padStart(2, "0")}-${String(kl.getDate()).padStart(2, "0")}`;
+  return { hour: kl.getHours(), minute: kl.getMinutes(), date };
 }
 
 async function callTelegram(method, payload) {
@@ -96,16 +97,20 @@ export default async function handler(req, res) {
   let sent = 0;
   const results = [];
 
-  // ── Daily: 30 min before first session ──
+  // ── Morning: 30 min before first session (Daily + Session tiers) ──
   const mt = morningTriggerTime(sessions);
   if (mt && hour === mt.hour && minute === mt.minute) {
     const s = sessions[0];
-    const ids = await getUsersByTier("daily");
+    const dailyIds = await getUsersByTier("daily");
+    const sessionIds = await getUsersByTier("session");
+    const ids = [...new Set([...dailyIds, ...sessionIds])];
     const text = `🌅 <b>Ta'aruf Week Morning!</b>\n\nFirst session today: <b>${s.title}</b>\n📍 ${s.venue}\n🕐 ${s.scheduled_start_time.slice(0, 5)}\n\n👉 Open TawePro: t.me/iiumtaweprobot`;
+    let morningSent = 0;
     for (const id of ids) {
-      try { await sendOne(id, text); sent++; } catch {}
+      try { await sendOne(id, text); morningSent++; } catch {}
     }
-    results.push({ tier: "daily", queued: ids.length, sent });
+    sent += morningSent;
+    results.push({ tier: "morning", queued: ids.length, sent: morningSent });
   }
 
   // ── Session: 1:40 PM evening reminder ──
