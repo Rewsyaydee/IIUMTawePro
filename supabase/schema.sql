@@ -281,7 +281,7 @@ alter table public.users add column if not exists registration_step text;
 alter table public.users drop constraint if exists users_registration_step_check;
 alter table public.users add constraint users_registration_step_check check (
   registration_step is null
-  or registration_step in ('matric','kulliyyah','change_matric','change_kulliyyah','unlock_bureau:committee','unlock_bureau:head')
+  or registration_step in ('matric','kulliyyah','mahallah_zone','mahallah','change_matric','change_kulliyyah','change_mahallah','unlock_bureau:committee','unlock_bureau:head')
 );
 
 -- Student attendance: individual submissions
@@ -319,3 +319,34 @@ alter table public.attendance_proofs add column if not exists rejection_reason t
 
 -- Phase 9: notification tier for bot-side session reminders
 alter table public.users add column if not exists notify_tier text default 'off' check (notify_tier in ('off', 'daily', 'session', 'live'));
+
+-- Phase 10: Leaderboard — mahallah assignment + scoring
+alter table public.users add column if not exists mahallah text;
+alter table public.schedule_items add column if not exists program_count int default 1;
+
+create table if not exists public.leaderboard_scores (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users(id),
+  mahallah text not null,
+  schedule_item_id text not null,
+  score_date date not null default current_date,
+  points int not null default 0,
+  base_points int not null default 0,
+  program_count int not null default 1,
+  arrival_window text not null default 'standard',
+  submitted_at timestamptz not null default now()
+);
+
+create index if not exists leaderboard_scores_date_idx on public.leaderboard_scores (score_date);
+create index if not exists leaderboard_scores_mahallah_idx on public.leaderboard_scores (mahallah, score_date);
+create index if not exists leaderboard_scores_user_idx on public.leaderboard_scores (user_id, score_date);
+
+alter table public.leaderboard_scores enable row level security;
+
+create policy "anyone can read leaderboard scores"
+on public.leaderboard_scores for select
+using (true);
+
+create policy "authenticated can insert own score"
+on public.leaderboard_scores for insert
+with check (user_id = app_private.claim_user_id() or app_private.claim_user_id() is not null);

@@ -55,10 +55,31 @@ async function callTelegram(method, payload) {
 
 const kulliyyahs = ["KICT", "KOE", "KENMS", "KOED", "AIKOL", "KAED", "AHAS KIRKHS"];
 
+const maleMahallahs = ["Uthman", "Faruq", "Siddiq", "Bilal", "Ali", "Zubair"];
+const femaleMahallahs = ["Safiyyah", "Aminah", "Asiah", "Asma", "Hafsah", "Halimah", "Maryam", "Nusaibah", "Sumayyah", "Ruqayyah", "Salahuddin"];
+
 function kulliyyahKeyboard() {
   const rows = [];
   for (let i = 0; i < kulliyyahs.length; i += 2) {
     rows.push(kulliyyahs.slice(i, i + 2).map((k) => ({ text: k, callback_data: `pick_kulliyyah:${k}` })));
+  }
+  return { inline_keyboard: rows };
+}
+
+function mahallahZoneKeyboard() {
+  return {
+    inline_keyboard: [
+      [{ text: "🧑‍🤝‍🧑 Male Hostels", callback_data: "pick_mahallah_zone:male" }],
+      [{ text: "🧕 Female Hostels", callback_data: "pick_mahallah_zone:female" }]
+    ]
+  };
+}
+
+function mahallahKeyboard(zone) {
+  const list = zone === "male" ? maleMahallahs : femaleMahallahs;
+  const rows = [];
+  for (let i = 0; i < list.length; i += 2) {
+    rows.push(list.slice(i, i + 2).map((m) => ({ text: m, callback_data: `pick_mahallah:${m}` })));
   }
   return { inline_keyboard: rows };
 }
@@ -77,6 +98,7 @@ function changeKeyboard(role) {
     inline_keyboard: [
       [{ text: "✏️ Change Matric", callback_data: "change_matric" }],
       [{ text: "🏛️ Change Kulliyyah", callback_data: "change_kulliyyah" }],
+      [{ text: "🏠 Change Mahallah", callback_data: "change_mahallah" }],
       [{ text: "🔓 Unlock Committee Access", callback_data: "unlock_prompt" }],
       [{ text: "🧭 Open Dashboard", web_app: { url: appBaseUrl() } }],
       [{ text: "📅 View Schedule", web_app: { url: `${appBaseUrl()}/official-schedule` } }]
@@ -155,8 +177,9 @@ async function sendStart(chatId, userRecord) {
   const name = escapeName(userRecord?.name || "");
   const step = userRecord?.registration_step || null;
   const matric = userRecord?.matric_number || "";
-  const kulliyyah = userRecord?.kulliyyah || "";
-  const role = userRecord?.role || "student";
+    const kulliyyah = userRecord?.kulliyyah || "";
+    const mahallah = userRecord?.mahallah || "";
+    const role = userRecord?.role || "student";
   const bureau = userRecord?.bureau || "";
   const rLabel = roleLabel(role, bureau);
 
@@ -181,6 +204,7 @@ async function sendStart(chatId, userRecord) {
       `   🎭 Role:         <b>${html(rLabel)}</b>`,
       `   📝 Matric:       <code>${html(matric)}</code>`,
       `   🏛️ Kulliyyah:    <b>${html(kulliyyah)}</b>`,
+      `   🏠 Mahallah:     <b>${html(mahallah)}</b>`,
       `   📊 Attendance:   <b>${attendance}/8</b> sessions complete`,
       ""
     ];
@@ -217,6 +241,26 @@ async function sendStart(chatId, userRecord) {
       text: `👋 <b>Hey ${html(name)}, we're almost there!</b>\n\nWhich <b>kulliyyah</b> are you from? Pick one below — this is where your Ihsan Madani sessions will be held: 🏛️`,
       parse_mode: "HTML",
       reply_markup: kulliyyahKeyboard()
+    });
+    return;
+  }
+
+  if (step === "mahallah_zone" || step === "change_mahallah") {
+    await callTelegram("sendMessage", {
+      chat_id: chatId,
+      text: `🏠 <b>Almost done, ${html(name)}!</b>\n\nWhich <b>hostel zone</b> are you in?`,
+      parse_mode: "HTML",
+      reply_markup: mahallahZoneKeyboard()
+    });
+    return;
+  }
+
+  if (step === "mahallah") {
+    await callTelegram("sendMessage", {
+      chat_id: chatId,
+      text: `🏠 <b>Pick your Mahallah, ${html(name)}!</b>\n\nWhich hostel do you belong to?`,
+      parse_mode: "HTML",
+      reply_markup: mahallahKeyboard(userRecord.mahallah_zone || "male")
     });
     return;
   }
@@ -409,7 +453,7 @@ async function handleCallback(chatId, userRecord, data) {
 
     await updateUserRegistration(userRecord.telegram_id, {
       kulliyyah: k,
-      registration_step: null
+      registration_step: isChange ? null : "mahallah_zone"
     });
 
     if (isChange) {
@@ -423,9 +467,9 @@ async function handleCallback(chatId, userRecord, data) {
     } else {
       await callTelegram("sendMessage", {
         chat_id: chatId,
-        text: `✅ <b>You're all set, ${html(name)}!</b> 🎉\n\n📋 <b>Your Details:</b>\n   🎭 Role:         <b>Student</b>\n   📝 Matric:       <code>${html(userRecord.matric_number || "")}</code>\n   🏛️ Kulliyyah:    <b>${html(k)}</b>\n\nYou're now ready to experience Ta'aruf Week like never before. Track your attendance, navigate venues, and stay updated — all in one place!\n\nTap below to dive in 👇`,
+        text: `✅ <b>Got it, ${html(name)}!</b> Kulliyyah: <b>${html(k)}</b> 🏛️\n\nLast step — which <b>hostel (mahallah)</b> do you stay at? Pick your zone first:`,
         parse_mode: "HTML",
-        reply_markup: dashboardKeyboard()
+        reply_markup: mahallahZoneKeyboard()
       });
     }
     return;
@@ -451,6 +495,67 @@ async function handleCallback(chatId, userRecord, data) {
       text: `Switching kulliyyah? No problem, ${html(name)}! 🏛️\n\nYour current: <b>${html(userRecord.kulliyyah || "unknown")}</b>\n\nPick your new kulliyyah below:`,
       parse_mode: "HTML",
       reply_markup: kulliyyahKeyboard()
+    });
+    return;
+  }
+
+  // Mahallah zone selected
+  if (data.startsWith("pick_mahallah_zone:")) {
+    const zone = data.split(":")[1];
+    if (!["male", "female"].includes(zone)) return;
+    const step = userRecord?.registration_step || "";
+    const isChange = step === "change_mahallah";
+    await updateUserRegistration(userRecord.telegram_id, {
+      registration_step: "mahallah",
+      mahallah_zone: zone
+    });
+    await callTelegram("sendMessage", {
+      chat_id: chatId,
+      text: `🏠 <b>Pick your Mahallah, ${html(name)}!</b>`,
+      parse_mode: "HTML",
+      reply_markup: mahallahKeyboard(zone)
+    });
+    return;
+  }
+
+  // Mahallah selected
+  if (data.startsWith("pick_mahallah:")) {
+    const m = data.split(":")[1];
+    const all = [...maleMahallahs, ...femaleMahallahs];
+    if (!all.includes(m)) return;
+    const step = userRecord?.registration_step || "";
+    const isChange = step === "change_mahallah" || step === "mahallah";
+    await updateUserRegistration(userRecord.telegram_id, {
+      mahallah: m,
+      registration_step: null
+    });
+    if (isChange) {
+      const old = userRecord.mahallah || "unknown";
+      await callTelegram("sendMessage", {
+        chat_id: chatId,
+        text: `✅ <b>Updated, ${html(name)}!</b> 🏠\n\nMahallah:   <b>${html(old)}</b> → <b>${html(m)}</b>`,
+        parse_mode: "HTML",
+        reply_markup: changeKeyboard(userRecord.role)
+      });
+    } else {
+      await callTelegram("sendMessage", {
+        chat_id: chatId,
+        text: `✅ <b>You're all set, ${html(name)}!</b> 🎉\n\n📋 <b>Your Details:</b>\n   🎭 Role:         <b>Student</b>\n   📝 Matric:       <code>${html(userRecord.matric_number || "")}</code>\n   🏛️ Kulliyyah:    <b>${html(userRecord.kulliyyah || "")}</b>\n   🏠 Mahallah:     <b>${html(m)}</b>\n\nYou're now ready to experience Ta'aruf Week like never before. Track your attendance, navigate venues, and stay updated — all in one place!\n\nTap below to dive in 👇`,
+        parse_mode: "HTML",
+        reply_markup: dashboardKeyboard()
+      });
+    }
+    return;
+  }
+
+  // Change mahallah
+  if (data === "change_mahallah") {
+    await updateUserRegistration(userRecord.telegram_id, { registration_step: "change_mahallah" });
+    await callTelegram("sendMessage", {
+      chat_id: chatId,
+      text: `Switching mahallah, ${html(name)}? No problem! 🏠\n\nYour current: <b>${html(userRecord.mahallah || "unknown")}</b>\n\nPick your hostel zone:`,
+      parse_mode: "HTML",
+      reply_markup: mahallahZoneKeyboard()
     });
     return;
   }

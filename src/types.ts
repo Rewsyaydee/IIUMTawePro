@@ -229,3 +229,37 @@ export interface StudentAttendance {
   reviewedBy?: string;
   reviewedAt?: string;
 }
+
+export type ArrivalWindow = "early_bird" | "on_time" | "late_grace" | "standard";
+
+export interface LeaderboardScore {
+  id: string;
+  userId: string;
+  mahallah: string;
+  scheduleItemId: string;
+  scoreDate: string;
+  points: number;
+  basePoints: number;
+  programCount: number;
+  arrivalWindow: ArrivalWindow;
+  submittedAt: string;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  userId: string;
+  name: string;
+  mahallah: string;
+  score: number;
+  checkins: number;
+}
+
+export interface MahallahRanking {
+  rank: number;
+  mahallah: string;
+  mahallahName: string;
+  avgScore: number;
+  totalCheckins: number;
+  studentCount: number;
+  attendancePct: number;
+}
