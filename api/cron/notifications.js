@@ -2,10 +2,14 @@ import { getBotToken } from "../_lib/telegram-bot.js";
 import { supabaseRequest } from "../_lib/supabase.js";
 import { sendJson } from "../_lib/auth-utils.js";
 
+// Demo date override for testing with July 2026 schedule.
+// Set to null in production to use real date.
+const DEMO_DATE = "2026-07-15";
+
 function timeInKL() {
   const now = new Date();
   const kl = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" }));
-  const date = `${kl.getFullYear()}-${String(kl.getMonth() + 1).padStart(2, "0")}-${String(kl.getDate()).padStart(2, "0")}`;
+  const date = DEMO_DATE || `${kl.getFullYear()}-${String(kl.getMonth() + 1).padStart(2, "0")}-${String(kl.getDate()).padStart(2, "0")}`;
   return { hour: kl.getHours(), minute: kl.getMinutes(), date };
 }
 
@@ -27,18 +31,6 @@ async function sendOne(telegramId, text) {
     parse_mode: "HTML",
     disable_web_page_preview: true
   });
-}
-
-const PROGRESS_KEY = "notify_progress";
-const SESSION_KEY = "notify_session_id";
-
-async function getProgress() {
-  try {
-    const rows = await supabaseRequest(`/schedule_items?select=extra&id=eq.${encodeURIComponent(PROGRESS_KEY)}&limit=1`);
-    const extra = rows?.[0]?.extra;
-    if (extra && typeof extra === "object") return extra;
-  } catch {}
-  return {};
 }
 
 async function getUsersByTier(tier) {
@@ -64,16 +56,26 @@ function morningTriggerTime(sessions) {
   return { hour: Math.floor(totalMin / 60), minute: totalMin % 60 };
 }
 
+function inWindow(nowMin, targetHour, targetMin, span = 5) {
+  const target = targetHour * 60 + targetMin;
+  return nowMin >= target && nowMin <= target + span;
+}
+
+// Sent-today dedup (in-memory per invocation — cron + GH Actions are stateless,
+// but prevents double-send when multiple ticks land within the same window)
+let sentToday = { morning: false, evening: false };
+
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     return sendJson(res, 405, { error: "Method not allowed." });
   }
 
   const { hour, minute, date } = timeInKL();
+  const nowMin = hour * 60 + minute;
   const sessions = await getTodaySessions(date);
 
   const mt = morningTriggerTime(sessions);
-  console.log(`[notify-check] KL: ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}, date: ${date}, sessions: ${sessions.length}, morningTrigger: ${mt ? `${mt.hour}:${mt.minute}` : "none"}, triggers: morning=${!!(mt && hour === mt.hour && minute === mt.minute)}, evening=${hour === 13 && minute === 40}`);
+  console.log(`[notify-check] KL: ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}, date: ${date}, sessions: ${sessions.length}, morningTrigger: ${mt ? `${mt.hour}:${mt.minute}` : "none"}, triggers: morning=${!!(mt && inWindow(nowMin, mt.hour, mt.minute, 10))}, evening=${inWindow(nowMin, 13, 40, 10)}`);
 
   if (sessions.length === 0) {
     return sendJson(res, 200, { ok: true, message: "No sessions today." });
@@ -82,8 +84,9 @@ export default async function handler(req, res) {
   let sent = 0;
   const results = [];
 
-  // ── Morning: 30 min before first session (Daily + Session tiers) ──
-  if (mt && hour === mt.hour && minute === mt.minute) {
+  // ── Morning: 30 min before first session ±10 min window (Daily + Session tiers) ──
+  if (mt && inWindow(nowMin, mt.hour, mt.minute, 10) && !sentToday.morning) {
+    sentToday.morning = true;
     const s = sessions[0];
     const dailyIds = await getUsersByTier("daily");
     const sessionIds = await getUsersByTier("session");
@@ -98,8 +101,9 @@ export default async function handler(req, res) {
     console.log(`[notify-check] morning sent: ${morningSent}/${ids.length}`);
   }
 
-  // ── Session: 1:40 PM evening reminder ──
-  if (hour === 13 && minute === 40) {
+  // ── Session: 1:40 PM ±10 min window ──
+  if (inWindow(nowMin, 13, 40, 10) && !sentToday.evening) {
+    sentToday.evening = true;
     const ids = await getUsersByTier("session");
     const eveningSessions = sessions.filter((s) => {
       const h = parseInt(s.scheduled_start_time?.split(":")[0] || "0");
@@ -111,23 +115,19 @@ export default async function handler(req, res) {
     for (const id of ids) {
       try { await sendOne(id, text); eveningSent++; } catch {}
     }
-    if (eveningSent > 0) sent += eveningSent;
+    sent += eveningSent;
     results.push({ tier: "session", queued: ids.length, sent: eveningSent });
     console.log(`[notify-check] evening sent: ${eveningSent}/${ids.length}`);
   }
 
-  // ── Live: sessions starting in the next 5–10 minutes ──
-  const nowMin = hour * 60 + minute;
+  // ── Live: sessions starting in 5–15 min ──
   for (const s of sessions) {
     if (!s.scheduled_start_time) continue;
     const [sh, sm] = s.scheduled_start_time.split(":").map(Number);
     const sessionMin = sh * 60 + sm;
     const diff = sessionMin - nowMin;
 
-    if (diff < 5 || diff > 10) continue;
-
-    const prog = await getProgress();
-    if (prog[SESSION_KEY] === s.id) continue;
+    if (diff < 5 || diff > 15) continue;
 
     const ids = await getUsersByTier("live");
     const text = `⏰ <b>Session Starting Soon!</b>\n\n<b>${html(s.title)}</b>\n📍 ${html(s.venue)}\n🕐 Starting in ${diff} min\n\n👉 Open TawePro to check in: t.me/iiumtaweprobot`;
