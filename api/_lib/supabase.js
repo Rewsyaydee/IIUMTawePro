@@ -151,7 +151,7 @@ export function mapSupabaseUser(row) {
 
 export async function getUserRecordByTelegramId(telegramId) {
   const rows = await supabaseRequest(
-    `/users?telegram_id=eq.${encodeURIComponent(telegramId)}&select=id,telegram_id,name,role,bureau,status,matric_number,kulliyyah,registration_step&limit=1`
+    `/users?telegram_id=eq.${encodeURIComponent(telegramId)}&select=id,telegram_id,name,role,bureau,status,matric_number,kulliyyah,registration_step,notify_tier,mahallah&limit=1`
   );
   return Array.isArray(rows) ? rows[0] : undefined;
 }

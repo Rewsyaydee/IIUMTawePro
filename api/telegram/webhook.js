@@ -66,20 +66,11 @@ function kulliyyahKeyboard() {
   return { inline_keyboard: rows };
 }
 
-function mahallahZoneKeyboard() {
-  return {
-    inline_keyboard: [
-      [{ text: "🧑‍🤝‍🧑 Male Hostels", callback_data: "pick_mahallah_zone:male" }],
-      [{ text: "🧕 Female Hostels", callback_data: "pick_mahallah_zone:female" }]
-    ]
-  };
-}
-
-function mahallahKeyboard(zone) {
-  const list = zone === "male" ? maleMahallahs : femaleMahallahs;
+function mahallahKeyboard() {
+  const all = [...maleMahallahs, ...femaleMahallahs];
   const rows = [];
-  for (let i = 0; i < list.length; i += 2) {
-    rows.push(list.slice(i, i + 2).map((m) => ({ text: m, callback_data: `pick_mahallah:${m}` })));
+  for (let i = 0; i < all.length; i += 3) {
+    rows.push(all.slice(i, i + 3).map((m) => ({ text: m, callback_data: `pick_mahallah:${m}` })));
   }
   return { inline_keyboard: rows };
 }
@@ -245,22 +236,12 @@ async function sendStart(chatId, userRecord) {
     return;
   }
 
-  if (step === "mahallah_zone" || step === "change_mahallah") {
-    await callTelegram("sendMessage", {
-      chat_id: chatId,
-      text: `🏠 <b>Almost done, ${html(name)}!</b>\n\nWhich <b>hostel zone</b> are you in?`,
-      parse_mode: "HTML",
-      reply_markup: mahallahZoneKeyboard()
-    });
-    return;
-  }
-
-  if (step === "mahallah") {
+  if (step === "mahallah_zone" || step === "mahallah" || step === "change_mahallah") {
     await callTelegram("sendMessage", {
       chat_id: chatId,
       text: `🏠 <b>Pick your Mahallah, ${html(name)}!</b>\n\nWhich hostel do you belong to?`,
       parse_mode: "HTML",
-      reply_markup: mahallahKeyboard(userRecord.mahallah_zone || "male")
+      reply_markup: mahallahKeyboard()
     });
     return;
   }
@@ -453,7 +434,7 @@ async function handleCallback(chatId, userRecord, data) {
 
     await updateUserRegistration(userRecord.telegram_id, {
       kulliyyah: k,
-      registration_step: isChange ? null : "mahallah_zone"
+      registration_step: isChange ? null : "mahallah"
     });
 
     if (isChange) {
@@ -499,25 +480,6 @@ async function handleCallback(chatId, userRecord, data) {
     return;
   }
 
-  // Mahallah zone selected
-  if (data.startsWith("pick_mahallah_zone:")) {
-    const zone = data.split(":")[1];
-    if (!["male", "female"].includes(zone)) return;
-    const step = userRecord?.registration_step || "";
-    const isChange = step === "change_mahallah";
-    await updateUserRegistration(userRecord.telegram_id, {
-      registration_step: "mahallah",
-      mahallah_zone: zone
-    });
-    await callTelegram("sendMessage", {
-      chat_id: chatId,
-      text: `🏠 <b>Pick your Mahallah, ${html(name)}!</b>`,
-      parse_mode: "HTML",
-      reply_markup: mahallahKeyboard(zone)
-    });
-    return;
-  }
-
   // Mahallah selected
   if (data.startsWith("pick_mahallah:")) {
     const m = data.split(":")[1];
@@ -553,9 +515,9 @@ async function handleCallback(chatId, userRecord, data) {
     await updateUserRegistration(userRecord.telegram_id, { registration_step: "change_mahallah" });
     await callTelegram("sendMessage", {
       chat_id: chatId,
-      text: `Switching mahallah, ${html(name)}? No problem! 🏠\n\nYour current: <b>${html(userRecord.mahallah || "unknown")}</b>\n\nPick your hostel zone:`,
+      text: `Switching mahallah, ${html(name)}? No problem! 🏠\n\nYour current: <b>${html(userRecord.mahallah || "unknown")}</b>\n\nPick your new mahallah:`,
       parse_mode: "HTML",
-      reply_markup: mahallahZoneKeyboard()
+      reply_markup: mahallahKeyboard()
     });
     return;
   }

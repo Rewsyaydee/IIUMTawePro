@@ -281,7 +281,7 @@ alter table public.users add column if not exists registration_step text;
 alter table public.users drop constraint if exists users_registration_step_check;
 alter table public.users add constraint users_registration_step_check check (
   registration_step is null
-  or registration_step in ('matric','kulliyyah','mahallah_zone','mahallah','change_matric','change_kulliyyah','change_mahallah','unlock_bureau:committee','unlock_bureau:head')
+  or registration_step in ('matric','kulliyyah','mahallah','change_matric','change_kulliyyah','change_mahallah','unlock_bureau:committee','unlock_bureau:head')
 );
 
 -- Student attendance: individual submissions
