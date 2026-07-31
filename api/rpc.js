@@ -520,15 +520,6 @@ export default async function handler(req, res) {
 
         return sendJson(res, 200, { rows });
       }
-        const rows = await supabaseRequest(`/student_attendance?id=eq.${encodeURIComponent(body.id)}`, {
-          method: "PATCH",
-          headers: { Prefer: "return=representation" },
-          body: { status: body.status, reviewed_by: user.id, reviewed_at: new Date().toISOString() }
-        });
-        const record = Array.isArray(rows) ? rows[0] : undefined;
-        if (!record) return sendJson(res, 404, { error: "Attendance record not found." });
-        return sendJson(res, 200, { attendance: mapStudentAttendance(record) });
-      }
 
       default:
         return sendJson(res, 400, { error: `Unknown action: ${action}` });
