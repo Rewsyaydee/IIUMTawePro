@@ -3,9 +3,10 @@
 
 const BASE = process.env.API_URL || "https://iium-tawe-pro.vercel.app";
 
-async function testNotify(hour, minute) {
-  const url = `${BASE}/api/cron/notifications`;
-  console.log(`\n🔔 Testing notifications at ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")} KL time...\n`);
+async function testNotify(hour, minute, date) {
+  let url = `${BASE}/api/cron/notifications`;
+  if (date) url += `?date=${encodeURIComponent(date)}`;
+  console.log(`\n🔔 Testing notifications at ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")} KL time${date ? ` (date override: ${date})` : ""}...\n`);
 
   const resp = await fetch(url);
   const data = await resp.json();
@@ -28,8 +29,9 @@ async function testNotify(hour, minute) {
 const args = process.argv.slice(2);
 const hour = parseInt(args[0]) || new Date().getHours();
 const minute = parseInt(args[1]) || new Date().getMinutes();
+const date = args[2] || null;
 
-testNotify(hour, minute).catch((err) => {
+testNotify(hour, minute, date).catch((err) => {
   console.error("Test failed:", err.message);
   process.exit(1);
 });

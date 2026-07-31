@@ -5,10 +5,10 @@ import { sendJson } from "../_lib/auth-utils.js";
 // Set to null in production to use real date.
 const DEMO_DATE = null;
 
-function timeInKL() {
+function timeInKL(dateOverride) {
   const now = new Date();
   const kl = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" }));
-  const date = DEMO_DATE || `${kl.getFullYear()}-${String(kl.getMonth() + 1).padStart(2, "0")}-${String(kl.getDate()).padStart(2, "0")}`;
+  const date = dateOverride || DEMO_DATE || `${kl.getFullYear()}-${String(kl.getMonth() + 1).padStart(2, "0")}-${String(kl.getDate()).padStart(2, "0")}`;
   return { hour: kl.getHours(), minute: kl.getMinutes(), date };
 }
 
@@ -69,7 +69,10 @@ export default async function handler(req, res) {
     return sendJson(res, 405, { error: "Method not allowed." });
   }
 
-  const { hour, minute, date } = timeInKL();
+  const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+  const testDate = url.searchParams.get("date") || null;
+
+  const { hour, minute, date } = timeInKL(testDate);
   const nowMin = hour * 60 + minute;
   const sessions = await getTodaySessions(date);
 
