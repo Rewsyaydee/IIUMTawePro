@@ -324,6 +324,12 @@ alter table public.users add column if not exists notify_tier text default 'off'
 alter table public.users add column if not exists mahallah text;
 alter table public.schedule_items add column if not exists program_count int default 1;
 
+alter table public.schedule_items add column if not exists is_attendance_required boolean not null default false;
+alter table public.schedule_items add column if not exists block text;
+alter table public.schedule_items add column if not exists block_group text;
+alter table public.schedule_items add column if not exists is_concurrent boolean not null default false;
+alter table public.schedule_items add column if not exists track text;
+
 create table if not exists public.leaderboard_scores (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.users(id),
