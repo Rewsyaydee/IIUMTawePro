@@ -5,11 +5,13 @@ import { sendJson } from "../_lib/auth-utils.js";
 // Set to null in production to use real date.
 const DEMO_DATE = null;
 
-function timeInKL(dateOverride) {
+function timeInKL(dateOverride, hourOverride, minuteOverride) {
   const now = new Date();
   const kl = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" }));
   const date = dateOverride || DEMO_DATE || `${kl.getFullYear()}-${String(kl.getMonth() + 1).padStart(2, "0")}-${String(kl.getDate()).padStart(2, "0")}`;
-  return { hour: kl.getHours(), minute: kl.getMinutes(), date };
+  const hour = hourOverride != null ? hourOverride : kl.getHours();
+  const minute = minuteOverride != null ? minuteOverride : kl.getMinutes();
+  return { hour, minute, date };
 }
 
 async function callTelegram(method, payload) {
@@ -71,13 +73,17 @@ export default async function handler(req, res) {
 
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
   const testDate = url.searchParams.get("date") || null;
+  const testHour = url.searchParams.has("hour") ? parseInt(url.searchParams.get("hour"), 10) : null;
+  const testMinute = url.searchParams.has("minute") ? parseInt(url.searchParams.get("minute"), 10) : null;
 
-  const { hour, minute, date } = timeInKL(testDate);
+  const { hour, minute, date } = timeInKL(testDate, testHour, testMinute);
   const nowMin = hour * 60 + minute;
   const sessions = await getTodaySessions(date);
 
   const mt = morningTriggerTime(sessions);
-  console.log(`[notify-check] KL: ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}, date: ${date}, sessions: ${sessions.length}, morningTrigger: ${mt ? `${mt.hour}:${mt.minute}` : "none"}, triggers: morning=${!!(mt && inWindow(nowMin, mt.hour, mt.minute, 10))}, evening=${inWindow(nowMin, 13, 40, 10)}`);
+  const morningMatch = !!(mt && inWindow(nowMin, mt.hour, mt.minute, 10));
+  const eveningMatch = inWindow(nowMin, 13, 40, 10);
+  console.log(`[notify-check] KL: ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}, date: ${date}, sessions: ${sessions.length}, morningTrigger: ${mt ? `${mt.hour}:${mt.minute}` : "none"}, triggers: morning=${morningMatch}, evening=${eveningMatch}`);
 
   if (sessions.length === 0) {
     return sendJson(res, 200, { ok: true, message: "No sessions today." });
@@ -143,7 +149,22 @@ export default async function handler(req, res) {
     console.log(`[notify-check] live "${s.title}" sent: ${batchSent}/${ids.length}`);
   }
 
-  return sendJson(res, 200, { ok: true, sent, details: results });
+  return sendJson(res, 200, {
+    ok: true,
+    sent,
+    details: results,
+    debug: {
+      klTime: `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
+      date,
+      sessionsFound: sessions.length,
+      morningTriggerTime: mt ? `${mt.hour}:${mt.minute}` : null,
+      morningMatch,
+      eveningMatch,
+      usersDaily: results.find((r) => r.tier === "morning")?.queued || 0,
+      usersSession: results.find((r) => r.tier === "session")?.queued || 0,
+      usersLive: results.filter((r) => r.tier === "live").reduce((sum, r) => sum + r.queued, 0)
+    }
+  });
 }
 
 function html(value = "") {

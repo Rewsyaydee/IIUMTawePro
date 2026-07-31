@@ -5,7 +5,11 @@ const BASE = process.env.API_URL || "https://iium-tawe-pro.vercel.app";
 
 async function testNotify(hour, minute, date) {
   let url = `${BASE}/api/cron/notifications`;
-  if (date) url += `?date=${encodeURIComponent(date)}`;
+  const params = [];
+  if (date) params.push(`date=${encodeURIComponent(date)}`);
+  if (hour != null && !isNaN(hour)) params.push(`hour=${hour}`);
+  if (minute != null && !isNaN(minute)) params.push(`minute=${minute}`);
+  if (params.length) url += `?${params.join("&")}`;
   console.log(`\n🔔 Testing notifications at ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")} KL time${date ? ` (date override: ${date})` : ""}...\n`);
 
   const resp = await fetch(url);
@@ -13,6 +17,16 @@ async function testNotify(hour, minute, date) {
 
   console.log(`Status: ${resp.status}`);
   console.log(`Response:`, JSON.stringify(data, null, 2));
+
+  if (data.debug) {
+    console.log(`\n📊 Debug:`);
+    console.log(`   KL Time:    ${data.debug.klTime}`);
+    console.log(`   Date:       ${data.debug.date}`);
+    console.log(`   Sessions:   ${data.debug.sessionsFound}`);
+    console.log(`   Morning at: ${data.debug.morningTriggerTime || "none"}`);
+    console.log(`   Triggers:   morning=${data.debug.morningMatch}  evening=${data.debug.eveningMatch}`);
+    console.log(`   Users:      daily=${data.debug.usersDaily}  session=${data.debug.usersSession}  live=${data.debug.usersLive}`);
+  }
 
   if (data.sent > 0) {
     console.log(`\n✅ WOULD SEND ${data.sent} notifications!`);
