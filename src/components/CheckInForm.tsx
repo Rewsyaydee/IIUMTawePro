@@ -72,6 +72,9 @@ export function CheckInForm({ blockLabel, blockId, venueCodes, onDone }: CheckIn
 
   const noGpsNeeded = venueCoords.length === 0;
 
+  // TODO: remove after testing leaderboard + streak
+  const SKIP_GPS = true;
+
   useEffect(() => {
     if (!apiMode) return;
     let cancelled = false;
@@ -108,6 +111,11 @@ export function CheckInForm({ blockLabel, blockId, venueCodes, onDone }: CheckIn
     setGpsStatus("scanning");
     setError("");
     try {
+      if (SKIP_GPS) {
+        setGpsStatus("success");
+        hapticSuccess();
+        return;
+      }
       const pos = await getCurrentPosition();
       setGpsCoords(pos);
       if (noGpsNeeded) {
@@ -130,7 +138,7 @@ export function CheckInForm({ blockLabel, blockId, venueCodes, onDone }: CheckIn
     }
   };
 
-  const canSubmit = (gpsStatus === "success" || noGpsNeeded) && fullName.trim() && matricNumber.trim() && !submitting;
+  const canSubmit = (SKIP_GPS || gpsStatus === "success" || noGpsNeeded) && fullName.trim() && matricNumber.trim() && !submitting;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;

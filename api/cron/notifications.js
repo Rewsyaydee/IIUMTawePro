@@ -2,9 +2,8 @@ import { getBotToken } from "../_lib/telegram-bot.js";
 import { supabaseRequest } from "../_lib/supabase.js";
 import { sendJson } from "../_lib/auth-utils.js";
 
-// Demo date override for testing with July 2026 schedule.
 // Set to null in production to use real date.
-const DEMO_DATE = "2026-07-15";
+const DEMO_DATE = null;
 
 function timeInKL() {
   const now = new Date();

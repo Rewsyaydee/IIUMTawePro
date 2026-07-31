@@ -2,7 +2,7 @@ import type { ScheduleItem } from "../types";
 
 export type ScheduleStatus = "done" | "live" | "upcoming";
 
-const EVENT_WEEK_MONDAY = new Date(2026, 6, 13); // July 13, 2026
+const EVENT_WEEK_MONDAY = new Date(2026, 7, 3); // August 3, 2026
 
 export function getVirtualScheduleDate(now: Date = new Date()): Date {
   const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, 2=Tue, ... 6=Sat
