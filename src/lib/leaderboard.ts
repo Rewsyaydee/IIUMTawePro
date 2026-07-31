@@ -1,11 +1,22 @@
-import type { LeaderboardEntry, LeaderboardScore, MahallahRanking } from "../types";
-import { allMahallahs, type Mahallah } from "../features/navigation/data/mahallahs";
+import type { LeaderboardEntry, MahallahRanking } from "../types";
+import { allMahallahs } from "../features/navigation/data/mahallahs";
+
+export interface LeaderboardRow {
+  user_id: string;
+  student_name: string;
+  mahallah: string;
+  schedule_item_id: string;
+  event_title: string;
+  submitted_at: string;
+  scheduled_start_time: string;
+  program_count: number;
+}
 
 export function computeScore(
   submittedAt: string,
   sessionStart: string,
   programCount: number
-): { points: number; basePoints: number; window: LeaderboardScore["arrivalWindow"] } {
+): { points: number; basePoints: number; window: string } {
   const submit = new Date(submittedAt);
   const [sh, sm] = sessionStart.split(":").map(Number);
   const start = new Date(submit);
@@ -13,14 +24,25 @@ export function computeScore(
   const diffMin = (start.getTime() - submit.getTime()) / 60000;
 
   let base: number;
-  let window: LeaderboardScore["arrivalWindow"];
-
+  let window: string;
   if (diffMin >= 5 && diffMin <= 15)      { base = 150; window = "early_bird"; }
   else if (diffMin >= -5 && diffMin < 5)   { base = 100; window = "on_time"; }
   else if (diffMin >= -15 && diffMin < -5) { base = 50;  window = "late_grace"; }
   else                                      { base = 10;  window = "standard"; }
 
   return { points: base * programCount, basePoints: base, window };
+}
+
+export async function fetchLeaderboardData(): Promise<LeaderboardRow[]> {
+  const apiBase = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+  const resp = await fetch(`${apiBase}/api/rpc`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "leaderboard.fetch" })
+  });
+  if (!resp.ok) throw new Error("Failed to fetch leaderboard data.");
+  const payload = await resp.json();
+  return (payload.rows || []) as LeaderboardRow[];
 }
 
 export function getMahallahName(code: string): string {
@@ -33,24 +55,22 @@ export function getMahallahShort(code: string): string {
   return m ? m.short : code;
 }
 
-export function buildIndividualRanking(scores: LeaderboardScore[], userNames: Map<string, string>): LeaderboardEntry[] {
-  const map = new Map<string, { score: number; checkins: number; mahallah: string }>();
-  for (const s of scores) {
-    const existing = map.get(s.userId) || { score: 0, checkins: 0, mahallah: s.mahallah };
-    existing.score += s.points;
+export function buildIndividualRanking(
+  rows: LeaderboardRow[],
+  dateFilter?: string
+): LeaderboardEntry[] {
+  const filtered = dateFilter ? rows.filter((r) => r.submitted_at.slice(0, 10) === dateFilter) : rows;
+  const map = new Map<string, { name: string; mahallah: string; score: number; checkins: number }>();
+  for (const r of filtered) {
+    const { points } = computeScore(r.submitted_at, r.scheduled_start_time, r.program_count);
+    const existing = map.get(r.user_id) || { name: r.student_name, mahallah: r.mahallah, score: 0, checkins: 0 };
+    existing.score += points;
     existing.checkins += 1;
-    map.set(s.userId, existing);
+    map.set(r.user_id, existing);
   }
   const entries: LeaderboardEntry[] = [];
   for (const [userId, data] of map) {
-    entries.push({
-      rank: 0,
-      userId,
-      name: userNames.get(userId) || userId.slice(0, 8),
-      mahallah: data.mahallah,
-      score: data.score,
-      checkins: data.checkins
-    });
+    entries.push({ rank: 0, userId, name: data.name, mahallah: data.mahallah, score: data.score, checkins: data.checkins });
   }
   entries.sort((a, b) => b.score - a.score);
   entries.forEach((e, i) => (e.rank = i + 1));
@@ -58,33 +78,40 @@ export function buildIndividualRanking(scores: LeaderboardScore[], userNames: Ma
 }
 
 export function buildMahallahRanking(
-  scores: LeaderboardScore[],
-  mahallahStudentCounts: Map<string, number>,
+  rows: LeaderboardRow[],
   totalRequiredSessions: number
 ): MahallahRanking[] {
-  const map = new Map<string, { totalScore: number; checkins: number }>();
-  for (const s of scores) {
-    const existing = map.get(s.mahallah) || { totalScore: 0, checkins: 0 };
-    existing.totalScore += s.points;
-    existing.checkins += 1;
-    map.set(s.mahallah, existing);
+  const studentMap = new Map<string, string>(); // user_id → mahallah
+  const mahallahStudents = new Map<string, Set<string>>();
+  const mahallahCheckins = new Map<string, number>();
+
+  for (const r of rows) {
+    const m = r.mahallah || "unknown";
+    if (!mahallahStudents.has(m)) mahallahStudents.set(m, new Set());
+    mahallahStudents.get(m)!.add(r.user_id);
+    mahallahCheckins.set(m, (mahallahCheckins.get(m) || 0) + 1);
   }
+
   const rankings: MahallahRanking[] = [];
-  for (const [code, data] of map) {
-    const studentCount = mahallahStudentCounts.get(code) || 1;
-    const maxPossible = totalRequiredSessions * studentCount;
-    const pct = maxPossible > 0 ? Math.round((data.checkins / maxPossible) * 100) : 0;
+  for (const mh of allMahallahs) {
+    const code = mh.code;
+    const studentSet = mahallahStudents.get(code) || new Set();
+    const studentCount = studentSet.size;
+    const checkins = mahallahCheckins.get(code) || 0;
+    const maxPossible = totalRequiredSessions * Math.max(studentCount, 1);
+    const pct = maxPossible > 0 ? Math.round((checkins / maxPossible) * 100) : 0;
+
     rankings.push({
       rank: 0,
       mahallah: code,
-      mahallahName: getMahallahName(code),
-      avgScore: Math.round((data.totalScore / studentCount) * 10) / 10,
-      totalCheckins: data.checkins,
+      mahallahName: mh.name,
+      avgScore: 0,
+      totalCheckins: checkins,
       studentCount,
       attendancePct: pct
     });
   }
-  rankings.sort((a, b) => b.attendancePct - a.attendancePct || b.avgScore - a.avgScore);
+  rankings.sort((a, b) => b.attendancePct - a.attendancePct);
   rankings.forEach((r, i) => (r.rank = i + 1));
   return rankings;
 }

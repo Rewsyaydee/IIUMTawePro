@@ -174,7 +174,7 @@ export default async function handler(req, res) {
     return sendJson(res, 429, { error: "Too many requests. Please slow down." });
   }
 
-  const publicActions = new Set(["schedule.list", "announcements.list"]);
+  const publicActions = new Set(["schedule.list", "announcements.list", "leaderboard.fetch"]);
   let user;
   if (!publicActions.has(action)) {
     user = await resolveUser(req);
@@ -483,6 +483,43 @@ export default async function handler(req, res) {
       case "attendance.review": {
         if (!user || user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
         if (!body.id || !body.status) return sendJson(res, 400, { error: "ID and status are required." });
+        const rows = await supabaseRequest(`/student_attendance?id=eq.${encodeURIComponent(body.id)}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=representation" },
+          body: { status: body.status, reviewed_by: user.id, reviewed_at: new Date().toISOString() }
+        });
+        const record = Array.isArray(rows) ? rows[0] : undefined;
+        if (!record) return sendJson(res, 404, { error: "Attendance record not found." });
+        return sendJson(res, 200, { attendance: mapStudentAttendance(record) });
+      }
+
+      case "leaderboard.fetch": {
+        const attRows = await supabaseRequest("/student_attendance?select=user_id,schedule_item_id,event_title,student_name,submitted_at,status&order=submitted_at.asc&limit=5000");
+        const attendances = Array.isArray(attRows) ? attRows.filter((r) => r.status === "present") : [];
+
+        const scheduleRows = await supabaseRequest("/schedule_items?select=id,scheduled_start_time,program_count&limit=200");
+        const scheduleMap = new Map((Array.isArray(scheduleRows) ? scheduleRows : []).map((r) => [r.id, r]));
+
+        const userRows = await supabaseRequest("/users?select=id,name,mahallah&mahallah=not.is.null&limit=5000");
+        const userMap = new Map((Array.isArray(userRows) ? userRows : []).map((r) => [r.id, r]));
+
+        const rows = attendances.map((a) => {
+          const sched = scheduleMap.get(a.schedule_item_id) || {};
+          const usr = userMap.get(a.user_id) || {};
+          return {
+            user_id: a.user_id,
+            student_name: a.student_name,
+            mahallah: usr.mahallah || "",
+            schedule_item_id: a.schedule_item_id,
+            event_title: a.event_title,
+            submitted_at: a.submitted_at,
+            scheduled_start_time: sched.scheduled_start_time || "",
+            program_count: sched.program_count || 1
+          };
+        });
+
+        return sendJson(res, 200, { rows });
+      }
         const rows = await supabaseRequest(`/student_attendance?id=eq.${encodeURIComponent(body.id)}`, {
           method: "PATCH",
           headers: { Prefer: "return=representation" },

@@ -31,8 +31,6 @@ import type {
   TaskStatus,
   WellbeingReport
 } from "../types";
-import { generateMockScores } from "../data/leaderboardMock";
-import type { LeaderboardScore } from "../types";
 import { useMockUser } from "./MockUserContext";
 
 type ReportInput = Pick<WellbeingReport, "studentName" | "phone" | "category" | "notes">;
@@ -72,7 +70,6 @@ type MockDataContextValue = {
   inviteCodes: InviteCode[];
   auditLog: AuditLogEntry[];
   announcements: Announcement[];
-  leaderboardScores: LeaderboardScore[];
   updateReadiness: (id: string, status: ReadinessStatus) => void;
   updateScheduleItem: (id: string, patch: Partial<ScheduleItem>) => void;
   createScheduleItem: (input: ScheduleInput) => ScheduleItem;
@@ -151,7 +148,6 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
   const [inviteCodes, setInviteCodes] = useState(initialInviteCodes);
   const [auditLog, setAuditLog] = useState(initialAuditLog);
   const [announcements, setAnnouncements] = useState(initialAnnouncements);
-  const [leaderboardScores] = useState<LeaderboardScore[]>(() => generateMockScores());
 
   const value = useMemo<MockDataContextValue>(() => {
     const recordAuditLog = (input: AuditInput) => {
@@ -682,7 +678,6 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
       inviteCodes,
       auditLog,
       announcements,
-      leaderboardScores,
       updateReadiness,
       updateScheduleItem,
       createScheduleItem,
@@ -709,7 +704,7 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
       dismissAnnouncement,
       deactivateAnnouncement
     };},
-    [attendanceProofs, studentAttendances, auditLog, banners, bureauOperations, inviteCodes, notifications, reports, schedule, tasks, announcements, leaderboardScores, user]
+    [attendanceProofs, studentAttendances, auditLog, banners, bureauOperations, inviteCodes, notifications, reports, schedule, tasks, announcements, user]
   );
 
   return <MockDataContext.Provider value={value}>{children}</MockDataContext.Provider>;
