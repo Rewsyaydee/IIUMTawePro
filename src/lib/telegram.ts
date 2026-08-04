@@ -78,6 +78,7 @@ export type TelegramWebApp = {
   showAlert: (message: string, callback?: () => void) => void;
   showConfirm: (message: string, callback: (confirmed: boolean) => void) => void;
   openLink: (url: string) => void;
+  openInvoice?: (url: string, callback?: (status: string) => void) => void;
   shareToStory?: (mediaUrl: string, params?: { text?: string; widget_link?: { url: string; name?: string } }) => void;
   shareMessage?: (messageId: string, callback?: (sent: boolean) => void) => void;
   downloadFile?: (params: { url: string; file_name: string }, callback?: (accepted: boolean) => void) => void;

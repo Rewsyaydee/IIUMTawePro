@@ -34,3 +34,16 @@ export async function revokeUserApi(id: string) {
   const payload = (await rpc("users.revoke", { id })) as { user: Record<string, unknown> };
   return payload.user;
 }
+
+export type BureauMember = {
+  id: string;
+  name: string;
+  matric_number?: string | null;
+  telegram_username?: string | null;
+  role: string;
+};
+
+export async function listBureauMembers(bureau?: string) {
+  const payload = (await rpc("bureau.members", { bureau })) as { members: BureauMember[]; error?: string };
+  return payload.members;
+}

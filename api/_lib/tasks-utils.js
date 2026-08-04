@@ -1,6 +1,6 @@
 import { createAuditLog, supabaseRequest } from "./supabase.js";
 
-const TASK_SELECT = "id,bureau,title,description,due_date,due_time,assigned_to,status,priority,notify_minutes_before,is_recurring,created_at,updated_at";
+const TASK_SELECT = "id,bureau,title,description,due_date,due_time,assigned_to,assigned_to_ids,status,priority,notify_minutes_before,is_recurring,created_at,updated_at";
 
 export function mapPoaTask(row) {
   return {
@@ -11,6 +11,7 @@ export function mapPoaTask(row) {
     dueDate: row.due_date,
     dueTime: row.due_time,
     assignedTo: row.assigned_to,
+    assignedToIds: Array.isArray(row.assigned_to_ids) ? row.assigned_to_ids : [],
     status: row.status,
     priority: row.priority,
     notifyMinutesBefore: row.notify_minutes_before,
@@ -43,6 +44,7 @@ export async function insertTask({ user, task }) {
       due_date: task.dueDate,
       due_time: task.dueTime,
       assigned_to: task.assignedTo,
+      assigned_to_ids: Array.isArray(task.assignedToIds) ? task.assignedToIds : [],
       status: "todo",
       priority: task.priority,
       notify_minutes_before: task.notifyMinutesBefore || 20,
@@ -97,6 +99,7 @@ export async function updateTaskDetails({ id, fields, user }) {
   if (fields.dueDate !== undefined) patch.due_date = fields.dueDate;
   if (fields.dueTime !== undefined) patch.due_time = fields.dueTime;
   if (fields.assignedTo !== undefined) patch.assigned_to = fields.assignedTo;
+  if (fields.assignedToIds !== undefined) patch.assigned_to_ids = fields.assignedToIds;
   if (fields.priority !== undefined) patch.priority = fields.priority;
   if (fields.bureau !== undefined) patch.bureau = fields.bureau;
   const rows = await supabaseRequest(`/poa_tasks?id=eq.${encodeURIComponent(id)}&select=${TASK_SELECT}`, {

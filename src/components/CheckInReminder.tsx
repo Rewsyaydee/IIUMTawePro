@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { MapPin, AlertTriangle } from "lucide-react";
 import { useMockData } from "../state/MockDataContext";
-import { getCurrentPosition, isWithinRadius } from "../lib/locationVerify";
+import { calculateDistance, getCurrentPosition, isWithinRadius } from "../lib/locationVerify";
 import { getVirtualScheduleDate, getCurrentScheduleItem } from "../lib/scheduleTime";
 import { getVenue } from "../features/navigation/data/venues";
 
@@ -43,7 +43,7 @@ export function CheckInReminder() {
           setVenueName(venue.name || current.venue);
           setMinutesLeft(diff);
           setVisible(!within);
-          if (!within) setDistance(Math.round(isWithinRadius as unknown as number) || 0);
+          if (!within) setDistance(Math.round(calculateDistance(pos, { lat: venue.lat, lng: venue.lng })));
         }
       } catch {}
     };

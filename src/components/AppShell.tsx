@@ -6,6 +6,7 @@ import {
   ClipboardList,
   Grid3X3,
   Home,
+  LifeBuoy,
   Map,
   Megaphone,
   ShieldAlert,
@@ -13,6 +14,7 @@ import {
   Share2,
   Send,
   Trophy,
+  UsersRound,
   X,
   CheckSquare,
   Heart
@@ -39,36 +41,43 @@ const centerMenuByRole: Record<Role, CenterMenuItem[]> = {
     { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
     { to: "/stories", label: "Stories", icon: Share2 },
     { to: "/resources", label: "Guides", icon: BookOpen },
-    { to: "/announcements", label: "News", icon: Megaphone }
+    { to: "/announcements", label: "News", icon: Megaphone },
+    { to: "/support", label: "Support", icon: LifeBuoy }
   ],
   committee: [
     { to: "/tasks", label: "Tasks", icon: ClipboardList },
     { to: "/bureau", label: "Ops", icon: Grid3X3 },
+    { to: "/members", label: "Members", icon: UsersRound },
     { to: "/map", label: "Map", icon: Map },
     { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
     { to: "/stories", label: "Stories", icon: Share2 },
     { to: "/resources", label: "Guides", icon: BookOpen },
-    { to: "/announcements", label: "News", icon: Megaphone }
+    { to: "/announcements", label: "News", icon: Megaphone },
+    { to: "/support", label: "Support", icon: LifeBuoy }
   ],
   head: [
     { to: "/tasks", label: "Tasks", icon: ClipboardList },
     { to: "/bureau", label: "Ops", icon: Grid3X3 },
+    { to: "/members", label: "Members", icon: UsersRound },
     { to: "/map", label: "Map", icon: Map },
     { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
     { to: "/stories", label: "Stories", icon: Share2 },
     { to: "/resources", label: "Guides", icon: BookOpen },
-    { to: "/announcements", label: "News", icon: Megaphone }
+    { to: "/announcements", label: "News", icon: Megaphone },
+    { to: "/support", label: "Support", icon: LifeBuoy }
   ],
   mainboard: [
     { to: "/mainboard", label: "Control", icon: ShieldAlert },
     { to: "/launch", label: "Launch", icon: Rocket },
     { to: "/tasks", label: "Tasks", icon: ClipboardList },
     { to: "/bureau", label: "Ops", icon: Grid3X3 },
+    { to: "/members", label: "Members", icon: UsersRound },
     { to: "/map", label: "Map", icon: Map },
     { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
     { to: "/stories", label: "Stories", icon: Share2 },
     { to: "/resources", label: "Guides", icon: BookOpen },
-    { to: "/announcements", label: "News", icon: Megaphone }
+    { to: "/announcements", label: "News", icon: Megaphone },
+    { to: "/support", label: "Support", icon: LifeBuoy }
   ]
 };
 

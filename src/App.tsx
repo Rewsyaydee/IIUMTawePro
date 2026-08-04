@@ -18,6 +18,8 @@ const Announcements = lazy(() => import("./pages/Announcements"));
 const CampusMap = lazy(() => import("./features/navigation/components/CampusMapPage"));
 const Stories = lazy(() => import("./pages/Stories"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
+const Members = lazy(() => import("./pages/Members"));
+const Support = lazy(() => import("./pages/Support"));
 
 function App() {
   const [booting, setBooting] = useState(true);
@@ -147,6 +149,22 @@ function App() {
             element={
               <Suspense fallback={<LoadingScreen compact />}>
                 <Leaderboard />
+              </Suspense>
+            }
+          />
+          <Route
+            path="members"
+            element={
+              <Suspense fallback={<LoadingScreen compact />}>
+                <Members />
+              </Suspense>
+            }
+          />
+          <Route
+            path="support"
+            element={
+              <Suspense fallback={<LoadingScreen compact />}>
+                <Support />
               </Suspense>
             }
           />

@@ -276,6 +276,11 @@ alter table public.users add column if not exists kulliyyah text check (
   or kulliyyah in ('KICT','KOE','KENMS','KOED','AIKOL','KAED','AHAS KIRKHS')
 );
 alter table public.users add column if not exists registration_step text;
+alter table public.users add column if not exists phone text;
+alter table public.users add column if not exists telegram_username text;
+
+-- Bureau members: task assignees stored as user id array
+alter table public.poa_tasks add column if not exists assigned_to_ids uuid[] default '{}';
 
 -- Recreate registration_step check with unlock_bureau:* values used by the Telegram bot
 alter table public.users drop constraint if exists users_registration_step_check;
@@ -346,6 +351,15 @@ create table if not exists public.leaderboard_scores (
 create index if not exists leaderboard_scores_date_idx on public.leaderboard_scores (score_date);
 create index if not exists leaderboard_scores_mahallah_idx on public.leaderboard_scores (mahallah, score_date);
 create index if not exists leaderboard_scores_user_idx on public.leaderboard_scores (user_id, score_date);
+
+-- Notification dispatcher: one-row-per-send dedup + heartbeat
+create table if not exists public.notification_sends (
+  id uuid primary key default gen_random_uuid(),
+  send_key text unique not null,
+  sent_at timestamptz not null default now()
+);
+
+create index if not exists notification_sends_sent_at_idx on public.notification_sends (sent_at);
 
 alter table public.leaderboard_scores enable row level security;
 

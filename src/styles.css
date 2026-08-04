@@ -2556,6 +2556,66 @@ textarea {
   min-height: 38px;
 }
 
+/* Bureau members */
+.member-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: #0a2e23;
+  background: linear-gradient(135deg, #E5D3B3, #c9a86a);
+  font-size: 0.95rem;
+}
+
+/* Assignee multi-select picker */
+.assignee-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.assignee-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--tg-secondary-bg-color);
+  color: var(--tg-text-color);
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.assignee-chip small {
+  margin-left: auto;
+  color: var(--tg-hint-color);
+  font-size: 0.72rem;
+}
+
+.assignee-chip.selected {
+  border-color: var(--gold-accent);
+  background: rgba(229, 211, 179, 0.1);
+}
+
+.assignee-chip-check {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.assignee-picker-loading,
+.assignee-picker-empty {
+  padding: 10px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  color: var(--tg-hint-color);
+  font-size: 0.82rem;
+}
+
 .invite-code {
   color: var(--primary-deep);
   font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
@@ -4556,6 +4616,14 @@ textarea {
   text-transform: uppercase;
 }
 
+.milestone-reward {
+  margin: 14px 0 0;
+  text-align: center;
+  color: var(--gold-accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
 .milestone-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -5513,4 +5581,156 @@ textarea {
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+/* -- Support & Information Hub -- */
+.support-section .muted {
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.donation-block {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.donation-option {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(0, 123, 120, 0.045), rgba(185, 138, 45, 0.035)), var(--tg-section-bg-color);
+}
+
+.donation-option-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.donation-option-head .soft-chip {
+  margin-left: auto;
+  font-size: 0.72rem;
+}
+
+.donation-amounts {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.donation-amounts .primary-button {
+  width: auto;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.duitnow-qr-wrap {
+  display: grid;
+  place-items: center;
+  padding: 10px;
+}
+
+.duitnow-qr {
+  width: 200px;
+  height: 200px;
+  border-radius: 12px;
+  background: #fff;
+  padding: 8px;
+}
+
+.duitnow-qr-placeholder {
+  width: 200px;
+  height: 200px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  color: var(--tg-hint-color);
+  font-size: 0.85rem;
+}
+
+.link-list {
+  display: grid;
+  gap: 8px;
+}
+
+.link-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--tg-secondary-bg-color);
+  color: var(--tg-text-color);
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.link-row span:first-of-type {
+  flex: 1;
+}
+
+.link-row svg:last-child {
+  color: var(--tg-hint-color);
+}
+
+.info-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.info-rows div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--tg-secondary-bg-color);
+  font-size: 0.88rem;
+}
+
+.info-rows span {
+  color: var(--tg-hint-color);
+}
+
+.permission-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.permission-card {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--tg-secondary-bg-color);
+}
+
+.permission-card svg {
+  color: var(--gold-accent);
+}
+
+.permission-card strong {
+  font-size: 0.9rem;
+}
+
+.permission-card p {
+  color: var(--tg-subtitle-text-color);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.credit-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }

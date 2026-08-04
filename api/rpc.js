@@ -7,7 +7,7 @@ import { insertTask, listTasksForUser, mapPoaTask, updateTaskStatus, updateTaskD
 import { listOperationsForUser, mapBureauOperation, updateOperationStatus } from "./_lib/bureau-ops-utils.js";
 import { broadcastToTargets } from "./_lib/telegram-bot.js";
 
-const SCHEDULE_SELECT = "id,date,day,week,scheduled_start_time,scheduled_end_time,title,venue,tag,audience,description,is_live,notify_minutes_before,responsible_bureau,readiness_status,pre_session_tasks,venue_code";
+const SCHEDULE_SELECT = "id,date,day,week,scheduled_start_time,scheduled_end_time,title,venue,tag,audience,description,is_live,notify_minutes_before,responsible_bureau,readiness_status,pre_session_tasks,venue_code,block,block_group,is_concurrent,is_attendance_required,track,program_count";
 
 // ── Simple in-memory cache for high-traffic public endpoints ──
 const CACHE_TTL_MS = 30000; // 30 seconds
@@ -121,7 +121,13 @@ function mapScheduleItem(row) {
     responsibleBureau: row.responsible_bureau || undefined,
     readinessStatus: row.readiness_status,
     preSessionTasks: Array.isArray(row.pre_session_tasks) ? row.pre_session_tasks : [],
-    venueCode: row.venue_code || undefined
+    venueCode: row.venue_code || undefined,
+    block: row.block || undefined,
+    blockGroup: row.block_group || undefined,
+    isConcurrent: Boolean(row.is_concurrent),
+    isAttendanceRequired: Boolean(row.is_attendance_required),
+    track: row.track || undefined,
+    programCount: row.program_count
   };
 }
 
@@ -198,6 +204,18 @@ export default async function handler(req, res) {
         if (err) return sendJson(res, 400, { error: err });
         const row = await insertReport({ user, studentName: body.studentName.trim(), phone: body.phone.trim(), category: body.category, notes: body.notes.trim() });
         if (!row) return sendJson(res, 500, { error: "Failed to create report." });
+
+        // Persist phone for future form prefill (best-effort, non-blocking)
+        supabaseRequest(`/users?id=eq.${encodeURIComponent(user.id)}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: { phone: body.phone.trim(), updated_at: new Date().toISOString() }
+        }).catch(() => {});
+
+        // Instant alert to Welfare bureau (committee members + head) — fire-and-forget
+        const welfareText = `🆘 <b>New Wellbeing Report</b>\n\n<b>${escapeHtml(row.reference)}</b>\n👤 ${escapeHtml(row.student_name)}\n🏷️ ${escapeHtml(row.category)}\n📝 ${escapeHtml(String(row.notes || "").slice(0, 140))}\n\n👉 Open TawePro to respond: t.me/iiumtaweprobot`;
+        broadcastToTargets({ targetBureau: "Welfare", text: welfareText }).catch(() => {});
+
         return sendJson(res, 201, { report: mapWellbeingReport(row) });
       }
       case "wellbeing.update": {
@@ -239,6 +257,17 @@ export default async function handler(req, res) {
         if (!body.id) return sendJson(res, 400, { error: "Task ID is required." });
         await deleteTaskRecord({ id: body.id, user });
         return sendJson(res, 200, { deleted: true });
+      }
+
+      // ── BUREAU MEMBERS ──
+      case "bureau.members": {
+        const bureau = body.bureau || user.bureau;
+        if (!bureau) return sendJson(res, 400, { error: "Bureau is required." });
+        if (user.role !== "mainboard" && user.bureau !== bureau) {
+          return sendJson(res, 403, { error: "You can only view your own bureau." });
+        }
+        const rows = await supabaseRequest(`/users?bureau=eq.${encodeURIComponent(bureau)}&status=eq.active&select=id,name,matric_number,telegram_username,role&order=name.asc`);
+        return sendJson(res, 200, { members: Array.isArray(rows) ? rows : [] });
       }
 
       // ── BUREAU OPS ──
@@ -294,7 +323,7 @@ export default async function handler(req, res) {
         if (!body.title || !body.date || !body.scheduledStartTime || !body.scheduledEndTime) return sendJson(res, 400, { error: "Title, date, start and end time are required." });
         if (!/^\d{4}-\d{2}-\d{2}$/.test(body.date)) return sendJson(res, 400, { error: "Invalid date format. Use YYYY-MM-DD." });
         if (!["preparation", "event_week"].includes(body.week)) body.week = "event_week";
-        const rows = await supabaseRequest(`/schedule_items?select=${SCHEDULE_SELECT}`, { method: "POST", headers: { Prefer: "return=representation" }, body: [{ date: body.date, day: body.day || "", week: body.week || "event_week", scheduled_start_time: body.scheduledStartTime, scheduled_end_time: body.scheduledEndTime, title: body.title, venue: body.venue || "TBC", tag: body.tag || "Programme", audience: body.audience || "All", description: body.description || null, is_live: false, notify_minutes_before: body.notifyMinutesBefore || 30, responsible_bureau: body.responsibleBureau || null, readiness_status: "pending", pre_session_tasks: JSON.stringify(body.preSessionTasks || []), venue_code: body.venueCode || null }] });
+        const rows = await supabaseRequest(`/schedule_items?select=${SCHEDULE_SELECT}`, { method: "POST", headers: { Prefer: "return=representation" }, body: [{ date: body.date, day: body.day || "", week: body.week || "event_week", scheduled_start_time: body.scheduledStartTime, scheduled_end_time: body.scheduledEndTime, title: body.title, venue: body.venue || "TBC", tag: body.tag || "Programme", audience: body.audience || "All", description: body.description || null, is_live: false, notify_minutes_before: body.notifyMinutesBefore || 30, responsible_bureau: body.responsibleBureau || null, readiness_status: "pending", pre_session_tasks: JSON.stringify(body.preSessionTasks || []), venue_code: body.venueCode || null, block: body.block || null, block_group: body.blockGroup || null, is_concurrent: Boolean(body.isConcurrent), is_attendance_required: Boolean(body.isAttendanceRequired), track: body.track || null, program_count: Number(body.programCount) || 1 }] });
         const item = Array.isArray(rows) ? rows[0] : undefined;
         if (!item) return sendJson(res, 500, { error: "Failed to create schedule item." });
         await createAuditLog({ actor: user, action: "created_schedule_item", tableName: "schedule_items", recordId: item.id, details: `Schedule item "${item.title}" created for ${item.date}.` });
@@ -337,6 +366,12 @@ export default async function handler(req, res) {
         if (body.notifyMinutesBefore !== undefined) patch.notify_minutes_before = Number(body.notifyMinutesBefore) || 30;
         if (body.responsibleBureau !== undefined) patch.responsible_bureau = body.responsibleBureau;
         if (body.preSessionTasks !== undefined) patch.pre_session_tasks = JSON.stringify(body.preSessionTasks);
+        if (body.block !== undefined) patch.block = body.block || null;
+        if (body.blockGroup !== undefined) patch.block_group = body.blockGroup || null;
+        if (body.isConcurrent !== undefined) patch.is_concurrent = Boolean(body.isConcurrent);
+        if (body.isAttendanceRequired !== undefined) patch.is_attendance_required = Boolean(body.isAttendanceRequired);
+        if (body.track !== undefined) patch.track = body.track || null;
+        if (body.programCount !== undefined) patch.program_count = Number(body.programCount) || 1;
         const rows = await supabaseRequest(`/schedule_items?id=eq.${encodeURIComponent(body.id)}&select=${SCHEDULE_SELECT}`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: patch });
         const item = Array.isArray(rows) ? rows[0] : undefined;
         if (!item) return sendJson(res, 404, { error: "Schedule item not found." });
@@ -382,6 +417,13 @@ export default async function handler(req, res) {
         if (!item) return sendJson(res, 500, { error: "Failed to create announcement." });
         await createAuditLog({ actor: user, action: "created_announcement", tableName: "banners", recordId: item.id, details: `Announcement "${item.title}" created.` });
         setCache("announcements.list", undefined); // invalidate
+
+        // Broadcast via Telegram unless the mainboard opted out (default: ON)
+        if (body.notifyTelegram !== false) {
+          const text = `${item.type === "emergency" ? "🚨 " : item.type === "urgent" ? "⚠️ " : "📣 "}<b>${escapeHtml(item.title)}</b>\n\n${escapeHtml(String(item.body).slice(0, 3000))}\n\n👉 Open TawePro: t.me/iiumtaweprobot`;
+          broadcastToTargets({ targetRole: "all", text }).catch(() => {});
+        }
+
         return sendJson(res, 201, { item: mapBannerRow(item) });
       }
       case "announcements.deactivate": {
@@ -446,7 +488,9 @@ export default async function handler(req, res) {
       }
       case "attendance.submit": {
         if (!user || user.role !== "student") return sendJson(res, 403, { error: "Students only." });
-        if (!body.scheduleItemId || !body.latitude || !body.longitude) return sendJson(res, 400, { error: "Event ID and location are required." });
+        if (!body.scheduleItemId || body.latitude === undefined || body.latitude === null || body.longitude === undefined || body.longitude === null) {
+          return sendJson(res, 400, { error: "Event ID and location are required." });
+        }
         const lat = Number(body.latitude), lng = Number(body.longitude);
         if (!isFinite(lat) || lat < -90 || lat > 90) return sendJson(res, 400, { error: "Invalid latitude." });
         if (!isFinite(lng) || lng < -180 || lng > 180) return sendJson(res, 400, { error: "Invalid longitude." });
@@ -497,14 +541,29 @@ export default async function handler(req, res) {
         const attRows = await supabaseRequest("/student_attendance?select=user_id,schedule_item_id,event_title,student_name,submitted_at,status&order=submitted_at.asc&limit=5000");
         const attendances = Array.isArray(attRows) ? attRows.filter((r) => r.status === "present") : [];
 
-        const scheduleRows = await supabaseRequest("/schedule_items?select=id,scheduled_start_time,program_count&limit=200");
+        const scheduleRows = await supabaseRequest("/schedule_items?select=id,scheduled_start_time,program_count,block,block_group&limit=200");
         const scheduleMap = new Map((Array.isArray(scheduleRows) ? scheduleRows : []).map((r) => [r.id, r]));
+
+        // Synthetic block keys (block-<date>-<before_break|after_break>) aggregate the
+        // real sessions in that block so leaderboard scoring still works.
+        const blockMap = new Map();
+        for (const r of Array.isArray(scheduleRows) ? scheduleRows : []) {
+          if (!r.block || !r.block_group) continue;
+          const key = `block-${r.block_group}-${r.block}`;
+          const entry = blockMap.get(key) || { program_count: 0, scheduled_start_time: r.scheduled_start_time };
+          entry.program_count += r.program_count || 1;
+          if (!entry.scheduled_start_time || r.scheduled_start_time < entry.scheduled_start_time) {
+            entry.scheduled_start_time = r.scheduled_start_time;
+          }
+          blockMap.set(key, entry);
+        }
 
         const userRows = await supabaseRequest("/users?select=id,name,mahallah&mahallah=not.is.null&limit=5000");
         const userMap = new Map((Array.isArray(userRows) ? userRows : []).map((r) => [r.id, r]));
 
         const rows = attendances.map((a) => {
-          const sched = scheduleMap.get(a.schedule_item_id) || {};
+          const isBlockKey = String(a.schedule_item_id || "").startsWith("block-");
+          const sched = (isBlockKey ? blockMap.get(a.schedule_item_id) : scheduleMap.get(a.schedule_item_id)) || {};
           const usr = userMap.get(a.user_id) || {};
           return {
             user_id: a.user_id,
@@ -525,7 +584,11 @@ export default async function handler(req, res) {
         return sendJson(res, 400, { error: `Unknown action: ${action}` });
     }
   } catch (error) {
-    console.error(`RPC action "${action}" failed`, error);
+    console.error(
+      `RPC action "${action}" failed`,
+      error?.message || error,
+      error?.payload ? `| payload: ${JSON.stringify(error.payload)}` : ""
+    );
     return sendJson(res, 500, { error: "Internal server error." });
   }
 }

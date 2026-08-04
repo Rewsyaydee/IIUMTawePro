@@ -49,6 +49,8 @@ function BureauOps() {
   const [authRefreshTick, setAuthRefreshTick] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
   const [selectedBureau, setSelectedBureau] = useState<Bureau | "all">(user.role === "mainboard" ? "all" : user.bureau || "Catering");
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [alertingId, setAlertingId] = useState<string | null>(null);
 
   const activeOps = apiMode ? remoteOperations : bureauOperations;
 
@@ -99,6 +101,9 @@ function BureauOps() {
   }, [activeOps, user.role, visibleOperations]);
 
   const updateStatus = async (id: string, status: BureauOperationStatus) => {
+    if (updatingId || alertingId) return;
+    setUpdatingId(id);
+    setErrorMessage("");
     try {
       if (apiMode) {
         const updated = await updateOpsStatusApi(id, status);
@@ -110,10 +115,15 @@ function BureauOps() {
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to update operation.");
       hapticError();
+    } finally {
+      setUpdatingId(null);
     }
   };
 
   const sendAlert = async (id: string) => {
+    if (updatingId || alertingId) return;
+    setAlertingId(id);
+    setErrorMessage("");
     try {
       if (apiMode) {
         await sendBureauAlert({ id });
@@ -123,6 +133,8 @@ function BureauOps() {
       hapticSuccess();
     } catch {
       hapticError();
+    } finally {
+      setAlertingId(null);
     }
   };
 
@@ -231,16 +243,17 @@ function BureauOps() {
                     className={operation.status === status ? "selected" : ""}
                     key={status}
                     type="button"
+                    disabled={updatingId !== null || alertingId !== null}
                     onClick={() => updateStatus(operation.id, status)}
                   >
-                    {status}
+                    {updatingId === operation.id ? "..." : status}
                   </button>
                 ))}
               </div>
 
-              <button className="icon-text-button full-width" type="button" onClick={() => sendAlert(operation.id)}>
+              <button className="icon-text-button full-width" type="button" disabled={updatingId !== null || alertingId !== null} onClick={() => sendAlert(operation.id)}>
                 <BellRing size={16} aria-hidden="true" />
-                <span>{apiMode ? "Send alert" : "Mock group alert"}</span>
+                <span>{alertingId === operation.id ? "Sending..." : apiMode ? "Send alert" : "Mock group alert"}</span>
               </button>
             </article>
           ))}

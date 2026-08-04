@@ -74,7 +74,7 @@ function formatDateTime(value: string) {
 }
 
 function Mainboard() {
-  const { user, users, addMockUser, updateMockUser, revokeMockUser } = useMockUser();
+  const { user, users, updateMockUser, revokeMockUser } = useMockUser();
   const {
     announcements,
     attendanceProofs,
@@ -161,22 +161,18 @@ function Mainboard() {
     bureau: "Catering" as Bureau,
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
   });
-  const [userForm, setUserForm] = useState({
-    name: "New Committee",
-    telegramId: "",
-    role: "committee" as Role,
-    bureau: "Catering" as Bureau
-  });
   const [scheduleForm, setScheduleForm] = useState(defaultScheduleForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [emergencyError, setEmergencyError] = useState("");
   const [noticeError, setNoticeError] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
   const [announcementForm, setAnnouncementForm] = useState({
     title: "",
     body: "",
     type: "info" as "info" | "urgent" | "emergency",
     tags: "",
-    links: ""
+    links: "",
+    notifyTelegram: true
   });
 
   const metrics = useMemo(() => {
@@ -217,9 +213,11 @@ function Mainboard() {
 
   const submitEmergency = async (event: FormEvent) => {
     event.preventDefault();
+    if (busy) return;
     const confirmed = await confirmNative("Send emergency broadcast?");
     if (!confirmed) return;
 
+    setBusy("emergency");
     try {
       if (apiMode) {
         await sendEmergencyApi({
@@ -242,11 +240,15 @@ function Mainboard() {
     } catch (err) {
       setEmergencyError(err instanceof Error ? err.message : "Emergency broadcast failed. Check bot token is configured.");
       hapticError();
+    } finally {
+      setBusy(null);
     }
   };
 
   const submitNotice = async (event: FormEvent) => {
     event.preventDefault();
+    if (busy) return;
+    setBusy("notice");
     try {
       if (apiMode) {
         await sendNotification({
@@ -271,6 +273,8 @@ function Mainboard() {
     } catch (err) {
       setNoticeError(err instanceof Error ? err.message : "Notification failed to send.");
       hapticError();
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -284,26 +288,10 @@ function Mainboard() {
     hapticSuccess();
   };
 
-  const submitMockUser = (event: FormEvent) => {
-    event.preventDefault();
-    const next = addMockUser({
-      name: userForm.name,
-      telegramId: userForm.telegramId || undefined,
-      role: userForm.role,
-      bureau: userForm.role === "student" || userForm.role === "mainboard" ? undefined : userForm.bureau
-    });
-    recordAuditLog({
-      action: "Added mock user",
-      table: "users",
-      recordId: next.id,
-      details: `${next.name} added as ${roleLabels[next.role]}.`
-    });
-    setUserForm((current) => ({ ...current, name: "New Committee", telegramId: "" }));
-    hapticSuccess();
-  };
-
   const submitSchedule = async (event: FormEvent) => {
     event.preventDefault();
+    if (busy) return;
+    setBusy("schedule");
     const input: Record<string, unknown> = {
       date: scheduleForm.date,
       day: scheduleForm.day,
@@ -340,6 +328,8 @@ function Mainboard() {
       hapticSuccess();
     } catch (error) {
       hapticError();
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -360,6 +350,8 @@ function Mainboard() {
 
   const submitAnnouncement = async (event: FormEvent) => {
     event.preventDefault();
+    if (busy) return;
+    setBusy("announcement");
     const links = announcementForm.links
       .split("\n")
       .map((line) => {
@@ -381,7 +373,8 @@ function Mainboard() {
           body: announcementForm.body,
           type: announcementForm.type,
           tags: tags.length > 0 ? tags : undefined,
-          links: links.length > 0 ? links : undefined
+          links: links.length > 0 ? links : undefined,
+          notifyTelegram: announcementForm.notifyTelegram
         });
         const items = await listAnnouncements();
         setRemoteAnnouncements(items);
@@ -394,10 +387,12 @@ function Mainboard() {
           tags: tags.length > 0 ? tags : undefined
         });
       }
-      setAnnouncementForm({ title: "", body: "", type: "info", tags: "", links: "" });
+      setAnnouncementForm({ title: "", body: "", type: "info", tags: "", links: "", notifyTelegram: true });
       hapticSuccess();
     } catch {
       hapticError();
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -410,6 +405,8 @@ function Mainboard() {
   };
 
   const handlePublishToggle = async (item: ScheduleItem) => {
+    if (busy) return;
+    setBusy(`publish:${item.id}`);
     try {
       if (apiMode) {
         const updated = await publishScheduleItem(item.id, !item.isLive);
@@ -420,10 +417,14 @@ function Mainboard() {
       hapticSuccess();
     } catch {
       hapticError();
+    } finally {
+      setBusy(null);
     }
   };
 
   const handleReadinessChange = async (item: ScheduleItem, readinessStatus: string) => {
+    if (busy) return;
+    setBusy(`readiness:${item.id}`);
     try {
       if (apiMode) {
         const updated = await publishScheduleItem(item.id, item.isLive, readinessStatus);
@@ -433,6 +434,8 @@ function Mainboard() {
       }
     } catch {
       hapticError();
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -548,51 +551,6 @@ function Mainboard() {
         <button className="primary-button full-width" type="submit">
           <UserPlus size={16} aria-hidden="true" />
           <span>Generate mock invite</span>
-        </button>
-      </form>
-
-      <form className="form-card" onSubmit={submitMockUser}>
-        <div className="form-title">
-          <UsersRound size={20} aria-hidden="true" />
-          <h3>Add mock user</h3>
-        </div>
-        <label>
-          <span>Name</span>
-          <input value={userForm.name} required onChange={(event) => setUserForm((current) => ({ ...current, name: event.target.value }))} />
-        </label>
-        <div className="form-grid">
-          <label>
-            <span>Role</span>
-            <select value={userForm.role} onChange={(event) => setUserForm((current) => ({ ...current, role: event.target.value as Role }))}>
-              {ROLES.map((role) => (
-                <option key={role} value={role}>
-                  {roleLabels[role]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>Bureau</span>
-            <select
-              value={userForm.bureau}
-              disabled={userForm.role === "student" || userForm.role === "mainboard"}
-              onChange={(event) => setUserForm((current) => ({ ...current, bureau: event.target.value as Bureau }))}
-            >
-              {BUREAUS.map((bureau) => (
-                <option key={bureau} value={bureau}>
-                  {bureau}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <label>
-          <span>Telegram ID</span>
-          <input value={userForm.telegramId} placeholder="Optional in mock mode" onChange={(event) => setUserForm((current) => ({ ...current, telegramId: event.target.value }))} />
-        </label>
-        <button className="primary-button full-width" type="submit">
-          <UserPlus size={16} aria-hidden="true" />
-          <span>Add local user</span>
         </button>
       </form>
 
@@ -837,9 +795,9 @@ function Mainboard() {
             onChange={(event) => setScheduleForm((current) => ({ ...current, preSessionTasks: event.target.value }))}
           />
         </label>
-        <button className="primary-button full-width" type="submit">
+        <button className="primary-button full-width" type="submit" disabled={busy !== null}>
           <CalendarPlus size={16} aria-hidden="true" />
-          <span>{editingId ? "Update schedule item" : "Add to mock schedule"}</span>
+          <span>{busy === "schedule" ? "Saving..." : editingId ? "Update schedule item" : "Add to mock schedule"}</span>
         </button>
       </form>
 
@@ -901,14 +859,16 @@ function Mainboard() {
                     <button
                       className={item.isLive ? "danger-outline-button" : "verify-button"}
                       type="button"
-                       onClick={() => handlePublishToggle(item)}
+                      disabled={busy !== null}
+                      onClick={() => handlePublishToggle(item)}
                     >
                       <Send size={15} aria-hidden="true" />
-                      <span>{item.isLive ? "Unpublish" : "Publish"}</span>
+                      <span>{busy === `publish:${item.id}` ? "..." : item.isLive ? "Unpublish" : "Publish"}</span>
                     </button>
                     <select
                       value={item.readinessStatus || "pending"}
-                       onChange={(event) => handleReadinessChange(item, event.target.value)}
+                      disabled={busy !== null}
+                      onChange={(event) => handleReadinessChange(item, event.target.value)}
                     >
                       <option value="pending">Pending</option>
                       <option value="ready">Ready</option>
@@ -984,9 +944,9 @@ function Mainboard() {
           />
           <span>Show as in-app banner</span>
         </label>
-        <button className="primary-button full-width" type="submit">
+        <button className="primary-button full-width" type="submit" disabled={busy !== null}>
           <Send size={16} aria-hidden="true" />
-          <span>Send mock notice</span>
+          <span>{busy === "notice" ? "Sending..." : "Send mock notice"}</span>
         </button>
       </form>
 
@@ -1042,9 +1002,9 @@ function Mainboard() {
             </select>
           </label>
         </div>
-        <button className="danger-button full-width" type="submit">
+        <button className="danger-button full-width" type="submit" disabled={busy !== null}>
           <AlertTriangle size={16} aria-hidden="true" />
-          <span>Send mock emergency</span>
+          <span>{busy === "emergency" ? "Sending..." : "Send mock emergency"}</span>
         </button>
       </form>
 
@@ -1155,9 +1115,17 @@ function Mainboard() {
             onChange={(event) => setAnnouncementForm((c) => ({ ...c, links: event.target.value }))}
           />
         </label>
-        <button className="primary-button full-width" type="submit">
+        <label className="checkbox-row">
+          <input
+            type="checkbox"
+            checked={announcementForm.notifyTelegram}
+            onChange={(event) => setAnnouncementForm((c) => ({ ...c, notifyTelegram: event.target.checked }))}
+          />
+          <span>Also notify all users via Telegram</span>
+        </label>
+        <button className="primary-button full-width" type="submit" disabled={busy !== null}>
           <PlusCircle size={16} aria-hidden="true" />
-          <span>Publish announcement</span>
+          <span>{busy === "announcement" ? "Publishing..." : "Publish announcement"}</span>
         </button>
       </form>
 
@@ -1183,7 +1151,7 @@ function Mainboard() {
                     <span className="announcement-time">{formatDateTime(announcement.createdAt)}</span>
                   </div>
                   {announcement.isActive && (
-                    <button className="danger-outline-button" type="button" onClick={async () => {
+                    <button className="danger-outline-button" type="button" disabled={busy !== null} onClick={async () => {
                       try {
                         if (apiMode) {
                           await deactivateAnnouncementApi(announcement.id);

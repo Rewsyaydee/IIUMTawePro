@@ -117,6 +117,7 @@ export interface PoaTask {
   dueDate: string;
   dueTime: string;
   assignedTo: string;
+  assignedToIds?: string[];
   status: TaskStatus;
   priority: Priority;
   notifyMinutesBefore: number;

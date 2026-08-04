@@ -4,5 +4,11 @@
       "path": "/api/cron/notifications",
       "schedule": "30 23 * * *"
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
   ]
 }

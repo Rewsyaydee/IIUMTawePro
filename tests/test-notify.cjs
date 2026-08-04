@@ -9,6 +9,7 @@ async function testNotify(hour, minute, date) {
   if (date) params.push(`date=${encodeURIComponent(date)}`);
   if (hour != null && !isNaN(hour)) params.push(`hour=${hour}`);
   if (minute != null && !isNaN(minute)) params.push(`minute=${minute}`);
+  params.push("force=1");
   if (params.length) url += `?${params.join("&")}`;
   console.log(`\n🔔 Testing notifications at ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")} KL time${date ? ` (date override: ${date})` : ""}...\n`);
 

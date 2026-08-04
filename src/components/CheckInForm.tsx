@@ -112,6 +112,7 @@ export function CheckInForm({ blockLabel, blockId, venueCodes, onDone }: CheckIn
     setError("");
     try {
       if (SKIP_GPS) {
+        setGpsCoords(venueCoords[0] || null);
         setGpsStatus("success");
         hapticSuccess();
         return;

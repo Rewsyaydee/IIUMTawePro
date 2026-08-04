@@ -5,13 +5,60 @@ import { sendJson } from "../_lib/auth-utils.js";
 // Set to null in production to use real date.
 const DEMO_DATE = null;
 
+// ── KL wall-clock time (independent of server timezone) ──
+function klNow() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kuala_Lumpur",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(new Date());
+  const get = (type) => parts.find((p) => p.type === type)?.value || "0";
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    hour: parseInt(get("hour"), 10),
+    minute: parseInt(get("minute"), 10)
+  };
+}
+
 function timeInKL(dateOverride, hourOverride, minuteOverride) {
-  const now = new Date();
-  const kl = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" }));
-  const date = dateOverride || DEMO_DATE || `${kl.getFullYear()}-${String(kl.getMonth() + 1).padStart(2, "0")}-${String(kl.getDate()).padStart(2, "0")}`;
-  const hour = hourOverride != null ? hourOverride : kl.getHours();
-  const minute = minuteOverride != null ? minuteOverride : kl.getMinutes();
-  return { hour, minute, date };
+  const real = klNow();
+  return {
+    date: dateOverride || DEMO_DATE || real.date,
+    hour: hourOverride != null ? hourOverride : real.hour,
+    minute: minuteOverride != null ? minuteOverride : real.minute
+  };
+}
+
+// ── DB-backed dedup ──
+// notification_sends.send_key is unique. claimSend atomically inserts the key;
+// a conflicting insert returns no rows, so only the first caller "wins".
+async function claimSend(key) {
+  try {
+    const rows = await supabaseRequest("/notification_sends?on_conflict=send_key&select=id", {
+      method: "POST",
+      headers: { Prefer: "resolution=ignore-duplicates,return=representation" },
+      body: [{ send_key: key, sent_at: new Date().toISOString() }]
+    });
+    return Array.isArray(rows) && rows.length > 0;
+  } catch (err) {
+    // If the DB is unreachable, allow the send rather than silently dropping it.
+    console.error(`[notify-check] dedup claim failed for "${key}":`, err?.message || err);
+    return true;
+  }
+}
+
+async function recordPing() {
+  try {
+    await supabaseRequest("/notification_sends?on_conflict=send_key&select=id", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: [{ send_key: "ping", sent_at: new Date().toISOString() }]
+    });
+  } catch {}
 }
 
 async function callTelegram(method, payload) {
@@ -57,14 +104,10 @@ function morningTriggerTime(sessions) {
   return { hour: Math.floor(totalMin / 60), minute: totalMin % 60 };
 }
 
-function inWindow(nowMin, targetHour, targetMin, span = 5) {
+function inWindow(nowMin, targetHour, targetMin, span = 15) {
   const target = targetHour * 60 + targetMin;
   return nowMin >= target && nowMin <= target + span;
 }
-
-// Sent-today dedup (in-memory per invocation — cron + GH Actions are stateless,
-// but prevents double-send when multiple ticks land within the same window)
-let sentToday = { morning: false, evening: false };
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -75,15 +118,18 @@ export default async function handler(req, res) {
   const testDate = url.searchParams.get("date") || null;
   const testHour = url.searchParams.has("hour") ? parseInt(url.searchParams.get("hour"), 10) : null;
   const testMinute = url.searchParams.has("minute") ? parseInt(url.searchParams.get("minute"), 10) : null;
+  const force = url.searchParams.get("force") === "1";
+  // Any override means this is a dry-run/test invocation: skip DB dedup so tests can repeat.
+  const testMode = Boolean(testDate || testHour != null || testMinute != null);
 
   const { hour, minute, date } = timeInKL(testDate, testHour, testMinute);
   const nowMin = hour * 60 + minute;
   const sessions = await getTodaySessions(date);
 
   const mt = morningTriggerTime(sessions);
-  const morningMatch = !!(mt && inWindow(nowMin, mt.hour, mt.minute, 10));
-  const eveningMatch = inWindow(nowMin, 13, 40, 10);
-  console.log(`[notify-check] KL: ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}, date: ${date}, sessions: ${sessions.length}, morningTrigger: ${mt ? `${mt.hour}:${mt.minute}` : "none"}, triggers: morning=${morningMatch}, evening=${eveningMatch}`);
+  const morningMatch = !!(mt && inWindow(nowMin, mt.hour, mt.minute));
+  const eveningMatch = inWindow(nowMin, 13, 40);
+  console.log(`[notify-check] KL: ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}, date: ${date}, sessions: ${sessions.length}, morningTrigger: ${mt ? `${mt.hour}:${mt.minute}` : "none"}, triggers: morning=${morningMatch}, evening=${eveningMatch}, testMode=${testMode}, force=${force}`);
 
   if (sessions.length === 0) {
     return sendJson(res, 200, { ok: true, message: "No sessions today." });
@@ -92,40 +138,50 @@ export default async function handler(req, res) {
   let sent = 0;
   const results = [];
 
-  // ── Morning: 30 min before first session ±10 min window (Daily + Session tiers) ──
-  if (mt && inWindow(nowMin, mt.hour, mt.minute, 10) && !sentToday.morning) {
-    sentToday.morning = true;
-    const s = sessions[0];
-    const dailyIds = await getUsersByTier("daily");
-    const sessionIds = await getUsersByTier("session");
-    const ids = [...new Set([...dailyIds, ...sessionIds])];
-    const text = `🌅 <b>Ta'aruf Week Morning!</b>\n\nFirst session today: <b>${html(s.title)}</b>\n📍 ${html(s.venue)}\n🕐 ${s.scheduled_start_time.slice(0, 5)}\n\n👉 Open TawePro: t.me/iiumtaweprobot`;
-    let morningSent = 0;
-    for (const id of ids) {
-      try { await sendOne(id, text); morningSent++; } catch {}
+  // ── Morning: 30 min before first session ±15 min window (Daily + Session tiers) ──
+  if (mt && morningMatch) {
+    const morningKey = `morning:${date}`;
+    const claimed = testMode || force || await claimSend(morningKey);
+    if (claimed) {
+      const s = sessions[0];
+      const dailyIds = await getUsersByTier("daily");
+      const sessionIds = await getUsersByTier("session");
+      const ids = [...new Set([...dailyIds, ...sessionIds])];
+      const text = `🌅 <b>Ta'aruf Week Morning!</b>\n\nFirst session today: <b>${html(s.title)}</b>\n📍 ${html(s.venue)}\n🕐 ${s.scheduled_start_time.slice(0, 5)}\n\n👉 Open TawePro: t.me/iiumtaweprobot`;
+      let morningSent = 0;
+      for (const id of ids) {
+        try { await sendOne(id, text); morningSent++; } catch {}
+      }
+      sent += morningSent;
+      results.push({ tier: "morning", queued: ids.length, sent: morningSent });
+      console.log(`[notify-check] morning sent: ${morningSent}/${ids.length} (key ${morningKey})`);
+    } else {
+      console.log(`[notify-check] morning already sent today (${morningKey})`);
     }
-    sent += morningSent;
-    results.push({ tier: "morning", queued: ids.length, sent: morningSent });
-    console.log(`[notify-check] morning sent: ${morningSent}/${ids.length}`);
   }
 
-  // ── Session: 1:40 PM ±10 min window ──
-  if (inWindow(nowMin, 13, 40, 10) && !sentToday.evening) {
-    sentToday.evening = true;
-    const ids = await getUsersByTier("session");
-    const eveningSessions = sessions.filter((s) => {
-      const h = parseInt(s.scheduled_start_time?.split(":")[0] || "0");
-      return h >= 13;
-    });
-    const eveningList = eveningSessions.slice(0, 3).map((s) => `• ${s.scheduled_start_time?.slice(0, 5)} — ${html(s.title)} (${html(s.venue)})`).join("\n");
-    const text = `🕐 <b>Evening Sessions Reminder</b>\n\nUpcoming today:\n${eveningList || "No evening sessions."}\n\n👉 Open TawePro: t.me/iiumtaweprobot`;
-    let eveningSent = 0;
-    for (const id of ids) {
-      try { await sendOne(id, text); eveningSent++; } catch {}
+  // ── Session: 1:40 PM ±15 min window ──
+  if (eveningMatch) {
+    const eveningKey = `evening:${date}`;
+    const claimed = testMode || force || await claimSend(eveningKey);
+    if (claimed) {
+      const ids = await getUsersByTier("session");
+      const eveningSessions = sessions.filter((s) => {
+        const h = parseInt(s.scheduled_start_time?.split(":")[0] || "0");
+        return h >= 13;
+      });
+      const eveningList = eveningSessions.slice(0, 3).map((s) => `• ${s.scheduled_start_time?.slice(0, 5)} — ${html(s.title)} (${html(s.venue)})`).join("\n");
+      const text = `🕐 <b>Evening Sessions Reminder</b>\n\nUpcoming today:\n${eveningList || "No evening sessions."}\n\n👉 Open TawePro: t.me/iiumtaweprobot`;
+      let eveningSent = 0;
+      for (const id of ids) {
+        try { await sendOne(id, text); eveningSent++; } catch {}
+      }
+      sent += eveningSent;
+      results.push({ tier: "session", queued: ids.length, sent: eveningSent });
+      console.log(`[notify-check] evening sent: ${eveningSent}/${ids.length} (key ${eveningKey})`);
+    } else {
+      console.log(`[notify-check] evening already sent today (${eveningKey})`);
     }
-    sent += eveningSent;
-    results.push({ tier: "session", queued: ids.length, sent: eveningSent });
-    console.log(`[notify-check] evening sent: ${eveningSent}/${ids.length}`);
   }
 
   // ── Live: sessions starting in 5–15 min ──
@@ -137,6 +193,13 @@ export default async function handler(req, res) {
 
     if (diff < 5 || diff > 15) continue;
 
+    const liveKey = `live:${date}:${s.scheduled_start_time}`;
+    const claimed = testMode || force || await claimSend(liveKey);
+    if (!claimed) {
+      console.log(`[notify-check] live "${s.title}" already sent (${liveKey})`);
+      continue;
+    }
+
     const ids = await getUsersByTier("live");
     const text = `⏰ <b>Session Starting Soon!</b>\n\n<b>${html(s.title)}</b>\n📍 ${html(s.venue)}\n🕐 Starting in ${diff} min\n\n👉 Open TawePro to check in: t.me/iiumtaweprobot`;
 
@@ -146,8 +209,11 @@ export default async function handler(req, res) {
     }
     if (batchSent > 0) sent += batchSent;
     results.push({ tier: "live", session: s.title, queued: ids.length, sent: batchSent });
-    console.log(`[notify-check] live "${s.title}" sent: ${batchSent}/${ids.length}`);
+    console.log(`[notify-check] live "${s.title}" sent: ${batchSent}/${ids.length} (key ${liveKey})`);
   }
+
+  // Heartbeat row so operators can verify server-driven pings are landing.
+  await recordPing();
 
   return sendJson(res, 200, {
     ok: true,
@@ -160,6 +226,8 @@ export default async function handler(req, res) {
       morningTriggerTime: mt ? `${mt.hour}:${mt.minute}` : null,
       morningMatch,
       eveningMatch,
+      testMode,
+      force,
       usersDaily: results.find((r) => r.tier === "morning")?.queued || 0,
       usersSession: results.find((r) => r.tier === "session")?.queued || 0,
       usersLive: results.filter((r) => r.tier === "live").reduce((sum, r) => sum + r.queued, 0)

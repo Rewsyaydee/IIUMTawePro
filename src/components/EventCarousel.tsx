@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { getScheduleClock, getScheduleStatus, scheduleDateTime } from "../lib/scheduleTime";
 import { hapticImpact, hapticSuccess } from "../lib/telegram";
 import { ColorSweepText } from "./ColorSweepText";
+import { shouldUseApiAuth } from "../lib/apiAuth";
+import { useApiSchedule } from "../lib/apiHooks";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 import type { ScheduleItem } from "../types";
@@ -11,20 +13,24 @@ import type { ScheduleItem } from "../types";
 export function EventCarousel() {
   const { user } = useMockUser();
   const { schedule, studentAttendances } = useMockData();
+  const apiMode = shouldUseApiAuth();
   const navigate = useNavigate();
   const scrollerRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  const scheduleClock = useMemo(() => getScheduleClock(schedule), [schedule]);
+  const { items: remoteSchedule } = useApiSchedule(apiMode);
+  const activeSchedule = apiMode ? remoteSchedule : schedule;
+
+  const scheduleClock = useMemo(() => getScheduleClock(activeSchedule), [activeSchedule]);
 
   const sorted = useMemo(
     () =>
-      [...schedule].sort(
+      [...activeSchedule].sort(
         (a, b) =>
           scheduleDateTime(a.date, a.scheduledStartTime).getTime() -
           scheduleDateTime(b.date, b.scheduledStartTime).getTime()
       ),
-    [schedule]
+    [activeSchedule]
   );
 
   const liveIndices = useMemo(() => {
@@ -53,7 +59,7 @@ export function EventCarousel() {
         el.offsetLeft - scroller.offsetLeft - (scrollerRect.width - elRect.width) / 2;
       scroller.scrollTo({ left: scrollLeft, behavior: "smooth" });
     }
-  }, [firstLiveOrUpcoming]);
+  }, [firstLiveOrUpcoming, sorted.length]);
 
   const handleCardTap = () => {
     hapticImpact("light");

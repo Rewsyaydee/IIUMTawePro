@@ -5,37 +5,32 @@ import { useNavigate } from "react-router-dom";
 import { formatScheduleClock, getScheduleClock, getScheduleStatus, scheduleDateTime } from "../lib/scheduleTime";
 import { hapticImpact, hapticSuccess } from "../lib/telegram";
 import { ColorSweepText } from "../components/ColorSweepText";
+import { shouldUseApiAuth } from "../lib/apiAuth";
+import { useApiSchedule } from "../lib/apiHooks";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 import type { ScheduleItem } from "../types";
 
 type SelectedView = "main" | "concurrent";
 
-const EVENT_DATES = [
-  { iso: "2026-07-13", day: "Mon", label: "13" },
-  { iso: "2026-07-14", day: "Tue", label: "14" },
-  { iso: "2026-07-15", day: "Wed", label: "15" },
-  { iso: "2026-07-16", day: "Thu", label: "16" },
-  { iso: "2026-07-17", day: "Fri", label: "17" },
-  { iso: "2026-07-18", day: "Sat", label: "18" },
-  { iso: "2026-07-19", day: "Sun", label: "19" }
-];
+type DateNav = { iso: string; day: string; label: string };
 
-function formatDayLabel(iso: string): string {
-  const [, month, day] = iso.split("-");
-  const date = new Date(parseInt(iso.slice(0, 4)), parseInt(month) - 1, parseInt(day));
-  return date.toLocaleDateString("en-MY", { weekday: "short" });
-}
-
-function formatDateShort(iso: string): string {
-  const [, month, day] = iso.split("-");
-  const date = new Date(parseInt(iso.slice(0, 4)), parseInt(month) - 1, parseInt(day));
-  return date.toLocaleDateString("en-MY", { day: "2-digit", month: "short" });
+function buildDateNav(items: ScheduleItem[]): DateNav[] {
+  const dates = [...new Set(items.map((s) => s.date))].sort();
+  return dates.map((iso) => {
+    const date = new Date(`${iso}T00:00:00`);
+    return {
+      iso,
+      day: date.toLocaleDateString("en-MY", { weekday: "short" }),
+      label: String(date.getDate()).padStart(2, "0")
+    };
+  });
 }
 
 function Schedule() {
   const { user } = useMockUser();
   const { schedule, studentAttendances } = useMockData();
+  const apiMode = shouldUseApiAuth();
   const navigate = useNavigate();
   const [clockTick, setClockTick] = useState(0);
   const [selectedDate, setSelectedDate] = useState("");
@@ -43,19 +38,24 @@ function Schedule() {
   const nowRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const scheduleClock = useMemo(() => getScheduleClock(schedule), [clockTick, schedule]);
+  const { items: remoteSchedule, loading: loadingSchedule } = useApiSchedule(apiMode);
+  const activeSchedule = apiMode ? remoteSchedule : schedule;
+
+  const scheduleClock = useMemo(() => getScheduleClock(activeSchedule), [clockTick, activeSchedule]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setClockTick((v) => v + 1), 30000);
     return () => window.clearInterval(timer);
   }, []);
 
+  const eventDates = useMemo(() => buildDateNav(activeSchedule), [activeSchedule]);
+
   useEffect(() => {
     const nowIso = scheduleClock.now;
     const todayStr = `${nowIso.getFullYear()}-${String(nowIso.getMonth() + 1).padStart(2, "0")}-${String(nowIso.getDate()).padStart(2, "0")}`;
-    const match = EVENT_DATES.find((d) => d.iso === todayStr);
-    setSelectedDate(match ? match.iso : EVENT_DATES[0].iso);
-  }, [scheduleClock.isDemo]);
+    const match = eventDates.find((d) => d.iso === todayStr);
+    setSelectedDate(match ? match.iso : eventDates[0]?.iso || "");
+  }, [scheduleClock.isDemo, eventDates]);
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -66,10 +66,10 @@ function Schedule() {
 
   const dayItems = useMemo(() => {
     if (!selectedDate) return [];
-    return schedule
-      .filter((s) => s.date === selectedDate && s.week === "event_week")
+    return activeSchedule
+      .filter((s) => s.date === selectedDate)
       .sort((a, b) => a.scheduledStartTime.localeCompare(b.scheduledStartTime));
-  }, [schedule, selectedDate]);
+  }, [activeSchedule, selectedDate]);
 
   const beforeBreakItems = dayItems.filter((s) => s.block === "before_break");
   const afterBreakItems = dayItems.filter((s) => s.block === "after_break");
@@ -87,7 +87,7 @@ function Schedule() {
     hapticSuccess();
     const blockLabel = blockType === "before_break" ? "Morning Session" : "Afternoon Session";
     const blockId = `block-${selectedDate}-${blockType}`;
-    const blockItems = schedule.filter((s) => s.date === selectedDate && s.block === blockType && !s.isConcurrent);
+    const blockItems = activeSchedule.filter((s) => s.date === selectedDate && s.block === blockType && !s.isConcurrent);
     const venueCodes = [...new Set(blockItems.map((i) => i.venueCode).filter(Boolean))] as string[];
     navigate("/attendance", { state: { blockLabel, blockId, venueCodes } });
   };
@@ -175,13 +175,13 @@ function Schedule() {
 
       <div className="schedule-timeline-layout">
         <div className="schedule-date-nav">
-          {EVENT_DATES.map((d) => (
+          {eventDates.map((d) => (
             <button
               key={d.iso}
               className={`schedule-date-btn ${selectedDate === d.iso ? "active" : ""}`}
               onClick={() => handleDateClick(d.iso)}
             >
-              <span className="schedule-date-day">{formatDayLabel(d.iso)}</span>
+              <span className="schedule-date-day">{d.day}</span>
               <span className="schedule-date-num">{d.label}</span>
             </button>
           ))}
@@ -203,47 +203,51 @@ function Schedule() {
             </button>
           </div>
 
-          <div className="schedule-events-list">
-            {selectedView === "main" ? (
-              <>
-                {beforeBreakItems.length > 0 && (
-                  <>
-                {beforeBreakItems.map((item, i) => renderEventCard(item, i))}
-                    {renderCheckInButton("Morning Session", "before_break", beforeBreakItems.length)}
-                  </>
-                )}
+          {loadingSchedule ? (
+            <div className="skeleton-page" />
+          ) : (
+            <div className="schedule-events-list">
+              {selectedView === "main" ? (
+                <>
+                  {beforeBreakItems.length > 0 && (
+                    <>
+                      {beforeBreakItems.map((item, i) => renderEventCard(item, i))}
+                      {renderCheckInButton("Morning Session", "before_break", beforeBreakItems.length)}
+                    </>
+                  )}
 
-                {afterBreakItems.length > 0 && (
-                  <>
-                    {afterBreakItems.map((item, i) => renderEventCard(item, i + beforeBreakItems.length))}
-                    {renderCheckInButton("Afternoon Session", "after_break", afterBreakItems.length)}
-                  </>
-                )}
+                  {afterBreakItems.length > 0 && (
+                    <>
+                      {afterBreakItems.map((item, i) => renderEventCard(item, i + beforeBreakItems.length))}
+                      {renderCheckInButton("Afternoon Session", "after_break", afterBreakItems.length)}
+                    </>
+                  )}
 
-                {noBlockItems.length > 0 && (
-                  <>
-                    {noBlockItems.map((item, i) => renderEventCard(item, i + beforeBreakItems.length + afterBreakItems.length))}
-                  </>
-                )}
+                  {noBlockItems.length > 0 && (
+                    <>
+                      {noBlockItems.map((item, i) => renderEventCard(item, i + beforeBreakItems.length + afterBreakItems.length))}
+                    </>
+                  )}
 
-                {dayItems.length === 0 && (
-                  <div className="timeline-empty">
-                    <p>No events scheduled for this day.</p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                {concurrentItems.length > 0 ? (
-                  concurrentItems.map((item, i) => renderEventCard(item, i))
-                ) : (
-                  <div className="timeline-empty">
-                    <p>No concurrent events for this day.</p>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+                  {dayItems.length === 0 && (
+                    <div className="timeline-empty">
+                      <p>No events scheduled for this day.</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {concurrentItems.length > 0 ? (
+                    concurrentItems.map((item, i) => renderEventCard(item, i))
+                  ) : (
+                    <div className="timeline-empty">
+                      <p>No concurrent events for this day.</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </section>

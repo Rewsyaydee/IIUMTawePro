@@ -16,6 +16,14 @@ import type { WellbeingReport } from "../types";
 
 const categories = ["Dizzy", "Injury", "Lost group", "Medication", "Anxiety", "Other"];
 
+const PHONE_STORAGE_KEY = "tawepro-wellbeing-phone";
+
+const MANAGER_STATUS_ACTIONS: Array<{ db: WellbeingReport["status"]; label: string }> = [
+  { db: "responded", label: "Responding" },
+  { db: "resolved", label: "Resolved" },
+  { db: "escalated", label: "Escalated" }
+];
+
 function Wellbeing() {
   const { user } = useMockUser();
   const { reports, addReport, updateReportStatus } = useMockData();
@@ -23,18 +31,16 @@ function Wellbeing() {
   const [remoteReports, setRemoteReports] = useState<WellbeingReport[]>([]);
   const [loadingReports, setLoadingReports] = useState(false);
   const [authRefreshTick, setAuthRefreshTick] = useState(0);
-  const [form, setForm] = useState({
-    studentName: "",
-    phone: "",
+  const [form, setForm] = useState(() => ({
+    studentName: user.name || "",
+    phone: localStorage.getItem(PHONE_STORAGE_KEY) || "",
     category: categories[0],
     notes: ""
-  });
+  }));
   const [latestReference, setLatestReference] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
-
-  const canManageReports = user.role === "mainboard" || user.bureau === "Welfare";
-  const activeReports = apiMode ? remoteReports : reports;
 
   useEffect(() => {
     const handleSessionChanged = () => setAuthRefreshTick((value) => value + 1);
@@ -80,7 +86,8 @@ function Wellbeing() {
         setLatestReference(report.reference);
       }
 
-      setForm({ studentName: "", phone: "", category: categories[0], notes: "" });
+      setForm((current) => ({ ...current, studentName: user.name || "", notes: "" }));
+      localStorage.setItem(PHONE_STORAGE_KEY, form.phone);
       hapticSuccess();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to submit report.");
@@ -91,6 +98,9 @@ function Wellbeing() {
   };
 
   const handleStatusUpdate = async (id: string, status: WellbeingReport["status"]) => {
+    if (updatingId) return;
+    setUpdatingId(id);
+    setErrorMessage("");
     try {
       if (apiMode) {
         const updated = await updateWellbeingReportStatusApi(id, status);
@@ -102,10 +112,19 @@ function Wellbeing() {
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to update report.");
       hapticError();
+    } finally {
+      setUpdatingId(null);
     }
   };
 
-  const filteredReports = canManageReports ? activeReports : activeReports.filter((r) => r.status !== "resolved").slice(0, 3);
+  const canManageReports = user.role === "mainboard" || user.bureau === "Welfare";
+  const activeReportsAll = apiMode ? remoteReports : reports;
+
+  // Managers: active queue excludes resolved; resolved go to a separate history section.
+  const managerActive = canManageReports ? activeReportsAll.filter((r) => r.status !== "resolved") : [];
+  const managerResolved = canManageReports ? activeReportsAll.filter((r) => r.status === "resolved") : [];
+  // Students: only their own unresolved reports, latest 3.
+  const studentVisible = !canManageReports ? activeReportsAll.filter((r) => r.status !== "resolved").slice(0, 3) : [];
 
   return (
     <section className="page-stack">
@@ -180,56 +199,93 @@ function Wellbeing() {
       </form>
 
       {canManageReports && (
-        <section className="ops-panel">
-          <div className="section-heading">
-            <h3>Welfare dashboard</h3>
-            <span>{activeReports.filter((r) => r.status !== "resolved").length} active</span>
-          </div>
-          {loadingReports ? (
-            <div className="skeleton-page" />
-          ) : filteredReports.length === 0 ? (
-            <EmptyState icon={HeartPulse} title="No reports" body="Submitted reports will appear here." />
-          ) : (
-            <div className="report-list">
-              {filteredReports.map((report, index) => (
-                <motion.article
-                  key={report.id}
-                  className="report-card"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.03 }}
-                >
-                  <div>
-                    <div className="report-title">
-                      <strong>{report.reference}</strong>
-                      <StatusBadge value={report.status} />
-                    </div>
-                    <h4>{report.studentName}</h4>
-                    <p>{report.category}</p>
-                    <p className="muted">{report.notes}</p>
-                  </div>
-                  <div className="segmented-actions">
-                    {(["responded", "resolved", "escalated"] as WellbeingReport["status"][]).map((status) => (
-                      <button key={status} type="button" onClick={() => handleStatusUpdate(report.id, status)}>
-                        {status}
-                      </button>
-                    ))}
-                  </div>
-                </motion.article>
-              ))}
+        <>
+          <section className="ops-panel">
+            <div className="section-heading">
+              <h3>Welfare dashboard</h3>
+              <span>{managerActive.length} active</span>
             </div>
+            {loadingReports ? (
+              <div className="skeleton-page" />
+            ) : managerActive.length === 0 ? (
+              <EmptyState icon={HeartPulse} title="Queue clear" body="New reports will appear here as they come in." />
+            ) : (
+              <div className="report-list">
+                {managerActive.map((report, index) => (
+                  <motion.article
+                    key={report.id}
+                    className="report-card"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.03 }}
+                  >
+                    <div>
+                      <div className="report-title">
+                        <strong>{report.reference}</strong>
+                        <StatusBadge value={report.status} />
+                      </div>
+                      <h4>{report.studentName}</h4>
+                      <p>{report.category}</p>
+                      <p className="muted">{report.notes}</p>
+                    </div>
+                    <div className="segmented-actions">
+                      {MANAGER_STATUS_ACTIONS.map(({ db, label }) => (
+                        <button
+                          key={db}
+                          type="button"
+                          disabled={updatingId !== null}
+                          onClick={() => handleStatusUpdate(report.id, db)}
+                        >
+                          {updatingId === report.id ? "..." : label}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.article>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {managerResolved.length > 0 && (
+            <section className="ops-panel">
+              <div className="section-heading">
+                <h3>Resolved history</h3>
+                <span>{managerResolved.length}</span>
+              </div>
+              <div className="report-list">
+                {managerResolved.map((report, index) => (
+                  <motion.article
+                    key={report.id}
+                    className="report-card"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.03 }}
+                  >
+                    <div>
+                      <div className="report-title">
+                        <strong>{report.reference}</strong>
+                        <StatusBadge value={report.status} />
+                      </div>
+                      <h4>{report.studentName}</h4>
+                      <p>{report.category}</p>
+                      <p className="muted">{report.notes}</p>
+                    </div>
+                  </motion.article>
+                ))}
+              </div>
+            </section>
           )}
-        </section>
+        </>
       )}
 
-      {!canManageReports && filteredReports.length > 0 && (
+      {!canManageReports && studentVisible.length > 0 && (
         <section className="ops-panel">
           <div className="section-heading">
             <h3>Your reports</h3>
-            <span>{filteredReports.length}</span>
+            <span>{studentVisible.length}</span>
           </div>
           <div className="report-list">
-            {filteredReports.map((report, index) => (
+            {studentVisible.map((report, index) => (
               <motion.article
                 key={report.id}
                 className="report-card"
@@ -251,7 +307,7 @@ function Wellbeing() {
           </div>
         </section>
       )}
-      {!canManageReports && filteredReports.length === 0 && (
+      {!canManageReports && studentVisible.length === 0 && (
         <div className="empty-state" style={{ padding: "2rem 0" }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
           <strong>No reports submitted yet</strong>

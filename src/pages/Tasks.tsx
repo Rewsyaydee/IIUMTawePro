@@ -1,10 +1,11 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ClipboardCheck, PenLine, Plus, Trash2 } from "lucide-react";
+import { ClipboardCheck, PenLine, Plus, Trash2, UsersRound } from "lucide-react";
 import { BUREAUS } from "../constants";
 import { authSessionChangedEvent, shouldUseApiAuth } from "../lib/apiAuth";
 import { hapticError, hapticImpact } from "../lib/telegram";
 import { createTask as createTaskApi, deleteTaskApi, listTasks, updateTaskDetails as updateTaskDetailsApi, updateTaskStatus as updateTaskStatusApi } from "../lib/tasksApi";
+import { listBureauMembers, type BureauMember } from "../lib/usersApi";
 import { StatusBadge } from "../components/StatusBadge";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
@@ -14,7 +15,7 @@ const statuses: TaskStatus[] = ["todo", "in_progress", "blocked", "done"];
 const priorities: Priority[] = ["low", "medium", "high", "critical"];
 
 function Tasks() {
-  const { user } = useMockUser();
+  const { user, users } = useMockUser();
   const { tasks, updateTaskStatus, addTask, updateTaskDetails, deleteTask } = useMockData();
   const apiMode = shouldUseApiAuth();
   const [remoteTasks, setRemoteTasks] = useState<PoaTask[]>([]);
@@ -24,6 +25,11 @@ function Tasks() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [members, setMembers] = useState<BureauMember[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const todayStr = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({
     bureau: user.bureau || "Welfare",
@@ -68,6 +74,37 @@ function Tasks() {
     return () => { cancelled = true; };
   }, [apiMode, authRefreshTick, user.role]);
 
+  // Fetch bureau members for the assignee picker while the form is open
+  const activeMemberList = useMemo(() => {
+    if (apiMode) return members;
+    return users
+      .filter((person) => person.role !== "student" && person.bureau === form.bureau)
+      .map((person) => ({
+        id: person.id,
+        name: person.name,
+        matric_number: person.matricNumber,
+        telegram_username: "",
+        role: person.role
+      }));
+  }, [apiMode, members, users, form.bureau]);
+
+  useEffect(() => {
+    if (!apiMode || !formOpen) return;
+    let cancelled = false;
+    setLoadingMembers(true);
+    listBureauMembers(form.bureau)
+      .then((loaded) => {
+        if (!cancelled) setMembers(loaded);
+      })
+      .catch(() => {
+        if (!cancelled) setMembers([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingMembers(false);
+      });
+    return () => { cancelled = true; };
+  }, [apiMode, formOpen, form.bureau]);
+
   const visibleTasks = useMemo(() => {
     if (user.role === "mainboard") return activeTasks;
     return activeTasks.filter((task) => task.bureau === user.bureau);
@@ -87,7 +124,13 @@ function Tasks() {
 
   const submitTask = async (event: FormEvent) => {
     event.preventDefault();
+    if (saving) return;
     setErrorMessage("");
+    setSaving(true);
+
+    const selectedNames = activeMemberList
+      .filter((member) => assigneeIds.includes(member.id))
+      .map((member) => member.name);
 
     const fields = {
       bureau: form.bureau as Bureau,
@@ -95,7 +138,8 @@ function Tasks() {
       description: form.description,
       dueDate: form.dueDate,
       dueTime: form.dueTime,
-      assignedTo: form.assignedTo || user.name,
+      assignedTo: selectedNames.join(", ") || form.assignedTo || user.name,
+      assignedToIds: assigneeIds,
       priority: form.priority as Priority
     };
 
@@ -118,15 +162,20 @@ function Tasks() {
       }
 
       setForm((current) => ({ ...current, title: "", description: "", assignedTo: "" }));
+      setAssigneeIds([]);
       setFormOpen(false);
       hapticImpact("medium");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to save task.");
       hapticError();
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleStatusUpdate = async (id: string, status: TaskStatus) => {
+    if (updatingStatusId) return;
+    setUpdatingStatusId(id);
     try {
       if (apiMode) {
         const updated = await updateTaskStatusApi(id, status);
@@ -138,10 +187,14 @@ function Tasks() {
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to update task.");
       hapticError();
+    } finally {
+      setUpdatingStatusId(null);
     }
   };
 
   const handleDeleteTask = async (id: string) => {
+    if (updatingStatusId) return;
+    setUpdatingStatusId(id);
     try {
       if (apiMode) {
         await deleteTaskApi(id);
@@ -154,7 +207,15 @@ function Tasks() {
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to delete task.");
       hapticError();
+    } finally {
+      setUpdatingStatusId(null);
     }
+  };
+
+  const toggleAssignee = (id: string) => {
+    setAssigneeIds((current) =>
+      current.includes(id) ? current.filter((x) => x !== id) : [...current, id]
+    );
   };
 
   const startEdit = (task: PoaTask) => {
@@ -167,6 +228,7 @@ function Tasks() {
       assignedTo: task.assignedTo,
       priority: task.priority
     });
+    setAssigneeIds(task.assignedToIds || []);
     setEditingId(task.id);
     setFormOpen(true);
   };
@@ -249,8 +311,31 @@ function Tasks() {
             </label>
           </div>
           <label>
-            <span>Assigned to</span>
-            <input value={form.assignedTo} onChange={(event) => setForm((current) => ({ ...current, assignedTo: event.target.value }))} />
+            <span>Assign to (members of {form.bureau})</span>
+            {loadingMembers ? (
+              <div className="assignee-picker-loading">Loading members...</div>
+            ) : activeMemberList.length === 0 ? (
+              <div className="assignee-picker-empty">
+                No registered members in this bureau yet.
+              </div>
+            ) : (
+              <div className="assignee-picker">
+                {activeMemberList.map((member) => (
+                  <button
+                    key={member.id}
+                    type="button"
+                    className={`assignee-chip ${assigneeIds.includes(member.id) ? "selected" : ""}`}
+                    onClick={() => toggleAssignee(member.id)}
+                  >
+                    <span className="assignee-chip-check">
+                      {assigneeIds.includes(member.id) ? "☑" : "☐"}
+                    </span>
+                    {member.name}
+                    {member.matric_number ? <small>{member.matric_number}</small> : null}
+                  </button>
+                ))}
+              </div>
+            )}
           </label>
           <label>
             <span>Priority</span>
@@ -263,9 +348,15 @@ function Tasks() {
             </select>
           </label>
           <div className="form-actions">
-            <button className="primary-button" type="submit">
-              <Plus size={16} aria-hidden="true" />
-              <span>{editingId ? "Save changes" : "Create task"}</span>
+            <button className="primary-button" type="submit" disabled={saving}>
+              {saving ? (
+                <span>...</span>
+              ) : (
+                <>
+                  <Plus size={16} aria-hidden="true" />
+                  <span>{editingId ? "Save changes" : "Create task"}</span>
+                </>
+              )}
             </button>
             {editingId && (
               <button className="outline-button" type="button" onClick={() => { setEditingId(null); setFormOpen(false); }}>
@@ -309,7 +400,7 @@ function Tasks() {
                 <span>{task.assignedTo}</span>
               </div>
               <div className="review-actions" style={{ marginBottom: 8 }}>
-                <button type="button" className="outline-button" onClick={() => startEdit(task)}>
+                <button type="button" className="outline-button" disabled={updatingStatusId !== null} onClick={() => startEdit(task)}>
                   <PenLine size={14} aria-hidden="true" />
                   <span>Edit</span>
                 </button>
@@ -322,7 +413,7 @@ function Tasks() {
                     </div>
                   </div>
                 ) : (
-                  <button type="button" className="danger-outline-button" onClick={() => setConfirmDelete(task.id)}>
+                  <button type="button" className="danger-outline-button" disabled={updatingStatusId !== null} onClick={() => setConfirmDelete(task.id)}>
                     <Trash2 size={14} aria-hidden="true" />
                     <span>Delete</span>
                   </button>
@@ -334,9 +425,10 @@ function Tasks() {
                     key={status}
                     className={task.status === status ? "selected" : ""}
                     type="button"
+                    disabled={updatingStatusId !== null}
                     onClick={() => handleStatusUpdate(task.id, status)}
                   >
-                    {status.replace("_", " ")}
+                    {updatingStatusId === task.id ? "..." : status.replace("_", " ")}
                   </button>
                 ))}
               </div>

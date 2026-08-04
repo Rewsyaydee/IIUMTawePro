@@ -98,7 +98,7 @@ export function StudentAttendanceView({ checkInState }: { checkInState?: CheckIn
       </div>
 
       <div className="milestone-card glass-card">
-        <p className="milestone-title">NEXT REWARD: +200 SP / TAARUF KIT</p>
+        <p className="milestone-title">Complete all 7 days to claim your Ta'aruf Kit.</p>
         <div className="milestone-grid">
           {milestones.map((target) => {
             const reached = attendedCount >= target;
@@ -121,6 +121,7 @@ export function StudentAttendanceView({ checkInState }: { checkInState?: CheckIn
             );
           })}
         </div>
+        <p className="milestone-reward">Reward: TAARUF KIT</p>
       </div>
 
       {checkInState ? (

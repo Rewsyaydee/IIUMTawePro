@@ -12,10 +12,6 @@ function appBaseUrl() {
   return "https://iium-tawe-pro.vercel.app";
 }
 
-function supportUrl() {
-  return process.env.WELLBEING_SUPPORT_URL || `${appBaseUrl()}/wellbeing`;
-}
-
 function escapeName(name) {
   return html(name || "there");
 }
@@ -81,7 +77,7 @@ function changeKeyboard(role) {
       inline_keyboard: [
         [{ text: "🧭 Open Dashboard", web_app: { url: appBaseUrl() } }],
         [{ text: "📅 View Schedule", web_app: { url: `${appBaseUrl()}/official-schedule` } }],
-        [{ text: "🤲 Wellbeing Support", url: supportUrl() }]
+        [{ text: "🤲 Wellbeing Support", web_app: { url: `${appBaseUrl()}/wellbeing` } }]
       ]
     };
   }
@@ -102,7 +98,7 @@ function dashboardKeyboard() {
     inline_keyboard: [
       [{ text: "🧭 Open Dashboard", web_app: { url: appBaseUrl() } }],
       [{ text: "📅 View Schedule", web_app: { url: `${appBaseUrl()}/official-schedule` } }],
-      [{ text: "🤲 Wellbeing Support", url: supportUrl() }]
+      [{ text: "🤲 Wellbeing Support", web_app: { url: `${appBaseUrl()}/wellbeing` } }]
     ]
   };
 }
@@ -140,6 +136,7 @@ async function upsertUser(telegramId, firstName, lastName, username) {
     body: [{
       telegram_id: telegramId,
       name,
+      telegram_username: username || null,
       role: "student",
       status: "active",
       updated_at: new Date().toISOString()
