@@ -5760,3 +5760,15 @@ textarea {
   flex-wrap: wrap;
   gap: 8px;
 }
+
+/* -- Support page: light-mode scoped overrides (Telegram light scheme) -- */
+.support-light {
+  color: #1f2328;
+  --text-primary: #1f2328;
+  --text-secondary: rgba(0, 0, 0, 0.65);
+  --text-muted: rgba(0, 0, 0, 0.5);
+  --line: rgba(0, 0, 0, 0.14);
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(0, 0, 0, 0.12);
+  --gold-accent: #8a6d2f;
+}

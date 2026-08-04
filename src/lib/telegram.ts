@@ -112,13 +112,13 @@ export function setupTelegramShell() {
       undefined;
     }
   }
-  applyTelegramTheme(webApp.themeParams, webApp.colorScheme);
+  applyTelegramTheme(webApp.themeParams);
 
-  const handleThemeChanged = () => applyTelegramTheme(webApp.themeParams, webApp.colorScheme);
+  const handleThemeChanged = () => applyTelegramTheme(webApp.themeParams);
   webApp.onEvent?.("themeChanged", handleThemeChanged);
 }
 
-export function applyTelegramTheme(theme: TelegramThemeParams = {}, colorScheme: "light" | "dark" = "dark") {
+export function applyTelegramTheme(theme: TelegramThemeParams = {}) {
   const root = document.documentElement;
   const mapping: Record<string, string> = {
     bg_color: "--tg-bg-color",
@@ -138,24 +138,6 @@ export function applyTelegramTheme(theme: TelegramThemeParams = {}, colorScheme:
     const value = theme[key];
     if (value) root.style.setProperty(variable, value);
   });
-
-  // The hardcoded :root tokens default to dark-mode values; swap them when
-  // Telegram reports a light scheme so text stays readable (no white-on-white).
-  if (colorScheme === "light") {
-    root.style.setProperty("--text-primary", theme.text_color || "#1f2328");
-    root.style.setProperty("--text-secondary", "rgba(0, 0, 0, 0.65)");
-    root.style.setProperty("--text-muted", "rgba(0, 0, 0, 0.45)");
-    root.style.setProperty("--line", "rgba(0, 0, 0, 0.12)");
-    root.style.setProperty("--glass-bg", "rgba(255, 255, 255, 0.6)");
-    root.style.setProperty("--glass-border", "rgba(0, 0, 0, 0.12)");
-  } else {
-    root.style.setProperty("--text-primary", "#ffffff");
-    root.style.setProperty("--text-secondary", "rgba(255, 255, 255, 0.65)");
-    root.style.setProperty("--text-muted", "rgba(255, 255, 255, 0.4)");
-    root.style.setProperty("--line", "rgba(255, 255, 255, 0.12)");
-    root.style.setProperty("--glass-bg", "rgba(255, 255, 255, 0.07)");
-    root.style.setProperty("--glass-border", "rgba(255, 255, 255, 0.12)");
-  }
 }
 
 export function hapticImpact(style: "light" | "medium" | "heavy" = "light") {

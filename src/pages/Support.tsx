@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ExternalLink,
@@ -82,6 +82,15 @@ function Support() {
   const [donateError, setDonateError] = useState("");
   const [qrFailed, setQrFailed] = useState(false);
   const [customStars, setCustomStars] = useState("");
+  const [isLight, setIsLight] = useState(() => getTelegramWebApp()?.colorScheme === "light");
+
+  useEffect(() => {
+    const webApp = getTelegramWebApp();
+    if (!webApp) return;
+    const handleThemeChanged = () => setIsLight(webApp.colorScheme === "light");
+    webApp.onEvent?.("themeChanged", handleThemeChanged);
+    return () => webApp.offEvent?.("themeChanged", handleThemeChanged);
+  }, []);
 
   const handleStarsDonate = async (stars: number) => {
     if (donating) return;
@@ -130,7 +139,7 @@ function Support() {
   };
 
   return (
-    <section className="page-stack">
+    <section className={`page-stack${isLight ? " support-light" : ""}`}>
       <div className="page-heading">
         <div>
           <p className="eyebrow">Official hub</p>
