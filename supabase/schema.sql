@@ -94,8 +94,11 @@ create table if not exists public.wellbeing_reports (
   status text not null default 'submitted' check (status in ('submitted', 'responded', 'resolved', 'escalated')),
   assigned_to uuid references public.users(id),
   submitted_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   resolved_at timestamptz
 );
+
+alter table public.wellbeing_reports add column if not exists updated_at timestamptz not null default now();
 
 create table if not exists public.poa_tasks (
   id uuid primary key default gen_random_uuid(),
@@ -278,6 +281,7 @@ alter table public.users add column if not exists kulliyyah text check (
 alter table public.users add column if not exists registration_step text;
 alter table public.users add column if not exists phone text;
 alter table public.users add column if not exists telegram_username text;
+alter table public.users add column if not exists photo_url text;
 
 -- Bureau members: task assignees stored as user id array
 alter table public.poa_tasks add column if not exists assigned_to_ids uuid[] default '{}';
@@ -311,6 +315,9 @@ create table if not exists public.student_attendance (
 create index if not exists student_attendance_user_idx on public.student_attendance (user_id);
 create index if not exists student_attendance_schedule_idx on public.student_attendance (schedule_item_id);
 create index if not exists student_attendance_status_idx on public.student_attendance (status);
+
+-- Mahallah snapshot taken at check-in time (leaderboard fallback when users.mahallah lags)
+alter table public.student_attendance add column if not exists mahallah text;
 
 create index if not exists static_locations_code_idx on public.static_locations (code);
 create index if not exists static_routes_from_to_idx on public.static_routes (from_venue_code, to_venue_code);

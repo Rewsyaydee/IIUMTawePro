@@ -1,5 +1,5 @@
 import { readJson, sendJson, ROLES, BUREAUS } from "./_lib/auth-utils.js";
-import { createAuditLog, getUserById, getUserRecordByTelegramId, supabaseRequest } from "./_lib/supabase.js";
+import { createAuditLog, getUserById, getUserRecordByTelegramId, SupabaseRequestError, supabaseRequest } from "./_lib/supabase.js";
 import { verifyAppSessionFromRequest } from "./_lib/auth-utils.js";
 
 import { insertReport, listReportsForUser, mapWellbeingReport, updateReportStatus, validateReportInput } from "./_lib/wellbeing-utils.js";
@@ -494,25 +494,33 @@ export default async function handler(req, res) {
         const lat = Number(body.latitude), lng = Number(body.longitude);
         if (!isFinite(lat) || lat < -90 || lat > 90) return sendJson(res, 400, { error: "Invalid latitude." });
         if (!isFinite(lng) || lng < -180 || lng > 180) return sendJson(res, 400, { error: "Invalid longitude." });
-        const rows = await supabaseRequest("/student_attendance?select=id,user_id,schedule_item_id,status", {
-          method: "POST",
-          headers: { Prefer: "return=representation" },
-          body: [{
-            user_id: user.id,
-            schedule_item_id: body.scheduleItemId,
-            event_title: body.eventTitle || "",
-            student_name: body.studentName || user.name,
-            matric_number: body.matricNumber || "",
-            kulliyyah: body.kulliyyah || null,
-            latitude: lat,
-            longitude: lng,
-            status: body.status || "present",
-            excuse: body.excuse || null
-          }]
-        });
-        const record = Array.isArray(rows) ? rows[0] : undefined;
-        if (!record) return sendJson(res, 500, { error: "Failed to submit attendance." });
-        return sendJson(res, 201, { attendance: mapStudentAttendance(record) });
+        try {
+          const rows = await supabaseRequest("/student_attendance?select=id,user_id,schedule_item_id,status", {
+            method: "POST",
+            headers: { Prefer: "return=representation" },
+            body: [{
+              user_id: user.id,
+              schedule_item_id: body.scheduleItemId,
+              event_title: body.eventTitle || "",
+              student_name: body.studentName || user.name,
+              matric_number: body.matricNumber || "",
+              kulliyyah: body.kulliyyah || null,
+              mahallah: user.mahallah || null,
+              latitude: lat,
+              longitude: lng,
+              status: body.status || "present",
+              excuse: body.excuse || null
+            }]
+          });
+          const record = Array.isArray(rows) ? rows[0] : undefined;
+          if (!record) return sendJson(res, 500, { error: "Failed to submit attendance." });
+          return sendJson(res, 201, { attendance: mapStudentAttendance(record) });
+        } catch (error) {
+          if (error instanceof SupabaseRequestError && error.status === 409) {
+            return sendJson(res, 409, { error: "You've already checked in for this session." });
+          }
+          throw error;
+        }
       }
       case "attendance.student.list": {
         if (!user) return sendJson(res, 401);
@@ -538,7 +546,7 @@ export default async function handler(req, res) {
       }
 
       case "leaderboard.fetch": {
-        const attRows = await supabaseRequest("/student_attendance?select=user_id,schedule_item_id,event_title,student_name,submitted_at,status&order=submitted_at.asc&limit=5000");
+        const attRows = await supabaseRequest("/student_attendance?select=user_id,schedule_item_id,event_title,student_name,submitted_at,status,mahallah&order=submitted_at.asc&limit=5000");
         const attendances = Array.isArray(attRows) ? attRows.filter((r) => r.status === "present") : [];
 
         const scheduleRows = await supabaseRequest("/schedule_items?select=id,scheduled_start_time,program_count,block,block_group&limit=200");
@@ -558,7 +566,7 @@ export default async function handler(req, res) {
           blockMap.set(key, entry);
         }
 
-        const userRows = await supabaseRequest("/users?select=id,name,mahallah&mahallah=not.is.null&limit=5000");
+        const userRows = await supabaseRequest("/users?select=id,name,mahallah,photo_url&limit=5000");
         const userMap = new Map((Array.isArray(userRows) ? userRows : []).map((r) => [r.id, r]));
 
         const rows = attendances.map((a) => {
@@ -568,7 +576,8 @@ export default async function handler(req, res) {
           return {
             user_id: a.user_id,
             student_name: a.student_name,
-            mahallah: usr.mahallah || "",
+            mahallah: usr.mahallah || a.mahallah || "",
+            photo_url: usr.photo_url || "",
             schedule_item_id: a.schedule_item_id,
             event_title: a.event_title,
             submitted_at: a.submitted_at,

@@ -20,18 +20,20 @@ import {
 import { APP_INFO } from "../lib/appInfo";
 import { getTelegramWebApp, hapticError, hapticSuccess } from "../lib/telegram";
 
-const DONATION_AMOUNTS = [100, 250, 500];
+const DONATION_AMOUNTS = [10, 25, 50, 100, 250, 500];
+const MIN_STARS = 10;
+const MAX_STARS = 2500;
 
 function apiBase() {
   return import.meta.env.VITE_API_BASE_URL || window.location.origin;
 }
 
 const DOCS_LINKS = [
-  { label: "User Guide", url: "https://tawepro.rewsyaydee.tech/docs/user-guide" },
-  { label: "Committee Guide", url: "https://tawepro.rewsyaydee.tech/docs/committee-guide" },
-  { label: "FAQ", url: "https://tawepro.rewsyaydee.tech/faq" },
-  { label: "Privacy Policy", url: "https://tawepro.rewsyaydee.tech/privacy" },
-  { label: "Changelog", url: "https://tawepro.rewsyaydee.tech/changelog" }
+  { label: "User Guide", url: "https://github.com/Rewsyaydee/IIUMTawePro" },
+  { label: "Committee Guide", url: "https://github.com/Rewsyaydee/IIUMTawePro" },
+  { label: "FAQ", url: "https://github.com/Rewsyaydee/IIUMTawePro" },
+  { label: "Privacy Policy", url: "https://github.com/Rewsyaydee/IIUMTawePro" },
+  { label: "Changelog", url: "https://github.com/Rewsyaydee/IIUMTawePro" }
 ];
 
 const LINKS = [
@@ -79,8 +81,15 @@ function Support() {
   const [donating, setDonating] = useState(false);
   const [donateError, setDonateError] = useState("");
   const [qrFailed, setQrFailed] = useState(false);
+  const [customStars, setCustomStars] = useState("");
 
   const handleStarsDonate = async (stars: number) => {
+    if (donating) return;
+    if (!Number.isFinite(stars) || stars < MIN_STARS || stars > MAX_STARS) {
+      setDonateError(`Amount must be between ${MIN_STARS} and ${MAX_STARS} Stars.`);
+      hapticError();
+      return;
+    }
     setDonating(true);
     setDonateError("");
     try {
@@ -160,9 +169,29 @@ function Support() {
                   onClick={() => handleStarsDonate(stars)}
                 >
                   <Star size={15} aria-hidden="true" />
-                  <span>{donating ? "..." : `${stars} ⭐`}</span>
+                  <span>{stars}</span>
                 </button>
               ))}
+            </div>
+            <div className="donation-custom">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={MIN_STARS}
+                max={MAX_STARS}
+                placeholder="Custom amount"
+                value={customStars}
+                onChange={(event) => setCustomStars(event.target.value)}
+              />
+              <button
+                type="button"
+                className="primary-button"
+                disabled={donating}
+                onClick={() => handleStarsDonate(parseInt(customStars, 10))}
+              >
+                <Star size={15} aria-hidden="true" />
+                <span>{donating ? "..." : "Donate"}</span>
+              </button>
             </div>
             {donateError && <p className="access-error">{donateError}</p>}
           </div>
@@ -249,11 +278,11 @@ function Support() {
             <span>LinkedIn</span>
             <ExternalLink size={15} aria-hidden="true" />
           </button>
-          <button type="button" className="link-row" onClick={() => openExternal("mailto:work@syedi.my")}>
+          <a className="link-row" href="mailto:work@syedi.my">
             <Mail size={15} aria-hidden="true" />
             <span>work@syedi.my</span>
             <ExternalLink size={15} aria-hidden="true" />
-          </button>
+          </a>
         </div>
       </section>
 

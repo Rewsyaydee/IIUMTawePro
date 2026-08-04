@@ -10,6 +10,7 @@ export interface LeaderboardRow {
   submitted_at: string;
   scheduled_start_time: string;
   program_count: number;
+  photo_url?: string;
 }
 
 export function computeScore(
@@ -55,22 +56,42 @@ export function getMahallahShort(code: string): string {
   return m ? m.short : code;
 }
 
+// The bot stores display names ("Faruq") while the leaderboard keys on codes
+// ("mh-faruq"). Canonicalize any stored value to the mh-* code so rankings,
+// labels, and avatars all line up. Unknown values are returned raw (and are
+// naturally dropped by rankings that only emit known mahallahs).
+export function canonicalMahallah(value: string): string {
+  const v = (value || "").trim();
+  if (!v) return "";
+  if (allMahallahs.some((m) => m.code === v)) return v;
+  const byShort = allMahallahs.find((m) => m.short.toLowerCase() === v.toLowerCase());
+  if (byShort) return byShort.code;
+  const byName = allMahallahs.find((m) => m.name.toLowerCase() === v.toLowerCase());
+  return byName ? byName.code : v;
+}
+
 export function buildIndividualRanking(
   rows: LeaderboardRow[],
   dateFilter?: string
 ): LeaderboardEntry[] {
   const filtered = dateFilter ? rows.filter((r) => r.submitted_at.slice(0, 10) === dateFilter) : rows;
-  const map = new Map<string, { name: string; mahallah: string; score: number; checkins: number }>();
+  const map = new Map<string, { name: string; mahallah: string; photoUrl: string; score: number; checkins: number }>();
   for (const r of filtered) {
     const { points } = computeScore(r.submitted_at, r.scheduled_start_time, r.program_count);
-    const existing = map.get(r.user_id) || { name: r.student_name, mahallah: r.mahallah, score: 0, checkins: 0 };
+    const existing = map.get(r.user_id) || {
+      name: r.student_name,
+      mahallah: canonicalMahallah(r.mahallah),
+      photoUrl: r.photo_url || "",
+      score: 0,
+      checkins: 0
+    };
     existing.score += points;
     existing.checkins += 1;
     map.set(r.user_id, existing);
   }
   const entries: LeaderboardEntry[] = [];
   for (const [userId, data] of map) {
-    entries.push({ rank: 0, userId, name: data.name, mahallah: data.mahallah, score: data.score, checkins: data.checkins });
+    entries.push({ rank: 0, userId, name: data.name, mahallah: data.mahallah, score: data.score, checkins: data.checkins, photoUrl: data.photoUrl });
   }
   entries.sort((a, b) => b.score - a.score);
   entries.forEach((e, i) => (e.rank = i + 1));
@@ -86,7 +107,7 @@ export function buildMahallahRanking(
   const mahallahCheckins = new Map<string, number>();
 
   for (const r of rows) {
-    const m = r.mahallah || "unknown";
+    const m = canonicalMahallah(r.mahallah) || "unknown";
     if (!mahallahStudents.has(m)) mahallahStudents.set(m, new Set());
     mahallahStudents.get(m)!.add(r.user_id);
     mahallahCheckins.set(m, (mahallahCheckins.get(m) || 0) + 1);

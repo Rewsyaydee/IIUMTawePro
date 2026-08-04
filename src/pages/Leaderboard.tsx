@@ -9,6 +9,30 @@ import type { LeaderboardEntry, MahallahRanking } from "../types";
 
 type Tab = "day" | "week" | "mahallah";
 
+function UserAvatar({
+  photoUrl,
+  label,
+  imgClassName,
+  textClassName,
+  textStyle
+}: {
+  photoUrl: string;
+  label: string;
+  imgClassName: string;
+  textClassName: string;
+  textStyle?: React.CSSProperties;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (photoUrl && !failed) {
+    return <img src={photoUrl} alt={label} className={imgClassName} onError={() => setFailed(true)} />;
+  }
+  return (
+    <span className={textClassName} style={textStyle}>
+      {label.charAt(0)}
+    </span>
+  );
+}
+
 function Leaderboard() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("mahallah");
@@ -105,6 +129,7 @@ function Leaderboard() {
               const score = isMahallahTab ? `${mEntry.attendancePct}%` : `${(entry as LeaderboardEntry).score}`;
               const size = rank === 1 ? 72 : 56;
               const imgSrc = isMahallahTab ? allMahallahs.find((m) => m.code === mEntry.mahallah)?.image_url || "" : "";
+              const photoUrl = isMahallahTab ? "" : (entry as LeaderboardEntry).photoUrl || "";
               const initials = label.charAt(0);
 
               return (
@@ -115,7 +140,13 @@ function Leaderboard() {
                     {isMahallahTab && imgSrc ? (
                       <img src={imgSrc} alt={label} className="podium-avatar-img" />
                     ) : (
-                      <span className="podium-avatar-text" style={{ fontSize: size * 0.35 }}>{initials}</span>
+                      <UserAvatar
+                        photoUrl={photoUrl}
+                        label={label}
+                        imgClassName="podium-avatar-img"
+                        textClassName="podium-avatar-text"
+                        textStyle={{ fontSize: size * 0.35 }}
+                      />
                     )}
                   </div>
                   <span className="podium-name">{label}</span>
@@ -136,6 +167,7 @@ function Leaderboard() {
                 ? `${mEntry.totalCheckins} check-ins`
                 : `${getMahallahShort((entry as LeaderboardEntry).mahallah)} · ${(entry as LeaderboardEntry).checkins} sessions`;
               const imgSrc = isMahallahTab ? allMahallahs.find((m) => m.code === mEntry.mahallah)?.image_url || "" : "";
+              const photoUrl = isMahallahTab ? "" : (entry as LeaderboardEntry).photoUrl || "";
               const initials = label.charAt(0);
 
               return (
@@ -148,7 +180,12 @@ function Leaderboard() {
                     {isMahallahTab && imgSrc ? (
                       <img src={imgSrc} alt={label} className="rank-card-avatar-img" />
                     ) : (
-                      <span className="rank-card-avatar-text">{initials}</span>
+                      <UserAvatar
+                        photoUrl={photoUrl}
+                        label={label}
+                        imgClassName="rank-card-avatar-img"
+                        textClassName="rank-card-avatar-text"
+                      />
                     )}
                   </div>
                   <div className="rank-card-mid">

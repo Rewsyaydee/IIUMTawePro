@@ -82,7 +82,8 @@ export default async function handler(req, res) {
         telegramId,
         name: user.name,
         role: targetRole,
-        bureau: targetBureau
+        bureau: targetBureau,
+        photoUrl: verification.user?.photo_url
       });
       persistence = "supabase";
 

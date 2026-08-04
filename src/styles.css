@@ -5628,6 +5628,31 @@ textarea {
   padding-right: 16px;
 }
 
+.donation-custom {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.donation-custom input {
+  flex: 1;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--tg-secondary-bg-color);
+  color: var(--tg-text-color);
+  font-size: 0.9rem;
+}
+
+.donation-custom .primary-button {
+  width: auto;
+  padding-left: 16px;
+  padding-right: 16px;
+  white-space: nowrap;
+}
+
 .duitnow-qr-wrap {
   display: grid;
   place-items: center;
@@ -5636,7 +5661,8 @@ textarea {
 
 .duitnow-qr {
   width: 200px;
-  height: 200px;
+  height: auto;
+  object-fit: contain;
   border-radius: 12px;
   background: #fff;
   padding: 8px;

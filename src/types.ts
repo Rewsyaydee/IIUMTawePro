@@ -253,6 +253,7 @@ export interface LeaderboardEntry {
   mahallah: string;
   score: number;
   checkins: number;
+  photoUrl?: string;
 }
 
 export interface MahallahRanking {
