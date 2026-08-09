@@ -1,0 +1,75 @@
+
+html[data-home-draft="earthy-botanicals"] {
+  color-scheme:light;
+  --tg-bg-color:#ECF5E2;--tg-text-color:#291100;--tg-hint-color:#76805c;
+  --tg-secondary-bg-color:#D7E3A4;--tg-section-bg-color:#D7E3A4;
+  --tg-section-header-text-color:#657733;--tg-subtitle-text-color:#5e6542;
+  --primary:#657733;--primary-deep:#291100;--gold-accent:#D4C04D;
+  --blue:#657733;--green:#657733;--amber:#D4C04D;--red:#9b503b;--violet:#756257;
+  --glass-bg:rgba(236,245,226,.82);--glass-border:rgba(41,17,0,.13);
+  --text-primary:#291100;--text-secondary:#5e6542;--text-muted:#80866c;
+  --shadow:0 13px 30px rgba(74,81,38,.14);
+  background:#ECF5E2;
+}
+html[data-home-draft="earthy-botanicals"] body {
+  background:radial-gradient(circle at 110% 8%,rgba(212,192,77,.28),transparent 18rem),radial-gradient(circle at -10% 55%,rgba(101,119,51,.16),transparent 20rem),#ECF5E2;
+}
+html[data-home-draft="earthy-botanicals"] .app-shell { width:min(100%,520px);padding-top:calc(12px + env(safe-area-inset-top));color:#291100; }
+html[data-home-draft="earthy-botanicals"] .app-header { gap:8px;margin-bottom:14px; }
+html[data-home-draft="earthy-botanicals"] .app-header-mark { color:#657733; }
+html[data-home-draft="earthy-botanicals"] .app-header-greeting { color:#291100;font-size:1.95rem;letter-spacing:-.045em; }
+html[data-home-draft="earthy-botanicals"] .app-header-avatar-fallback,
+html[data-home-draft="earthy-botanicals"] .app-header-avatar { width:44px;height:44px;border:2px solid #ECF5E2;background:#657733;color:#ECF5E2;box-shadow:0 6px 0 rgba(41,17,0,.12); }
+html[data-home-draft="earthy-botanicals"] .role-switcher { margin-bottom:10px;padding:8px 11px;background:rgba(215,227,164,.5); }
+html[data-home-draft="earthy-botanicals"] .account-popover { background:rgba(236,245,226,.97); }
+html[data-home-draft="earthy-botanicals"] .account-popover::before { background:#ECF5E2; }
+
+.earth-home { gap:15px; }
+.earth-home .event-carousel-wrapper { margin-bottom:0; }
+.earth-home .carousel-card { background:rgba(215,227,164,.58);border-color:rgba(101,119,51,.27);box-shadow:0 14px 30px rgba(74,81,38,.13); }
+.earth-home .carousel-card.current { border-color:#657733;box-shadow:0 16px 34px rgba(74,81,38,.18); }
+.earth-home .carousel-now-badge { background:#D4C04D;border-color:#8f812c;color:#291100; }
+.earth-home .carousel-card-venue svg,.earth-home .carousel-action-btn.navigate svg { color:#657733; }
+
+.earth-progress-card { position:relative; }
+.earth-progress-card .streak-widget { position:relative;z-index:1;margin:0;padding:13px 14px;border:1px solid rgba(41,17,0,.15);border-radius:24px 10px 24px 10px;background:#D7E3A4;box-shadow:0 12px 24px rgba(74,81,38,.13); }
+.earth-home .streak-flame { background:rgba(236,245,226,.65); }
+.earth-home .streak-number,.earth-home .streak-progress-count { color:#291100; }
+.earth-home .streak-progress-title,.earth-home .streak-label,.earth-home .streak-progress-hint { color:rgba(41,17,0,.58); }
+.earth-home .streak-progress-bar { background:rgba(41,17,0,.1); }
+.earth-home .streak-progress-bar span { background:linear-gradient(90deg,#657733,#D4C04D); }
+.earth-home .streak-share-btn { border-color:rgba(41,17,0,.14);background:rgba(236,245,226,.55);color:#657733; }
+.earth-leaf { position:absolute;z-index:2;width:13px;height:24px;border-radius:100% 0 100% 0;background:#657733;pointer-events:none; }
+.earth-leaf-one { right:-3px;top:-7px;transform:rotate(18deg); }
+.earth-leaf-two { right:12px;top:-12px;transform:rotate(-18deg) scale(.72);background:#D4C04D; }
+
+.earth-heading { display:flex;align-items:center;justify-content:space-between;margin-top:3px; }
+.earth-heading span:first-child { color:#657733;font-size:.61rem;font-weight:850;letter-spacing:.12em;text-transform:uppercase; }
+.earth-heading h2 { margin:3px 0 0;font-family:Georgia,serif;font-size:1.28rem;letter-spacing:-.03em; }
+.earth-sun { width:34px;height:34px;border:8px dotted #D4C04D;border-radius:50%;animation:earthSpin 15s linear infinite; }
+@keyframes earthSpin { to { transform:rotate(360deg); } }
+
+.earth-shortcuts { display:grid;gap:9px; }
+.earth-shortcut { position:relative; }
+.earth-number { position:absolute;z-index:2;right:14px;top:50%;transform:translateY(-50%);color:rgba(41,17,0,.28);font-family:Georgia,serif;font-size:1rem;font-style:italic;pointer-events:none; }
+.earth-home .menu-tile { display:flex;align-items:center;gap:12px;min-height:78px;aspect-ratio:auto;padding:11px 48px 11px 12px;border:1px solid rgba(41,17,0,.13);border-radius:18px;background:rgba(236,245,226,.78);box-shadow:none; }
+.earth-shortcut:nth-child(even) .menu-tile { margin-left:18px;background:rgba(215,227,164,.56);border-radius:10px 22px 10px 22px; }
+.earth-home .menu-tile:active { transform:translateX(4px) scale(.98); }
+.earth-home .tile-icon { flex:0 0 44px;width:44px;height:44px;border-radius:14px;background:#D7E3A4;color:#657733; }
+.earth-home .tile-amber .tile-icon { background:#D4C04D;color:#291100; }
+.earth-home .tile-red .tile-icon { background:#ecd0bc;color:#8c4935; }
+.earth-home .menu-tile strong { color:#291100;font-family:Georgia,serif;font-size:1rem; }
+.earth-home .menu-tile small { margin-top:2px;color:#676d4b;font-size:.69rem; }
+
+html[data-home-draft="earthy-botanicals"] .bottom-nav { max-width:480px;background:#ECF5E2;border:1px solid rgba(41,17,0,.1);box-shadow:0 9px 28px rgba(41,17,0,.18); }
+html[data-home-draft="earthy-botanicals"] .nav-item { color:#291100;min-height:48px; }
+html[data-home-draft="earthy-botanicals"] .nav-item.active { color:#657733; }
+html[data-home-draft="earthy-botanicals"] .nav-item.active svg { fill:rgba(212,192,77,.42);stroke:#657733; }
+html[data-home-draft="earthy-botanicals"] .nav-item svg { stroke:#291100; }
+html[data-home-draft="earthy-botanicals"] .nav-center { background:#657733;border-color:#D4C04D;box-shadow:0 5px 16px rgba(41,17,0,.25); }
+
+@media (max-width:380px) {
+  .earth-home .streak-share-btn { display:none; }
+  .earth-shortcut:nth-child(even) .menu-tile { margin-left:8px; }
+}
+@media (prefers-reduced-motion:reduce) { .earth-sun { animation:none; } }

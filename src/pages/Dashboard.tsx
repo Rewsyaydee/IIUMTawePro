@@ -6,7 +6,7 @@ import { EventCarousel } from "../components/EventCarousel";
 import { StreakWidget } from "../components/StreakWidget";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
-import "../styles/home-midnight-signal.css";
+import "../styles/home-earthy-botanicals.css";
 
 type TileTone = "blue" | "green" | "amber" | "red" | "violet";
 type Tile = { to: string; title: string; meta: string; icon: typeof CalendarDays; tone: TileTone };
@@ -41,72 +41,59 @@ function useDashboardModel() {
   ];
 
   return {
-    user,
     tiles: user.role === "student" ? studentTiles : user.role === "mainboard" ? mainboardTiles : committeeTiles
   };
 }
 
 function Dashboard() {
   const { tiles } = useDashboardModel();
+
   useEffect(() => {
-    document.documentElement.dataset.homeDraft = "midnight-signal";
+    document.documentElement.dataset.homeDraft = "earthy-botanicals";
     return () => { delete document.documentElement.dataset.homeDraft; };
   }, []);
 
   return (
-    <section className="page-stack home-draft signal-home">
+    <section className="page-stack mobile-home earth-home">
       <EventCarousel />
 
       <motion.div
-        className="signal-status"
-        initial={{ opacity: 0, clipPath: "inset(0 100% 0 0)" }}
-        animate={{ opacity: 1, clipPath: "inset(0 0% 0 0)" }}
-        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        className="earth-progress-card"
+        initial={{ opacity: 0, y: 14, rotate: -1 }}
+        animate={{ opacity: 1, y: 0, rotate: 0 }}
+        transition={{ type: "spring", stiffness: 160, damping: 18 }}
       >
-        <span className="signal-live"><i /> SYSTEM LIVE</span>
-        <span>GOMBAK / TW26</span>
-        <span>MYT +08</span>
-      </motion.div>
-
-      <motion.section
-        className="signal-hero"
-        initial={{ opacity: 0, scale: 1.05 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.65 }}
-      >
-        <span className="signal-code">ORIENTATION_OS</span>
-        <h1>OWN<br />THE <b>WEEK.</b></h1>
-        <motion.div
-          className="signal-radar"
-          animate={{ rotate: 360 }}
-          transition={{ duration: 9, repeat: Infinity, ease: "linear" }}
-          aria-hidden="true"
-        />
-      </motion.section>
-
-      <motion.div initial={{ x: -30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.18, type: "spring" }}>
+        <span className="earth-leaf earth-leaf-one" aria-hidden="true" />
+        <span className="earth-leaf earth-leaf-two" aria-hidden="true" />
         <StreakWidget />
       </motion.div>
 
-      <div className="signal-label-row">
-        <span>QUICK ACCESS</span>
-        <span>{String(tiles.length).padStart(2, "0")} MODULES</span>
+      <div className="earth-heading">
+        <div>
+          <span>Rooted in your week</span>
+          <h2>Where do you want to go?</h2>
+        </div>
+        <span className="earth-sun" aria-hidden="true" />
       </div>
 
-      <div className="dashboard-grid signal-grid">
+      <motion.div
+        className="earth-shortcuts"
+        initial="hidden"
+        animate="show"
+        variants={{ show: { transition: { staggerChildren: 0.08 } } }}
+      >
         {tiles.map((tile, index) => (
           <motion.div
             key={tile.title}
-            className="signal-tile-wrap"
-            initial={{ opacity: 0, rotateX: -22, y: 22 }}
-            animate={{ opacity: 1, rotateX: 0, y: 0 }}
-            transition={{ delay: 0.25 + index * 0.08, type: "spring", stiffness: 150, damping: 18 }}
+            className={`earth-shortcut earth-shortcut-${index + 1}`}
+            variants={{ hidden: { opacity: 0, x: index % 2 ? 18 : -18 }, show: { opacity: 1, x: 0 } }}
+            transition={{ type: "spring", stiffness: 170, damping: 19 }}
           >
-            <span className="signal-tile-code">0{index + 1} / SYS</span>
+            <span className="earth-number">0{index + 1}</span>
             <MenuTile {...tile} />
           </motion.div>
         ))}
-      </div>
+      </motion.div>
     </section>
   );
 }
