@@ -6,7 +6,7 @@ import { EventCarousel } from "../components/EventCarousel";
 import { StreakWidget } from "../components/StreakWidget";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
-import "../styles/home-campus-press.css";
+import "../styles/home-midnight-violet-lime.css";
 
 type TileTone = "blue" | "green" | "amber" | "red" | "violet";
 type Tile = { to: string; title: string; meta: string; icon: typeof CalendarDays; tone: TileTone };
@@ -41,75 +41,62 @@ function useDashboardModel() {
   ];
 
   return {
-    user,
     tiles: user.role === "student" ? studentTiles : user.role === "mainboard" ? mainboardTiles : committeeTiles
   };
 }
 
 function Dashboard() {
   const { tiles } = useDashboardModel();
+
   useEffect(() => {
-    document.documentElement.dataset.homeDraft = "campus-press";
+    document.documentElement.dataset.homeDraft = "midnight-violet-lime";
     return () => { delete document.documentElement.dataset.homeDraft; };
   }, []);
 
   return (
-    <section className="page-stack home-draft press-home">
+    <section className="page-stack mobile-home violet-home">
       <EventCarousel />
 
       <motion.div
-        className="press-masthead"
-        initial={{ opacity: 0, y: -18 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 150, damping: 17 }}
+        className="violet-progress"
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ type: "spring", stiffness: 190, damping: 20 }}
       >
-        <span>THE STUDENT EDITION</span>
-        <span>VOL. 01 / 2026</span>
-      </motion.div>
-
-      <motion.section
-        className="press-lead"
-        initial={{ clipPath: "inset(0 0 100% 0)" }}
-        animate={{ clipPath: "inset(0 0 0% 0)" }}
-        transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <div className="press-lead-copy">
-          <span className="press-rubric">TODAY AT IIUM</span>
-          <h1>Everything<br />you need.<br /><i>Nothing you don’t.</i></h1>
-        </div>
-        <motion.div
-          className="press-stamp"
-          animate={{ rotate: [7, 1, 7] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-        >
-          TA’ARUF<br />WEEK
-        </motion.div>
-      </motion.section>
-
-      <motion.div initial={{ opacity: 0, x: 36 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.16 }}>
+        <span className="violet-progress-tag">MY WEEK</span>
         <StreakWidget />
       </motion.div>
 
-      <div className="press-divider"><span>THE ESSENTIALS</span><i /></div>
-
-      <div className="dashboard-grid press-grid">
-        {tiles.map((tile, index) => (
-          <motion.article
-            key={tile.title}
-            className={`press-tile-wrap press-tile-${index + 1}`}
-            initial={{ opacity: 0, y: 34, rotate: index % 2 ? 1.5 : -1.5 }}
-            animate={{ opacity: 1, y: 0, rotate: 0 }}
-            transition={{ delay: 0.2 + index * 0.09, type: "spring", stiffness: 130, damping: 16 }}
-          >
-            <header><span>SECTION</span><b>0{index + 1}</b></header>
-            <MenuTile {...tile} />
-          </motion.article>
-        ))}
+      <div className="violet-heading">
+        <div>
+          <span>Shortcut deck</span>
+          <h2>Tap. Go. Done.</h2>
+        </div>
+        <motion.span
+          className="violet-pulse"
+          animate={{ scale: [1, 1.18, 1], opacity: [0.55, 1, 0.55] }}
+          transition={{ duration: 2.2, repeat: Infinity }}
+        />
       </div>
 
-      <motion.p className="press-footer-note" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.65 }}>
-        Built for the rhythm of campus life — tap a story to continue.
-      </motion.p>
+      <motion.div
+        className="dashboard-grid violet-grid"
+        initial="hidden"
+        animate="show"
+        variants={{ show: { transition: { staggerChildren: 0.075 } } }}
+      >
+        {tiles.map((tile, index) => (
+          <motion.div
+            key={tile.title}
+            className={`violet-tile violet-tile-${index + 1}`}
+            variants={{ hidden: { opacity: 0, y: 20, scale: 0.96 }, show: { opacity: 1, y: 0, scale: 1 } }}
+            transition={{ type: "spring", stiffness: 190, damping: 18 }}
+          >
+            <span className="violet-tile-index">0{index + 1}</span>
+            <MenuTile {...tile} />
+          </motion.div>
+        ))}
+      </motion.div>
     </section>
   );
 }
