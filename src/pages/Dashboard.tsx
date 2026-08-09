@@ -6,7 +6,7 @@ import { EventCarousel } from "../components/EventCarousel";
 import { StreakWidget } from "../components/StreakWidget";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
-import "../styles/home-sahur-bloom.css";
+import "../styles/home-emerald-cream.css";
 
 type TileTone = "blue" | "green" | "amber" | "red" | "violet";
 type Tile = { to: string; title: string; meta: string; icon: typeof CalendarDays; tone: TileTone };
@@ -41,68 +41,61 @@ function useDashboardModel() {
   ];
 
   return {
-    user,
     tiles: user.role === "student" ? studentTiles : user.role === "mainboard" ? mainboardTiles : committeeTiles
   };
 }
 
-const reveal = {
-  hidden: { opacity: 0, y: 24 },
-  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 120, damping: 18 } }
-};
-
 function Dashboard() {
   const { tiles } = useDashboardModel();
+
   useEffect(() => {
-    document.documentElement.dataset.homeDraft = "sahur-bloom";
+    document.documentElement.dataset.homeDraft = "emerald-cream";
     return () => { delete document.documentElement.dataset.homeDraft; };
   }, []);
 
   return (
-    <section className="page-stack home-draft bloom-home">
+    <section className="page-stack mobile-home emerald-home">
       <EventCarousel />
 
-      <motion.section
-        className="bloom-intro"
-        initial="hidden"
-        animate="show"
-        variants={reveal}
+      <motion.div
+        className="mobile-section-label emerald-label"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
       >
-        <div>
-          <span className="bloom-kicker">Your week, gently organised</span>
-          <h1>Move through Ta’aruf<br /><em>in full bloom.</em></h1>
-        </div>
-        <motion.div
-          className="bloom-orbit"
-          animate={{ rotate: 360 }}
-          transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
-          aria-hidden="true"
-        >
-          <span>TW</span>
-        </motion.div>
-      </motion.section>
+        <span>My Ta’aruf</span>
+        <i />
+        <span>Progress</span>
+      </motion.div>
 
-      <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.16 }}>
+      <motion.div
+        className="mobile-progress-shell"
+        initial={{ opacity: 0, y: 14, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 180, damping: 20 }}
+      >
         <StreakWidget />
       </motion.div>
 
-      <div className="bloom-section-head">
+      <div className="mobile-shortcut-heading">
         <div>
-          <span>Explore</span>
-          <h2>Your essentials</h2>
+          <span>Quick access</span>
+          <h2>Everything nearby</h2>
         </div>
-        <span className="bloom-count">0{tiles.length}</span>
+        <span className="mobile-shortcut-count">{tiles.length}</span>
       </div>
 
       <motion.div
-        className="dashboard-grid bloom-grid"
+        className="dashboard-grid emerald-grid"
         initial="hidden"
         animate="show"
-        variants={{ show: { transition: { staggerChildren: 0.09, delayChildren: 0.22 } } }}
+        variants={{ show: { transition: { staggerChildren: 0.07, delayChildren: 0.12 } } }}
       >
-        {tiles.map((tile, index) => (
-          <motion.div key={tile.title} variants={reveal} className={`bloom-tile-wrap bloom-tile-${index + 1}`}>
-            <span className="bloom-index">0{index + 1}</span>
+        {tiles.map((tile) => (
+          <motion.div
+            key={tile.title}
+            variants={{ hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0 } }}
+            transition={{ type: "spring", stiffness: 170, damping: 18 }}
+          >
             <MenuTile {...tile} />
           </motion.div>
         ))}
