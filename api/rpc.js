@@ -570,8 +570,12 @@ export default async function handler(req, res) {
         const userMap = new Map((Array.isArray(userRows) ? userRows : []).map((r) => [r.id, r]));
 
         const rows = attendances.map((a) => {
-          const isBlockKey = String(a.schedule_item_id || "").startsWith("block-");
-          const sched = (isBlockKey ? blockMap.get(a.schedule_item_id) : scheduleMap.get(a.schedule_item_id)) || {};
+          const rawId = String(a.schedule_item_id || "");
+          // Loop-cycle attendance ids are block-<date>-<block>-w<cycle>; strip the
+          // -w<cycle> suffix (no-op for older ids) before resolving the block.
+          const baseId = rawId.replace(/-w-?\d+$/, "");
+          const isBlockKey = baseId.startsWith("block-");
+          const sched = (isBlockKey ? blockMap.get(baseId) : scheduleMap.get(rawId)) || {};
           const usr = userMap.get(a.user_id) || {};
           return {
             user_id: a.user_id,

@@ -2,16 +2,38 @@ import type { ScheduleItem } from "../types";
 
 export type ScheduleStatus = "done" | "live" | "upcoming";
 
-const EVENT_WEEK_MONDAY = new Date(2026, 7, 3); // August 3, 2026
+const EVENT_WEEK_MONDAY = new Date(2026, 7, 3); // August 3, 2026 — Day 0 of the loop template
+// Real date that maps to Day 0 (Aug 3). Anchored 2026-08-07 so today (Sun Aug 9)
+// shows Day 2 = Wednesday 5 Aug; the 7-day schedule then cycles forever.
+const LOOP_ANCHOR = new Date(2026, 7, 7);
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function startOfDay(date: Date): number {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
+function daysSinceAnchor(now: Date): number {
+  return Math.round((startOfDay(now) - startOfDay(LOOP_ANCHOR)) / DAY_MS);
+}
 
 export function getVirtualScheduleDate(now: Date = new Date()): Date {
-  const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, 2=Tue, ... 6=Sat
-  const offset = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Mon→0, Tue→1, ..., Sun→6
-
+  const index = ((daysSinceAnchor(now) % 7) + 7) % 7;
   const virtual = new Date(EVENT_WEEK_MONDAY);
-  virtual.setDate(EVENT_WEEK_MONDAY.getDate() + offset);
+  virtual.setDate(EVENT_WEEK_MONDAY.getDate() + index);
   virtual.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
   return virtual;
+}
+
+// Real week index since the loop anchor — keeps attendance block keys unique per
+// week so the same looping session can be checked in again each cycle.
+export function getLoopCycleKey(now: Date = new Date()): string {
+  return String(Math.floor(daysSinceAnchor(now) / 7));
+}
+
+// Attendance block id: virtual date + block + week cycle.
+// e.g. block-2026-08-05-before_break-w0
+export function buildBlockId(virtualDate: string, block: string, now: Date = new Date()): string {
+  return `block-${virtualDate}-${block}-w${getLoopCycleKey(now)}`;
 }
 
 export function scheduleDateTime(date: string, time: string) {
@@ -21,19 +43,9 @@ export function scheduleDateTime(date: string, time: string) {
 }
 
 export function getScheduleClock(items: ScheduleItem[], now = new Date()) {
-  if (items.length === 0) return { now, isDemo: false };
-
-  const starts = items.map((item) => scheduleDateTime(item.date, item.scheduledStartTime).getTime());
-  const ends = items.map((item) => scheduleDateTime(item.date, item.scheduledEndTime).getTime());
-  const eventStart = Math.min(...starts);
-  const eventEnd = Math.max(...ends);
-  const current = now.getTime();
-
-  if (current >= eventStart && current <= eventEnd) {
-    return { now, isDemo: false };
-  }
-
-  return { now: getVirtualScheduleDate(now), isDemo: true };
+  // Always-on 7-day loop: the app clock is always the virtual looping date.
+  void items;
+  return { now: getVirtualScheduleDate(now), isDemo: false };
 }
 
 export function getScheduleStatus(item: ScheduleItem, now: Date): ScheduleStatus {

@@ -33,6 +33,22 @@ function timeInKL(dateOverride, hourOverride, minuteOverride) {
   };
 }
 
+// ── 7-day always-on loop ──
+// The DB schedule template lives on 2026-08-03..09. Real dates map onto the
+// template via days-since-anchor (anchor 2026-08-07 => 9 Aug shows 5 Aug = day 3).
+const LOOP_ANCHOR_UTC = Date.UTC(2026, 7, 7);
+const TEMPLATE_START_UTC = Date.UTC(2026, 7, 3);
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function loopVirtualDate(realDateStr) {
+  const [y, m, d] = String(realDateStr).split("-").map(Number);
+  const real = Date.UTC(y, m - 1, d);
+  const days = Math.round((real - LOOP_ANCHOR_UTC) / DAY_MS);
+  const index = ((days % 7) + 7) % 7;
+  const template = new Date(TEMPLATE_START_UTC + index * DAY_MS);
+  return `${template.getUTCFullYear()}-${String(template.getUTCMonth() + 1).padStart(2, "0")}-${String(template.getUTCDate()).padStart(2, "0")}`;
+}
+
 // ── DB-backed dedup ──
 // notification_sends.send_key is unique. claimSend atomically inserts the key;
 // a conflicting insert returns no rows, so only the first caller "wins".
@@ -124,12 +140,15 @@ export default async function handler(req, res) {
 
   const { hour, minute, date } = timeInKL(testDate, testHour, testMinute);
   const nowMin = hour * 60 + minute;
-  const sessions = await getTodaySessions(date);
+  // Session lookup happens against the loop template; a test date override is
+  // used as-is (tests target template dates directly).
+  const lookupDate = testDate ? testDate : loopVirtualDate(date);
+  const sessions = await getTodaySessions(lookupDate);
 
   const mt = morningTriggerTime(sessions);
   const morningMatch = !!(mt && inWindow(nowMin, mt.hour, mt.minute));
   const eveningMatch = inWindow(nowMin, 13, 40);
-  console.log(`[notify-check] KL: ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}, date: ${date}, sessions: ${sessions.length}, morningTrigger: ${mt ? `${mt.hour}:${mt.minute}` : "none"}, triggers: morning=${morningMatch}, evening=${eveningMatch}, testMode=${testMode}, force=${force}`);
+  console.log(`[notify-check] KL: ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}, realDate: ${date}, lookupDate: ${lookupDate}, sessions: ${sessions.length}, morningTrigger: ${mt ? `${mt.hour}:${mt.minute}` : "none"}, triggers: morning=${morningMatch}, evening=${eveningMatch}, testMode=${testMode}, force=${force}`);
 
   if (sessions.length === 0) {
     return sendJson(res, 200, { ok: true, message: "No sessions today." });
@@ -222,6 +241,7 @@ export default async function handler(req, res) {
     debug: {
       klTime: `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
       date,
+      lookupDate,
       sessionsFound: sessions.length,
       morningTriggerTime: mt ? `${mt.hour}:${mt.minute}` : null,
       morningMatch,

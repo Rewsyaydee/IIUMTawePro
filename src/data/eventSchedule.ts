@@ -1,4 +1,5 @@
 import type { Bureau, ScheduleItem, SessionBlock } from "../types";
+import { buildBlockId } from "../lib/scheduleTime";
 
 type ScheduleTuple = [
   date: string,
@@ -132,7 +133,7 @@ export function getSessionBlocks(schedule: ScheduleItem[]): SessionBlockInfo[] {
     if (!item.block || !item.blockGroup) continue;
     if (item.isConcurrent) continue;
 
-    const blockId = `block-${item.blockGroup}-${item.block}`;
+    const blockId = buildBlockId(item.blockGroup, item.block);
     if (!blockMap.has(blockId)) {
       const isBefore = item.block === "before_break";
       const blockItems = schedule.filter(

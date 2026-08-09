@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { MapPin, Clock3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { formatScheduleClock, getScheduleClock, getScheduleStatus, scheduleDateTime } from "../lib/scheduleTime";
+import { formatScheduleClock, getScheduleClock, getScheduleStatus, scheduleDateTime, buildBlockId } from "../lib/scheduleTime";
 import { hapticImpact, hapticSuccess } from "../lib/telegram";
 import { ColorSweepText } from "../components/ColorSweepText";
 import { shouldUseApiAuth } from "../lib/apiAuth";
@@ -77,7 +77,7 @@ function Schedule() {
   const concurrentItems = dayItems.filter((s) => s.isConcurrent);
 
   const isBlockAttended = (blockType: "before_break" | "after_break"): boolean => {
-    const blockId = `block-${selectedDate}-${blockType}`;
+    const blockId = buildBlockId(selectedDate, blockType);
     return studentAttendances.some(
       (a) => a.userId === user.id && a.scheduleItemId === blockId && (a.status === "present" || a.status === "excused")
     );
@@ -86,7 +86,7 @@ function Schedule() {
   const handleCheckIn = (blockType: "before_break" | "after_break") => {
     hapticSuccess();
     const blockLabel = blockType === "before_break" ? "Morning Session" : "Afternoon Session";
-    const blockId = `block-${selectedDate}-${blockType}`;
+    const blockId = buildBlockId(selectedDate, blockType);
     const blockItems = activeSchedule.filter((s) => s.date === selectedDate && s.block === blockType && !s.isConcurrent);
     const venueCodes = [...new Set(blockItems.map((i) => i.venueCode).filter(Boolean))] as string[];
     navigate("/attendance", { state: { blockLabel, blockId, venueCodes } });

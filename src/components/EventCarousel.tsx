@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { MapPin, Info, Plane, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { getScheduleClock, getScheduleStatus, scheduleDateTime } from "../lib/scheduleTime";
+import { getScheduleClock, getScheduleStatus, scheduleDateTime, buildBlockId } from "../lib/scheduleTime";
 import { hapticImpact, hapticSuccess } from "../lib/telegram";
 import { ColorSweepText } from "./ColorSweepText";
 import { shouldUseApiAuth } from "../lib/apiAuth";
@@ -71,7 +71,7 @@ export function EventCarousel() {
     hapticSuccess();
     if (item.block && item.blockGroup) {
       const blockLabel = item.block === "before_break" ? "Morning Session" : "Afternoon Session";
-      const blockId = `block-${item.blockGroup}-${item.block}`;
+      const blockId = buildBlockId(item.blockGroup, item.block);
       const venueCodes = [item.venueCode].filter(Boolean) as string[];
       navigate("/attendance", { state: { blockLabel, blockId, venueCodes } });
     } else {
@@ -87,7 +87,7 @@ export function EventCarousel() {
 
   const isBlockAttended = (item: ScheduleItem): boolean => {
     if (!item.block || !item.blockGroup) return false;
-    const blockId = `block-${item.blockGroup}-${item.block}`;
+    const blockId = buildBlockId(item.blockGroup, item.block);
     return studentAttendances.some(
       (a) => a.userId === user.id && a.scheduleItemId === blockId && (a.status === "present" || a.status === "excused")
     );
