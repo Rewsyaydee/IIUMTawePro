@@ -169,7 +169,7 @@ async function handleReviewStart(chatId, userRecord) {
   });
 }
 
-async function handleReviewText(chatId, userRecord, session, text) {
+async function handleReviewText(chatId, session, text) {
   const content = String(text || "").trim().slice(0, 1500);
   if (!content) {
     await callTelegram("sendMessage", {
@@ -219,23 +219,27 @@ async function completeReview(chatId, session, rating) {
     reply_markup: { remove_keyboard: true }
   });
 
-  // Step D: admin moderation alert
+  // Step D: admin moderation alert (isolated — must never fail the user's flow)
   const adminId = process.env.REVIEW_ADMIN_TELEGRAM_ID;
   if (!adminId) {
     console.error("[review] REVIEW_ADMIN_TELEGRAM_ID is not configured — admin alert skipped.");
     return;
   }
-  await callTelegram("sendMessage", {
-    chat_id: adminId,
-    text: `⭐ <b>New Review</b>\n\n👤 ${html(review.display_name)}\n🏅 ${stars}\n\n📝 ${html(review.content)}\n\nTap below to moderate:`,
-    parse_mode: "HTML",
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "✅ Approve", callback_data: `review_approve:${review.id}` }],
-        [{ text: "❌ Reject", callback_data: `review_reject:${review.id}` }]
-      ]
-    }
-  });
+  try {
+    await callTelegram("sendMessage", {
+      chat_id: adminId,
+      text: `⭐ <b>New Review</b>\n\n👤 ${html(review.display_name)}\n🏅 ${stars}\n\n📝 ${html(review.content)}\n\nTap below to moderate:`,
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "✅ Approve", callback_data: `review_approve:${review.id}` }],
+          [{ text: "❌ Reject", callback_data: `review_reject:${review.id}` }]
+        ]
+      }
+    });
+  } catch (err) {
+    console.error("[review] admin alert failed", err?.message || err);
+  }
 }
 
 async function handleNotifications(chatId, userRecord) {
@@ -491,7 +495,8 @@ async function handleMatricInput(chatId, userRecord, text) {
 
 async function handleCallback(chatId, userRecord, data, fromId) {
   const name = escapeName(userRecord?.name || "");
-  const telegramId = userRecord?.telegram_id || "";
+  // Single source of truth for Telegram identity: the update's from.id.
+  const telegramId = fromId || userRecord?.telegram_id || "";
 
   // ── /review flow ──
   if (data === "review_name:use" || data === "review_name:anon") {
@@ -517,18 +522,27 @@ async function handleCallback(chatId, userRecord, data, fromId) {
   }
 
   if (data.startsWith("review_rating:")) {
-    const session = await getReviewSession(telegramId);
-    if (!session) {
+    try {
+      const session = await getReviewSession(telegramId);
+      if (!session) {
+        await callTelegram("sendMessage", {
+          chat_id: chatId,
+          text: "No active review found. Start one with /review",
+          parse_mode: "HTML"
+        });
+        return;
+      }
+      const value = data.split(":")[1];
+      const rating = value === "skip" ? null : parseInt(value, 10);
+      await completeReview(chatId, session, rating);
+    } catch (err) {
+      console.error("[review] rating step failed", err?.message || err, err?.payload ? `| payload: ${JSON.stringify(err.payload)}` : "");
       await callTelegram("sendMessage", {
         chat_id: chatId,
-        text: "No active review found. Start one with /review",
+        text: "😓 Something went wrong saving your review. Please try again with /review.",
         parse_mode: "HTML"
-      });
-      return;
+      }).catch(() => {});
     }
-    const value = data.split(":")[1];
-    const rating = value === "skip" ? null : parseInt(value, 10);
-    await completeReview(chatId, session, rating);
     return;
   }
 
@@ -542,24 +556,33 @@ async function handleCallback(chatId, userRecord, data, fromId) {
       });
       return;
     }
-    const reviewId = data.split(":")[1];
-    if (data.startsWith("review_approve:")) {
-      await supabaseRequest(`/reviews?id=eq.${encodeURIComponent(reviewId)}`, {
-        method: "PATCH",
-        headers: { Prefer: "return=minimal" },
-        body: { is_approved: true }
-      });
+    try {
+      const reviewId = data.split(":")[1];
+      if (data.startsWith("review_approve:")) {
+        await supabaseRequest(`/reviews?id=eq.${encodeURIComponent(reviewId)}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: { is_approved: true }
+        });
+        await callTelegram("sendMessage", {
+          chat_id: chatId,
+          text: "✅ Review approved.",
+          parse_mode: "HTML"
+        });
+      } else {
+        await callTelegram("sendMessage", {
+          chat_id: chatId,
+          text: "❌ Review rejected (kept unapproved).",
+          parse_mode: "HTML"
+        });
+      }
+    } catch (err) {
+      console.error("[review] moderation step failed", err?.message || err, err?.payload ? `| payload: ${JSON.stringify(err.payload)}` : "");
       await callTelegram("sendMessage", {
         chat_id: chatId,
-        text: "✅ Review approved.",
+        text: "😓 Something went wrong. Please try again.",
         parse_mode: "HTML"
-      });
-    } else {
-      await callTelegram("sendMessage", {
-        chat_id: chatId,
-        text: "❌ Review rejected (kept unapproved).",
-        parse_mode: "HTML"
-      });
+      }).catch(() => {});
     }
     return;
   }
@@ -833,23 +856,38 @@ export default async function handler(req, res) {
 
     // Text input (matric number during registration, /review content)
     if (text && !text.startsWith("/")) {
-      const userRecord = await getUserRecordByTelegramId(telegramId);
-      if (!userRecord) return sendJson(res, 200, { ok: true, ignored: true });
+      // /review flow: session lookup is independent of the users row
+      let session = null;
+      try {
+        session = await getReviewSession(telegramId);
+      } catch (err) {
+        console.error("[review] session lookup failed", err?.message || err, err?.payload ? `| payload: ${JSON.stringify(err.payload)}` : "");
+      }
 
-      // /review flow: capture the review text when a session is waiting for it
-      const session = await getReviewSession(telegramId);
       if (session) {
-        if (!session.content) {
-          await handleReviewText(chatId, userRecord, session, text);
-        } else {
+        try {
+          if (!session.content) {
+            await handleReviewText(chatId, session, text);
+          } else {
+            await callTelegram("sendMessage", {
+              chat_id: chatId,
+              text: "Please pick a rating below, or tap Skip rating. ⭐",
+              parse_mode: "HTML"
+            });
+          }
+        } catch (err) {
+          console.error("[review] text step failed", err?.message || err, err?.payload ? `| payload: ${JSON.stringify(err.payload)}` : "");
           await callTelegram("sendMessage", {
             chat_id: chatId,
-            text: "Please pick a rating below, or tap Skip rating. ⭐",
+            text: "😓 Something went wrong saving your review. Please try again with /review.",
             parse_mode: "HTML"
-          });
+          }).catch(() => {});
         }
         return sendJson(res, 200, { ok: true, handled: "review" });
       }
+
+      const userRecord = await getUserRecordByTelegramId(telegramId);
+      if (!userRecord) return sendJson(res, 200, { ok: true, ignored: true });
 
       const step = userRecord.registration_step;
       if (step && ["matric", "change_matric"].includes(step)) {
