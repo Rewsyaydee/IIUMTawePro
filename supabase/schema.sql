@@ -368,6 +368,32 @@ create table if not exists public.notification_sends (
 
 create index if not exists notification_sends_sent_at_idx on public.notification_sends (sent_at);
 
+-- Reviews: /review bot flow + moderation
+create table if not exists public.reviews (
+  id uuid primary key default gen_random_uuid(),
+  display_name text not null,
+  content text not null,
+  rating smallint check (rating is null or rating between 1 and 5),
+  is_approved boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+-- Multi-step /review flow state (kept out of users.registration_step)
+create table if not exists public.review_sessions (
+  telegram_id text primary key,
+  display_name text not null,
+  content text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.reviews enable row level security;
+alter table public.review_sessions enable row level security;
+
+create policy "anyone can read approved reviews"
+  on public.reviews for select
+  using (is_approved = true);
+
 alter table public.leaderboard_scores enable row level security;
 
 create policy "anyone can read leaderboard scores"

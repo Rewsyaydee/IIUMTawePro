@@ -117,6 +117,127 @@ function notifyKeyboard(currentTier) {
   return { inline_keyboard: rows };
 }
 
+// ── /review flow ──
+
+function reviewNameKeyboard() {
+  return {
+    inline_keyboard: [
+      [{ text: "🧑 Use My Telegram Name", callback_data: "review_name:use" }],
+      [{ text: "🙈 Submit Anonymously", callback_data: "review_name:anon" }],
+      [{ text: "❌ Cancel", callback_data: "review_cancel" }]
+    ]
+  };
+}
+
+function reviewStarsKeyboard() {
+  const rows = [1, 2, 3, 4, 5].map((n) => [
+    { text: `${"⭐".repeat(n)} ${n}`, callback_data: `review_rating:${n}` }
+  ]);
+  rows.push([{ text: "⏭️ Skip rating", callback_data: "review_rating:skip" }]);
+  return { inline_keyboard: rows };
+}
+
+async function getReviewSession(telegramId) {
+  const rows = await supabaseRequest(
+    `/review_sessions?telegram_id=eq.${encodeURIComponent(telegramId)}&select=telegram_id,display_name,content&limit=1`
+  );
+  return Array.isArray(rows) ? rows[0] : undefined;
+}
+
+async function upsertReviewSession(telegramId, fields) {
+  await supabaseRequest("/review_sessions?on_conflict=telegram_id&select=telegram_id", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: [{ telegram_id: telegramId, updated_at: new Date().toISOString(), ...fields }]
+  });
+}
+
+async function deleteReviewSession(telegramId) {
+  await supabaseRequest(`/review_sessions?telegram_id=eq.${encodeURIComponent(telegramId)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" }
+  });
+}
+
+async function handleReviewStart(chatId, userRecord) {
+  const name = escapeName(userRecord?.name || "");
+  await callTelegram("sendMessage", {
+    chat_id: chatId,
+    text: `⭐ <b>Rate your Ta'aruf Week experience!</b>\n\nHow would you like your name displayed?`,
+    parse_mode: "HTML",
+    reply_markup: reviewNameKeyboard()
+  });
+}
+
+async function handleReviewText(chatId, userRecord, session, text) {
+  const content = String(text || "").trim().slice(0, 1500);
+  if (!content) {
+    await callTelegram("sendMessage", {
+      chat_id: chatId,
+      text: "That message was empty. Send your review text:",
+      parse_mode: "HTML"
+    });
+    return;
+  }
+  await upsertReviewSession(session.telegram_id, { content });
+  await callTelegram("sendMessage", {
+    chat_id: chatId,
+    text: "Got it! How many stars would you give your Ta'aruf Week experience? ⭐",
+    parse_mode: "HTML",
+    reply_markup: reviewStarsKeyboard()
+  });
+}
+
+async function completeReview(chatId, session, rating) {
+  const content = String(session.content || "").trim().slice(0, 1500);
+  const rows = await supabaseRequest("/reviews?select=id,display_name,content,rating,is_approved,created_at", {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: [{
+      display_name: session.display_name || "Anonymous",
+      content,
+      rating: rating || null,
+      is_approved: false
+    }]
+  });
+  const review = Array.isArray(rows) ? rows[0] : undefined;
+  await deleteReviewSession(session.telegram_id);
+  if (!review) {
+    await callTelegram("sendMessage", {
+      chat_id: chatId,
+      text: "😓 Sorry, something went wrong saving your review. Please try again with /review.",
+      parse_mode: "HTML"
+    });
+    return;
+  }
+
+  const stars = review.rating ? `${"⭐".repeat(review.rating)} (${review.rating}/5)` : "None";
+  await callTelegram("sendMessage", {
+    chat_id: chatId,
+    text: `✅ <b>Review received!</b>\n\n${stars !== "None" ? `🏅 ${stars}\n` : ""}${html(review.content)}\n\nThank you for your feedback!`,
+    parse_mode: "HTML",
+    reply_markup: { remove_keyboard: true }
+  });
+
+  // Step D: admin moderation alert
+  const adminId = process.env.REVIEW_ADMIN_TELEGRAM_ID;
+  if (!adminId) {
+    console.error("[review] REVIEW_ADMIN_TELEGRAM_ID is not configured — admin alert skipped.");
+    return;
+  }
+  await callTelegram("sendMessage", {
+    chat_id: adminId,
+    text: `⭐ <b>New Review</b>\n\n👤 ${html(review.display_name)}\n🏅 ${stars}\n\n📝 ${html(review.content)}\n\nTap below to moderate:`,
+    parse_mode: "HTML",
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "✅ Approve", callback_data: `review_approve:${review.id}` }],
+        [{ text: "❌ Reject", callback_data: `review_reject:${review.id}` }]
+      ]
+    }
+  });
+}
+
 async function handleNotifications(chatId, userRecord) {
   const current = userRecord?.notify_tier || "off";
   const tierNames = { daily: "Daily", session: "Session", live: "Live", off: "Off" };
@@ -368,8 +489,80 @@ async function handleMatricInput(chatId, userRecord, text) {
   });
 }
 
-async function handleCallback(chatId, userRecord, data) {
+async function handleCallback(chatId, userRecord, data, fromId) {
   const name = escapeName(userRecord?.name || "");
+  const telegramId = userRecord?.telegram_id || "";
+
+  // ── /review flow ──
+  if (data === "review_name:use" || data === "review_name:anon") {
+    const displayName = data === "review_name:anon" ? "Anonymous" : userRecord?.name || "Anonymous";
+    await upsertReviewSession(telegramId, { display_name: displayName, content: null });
+    await callTelegram("sendMessage", {
+      chat_id: chatId,
+      text: `📝 <b>Tell us about your Ta'aruf Week!</b>\n\nSend your review text below — what did you love, and what could be better?`,
+      parse_mode: "HTML",
+      reply_markup: { remove_keyboard: true }
+    });
+    return;
+  }
+
+  if (data === "review_cancel") {
+    await deleteReviewSession(telegramId);
+    await callTelegram("sendMessage", {
+      chat_id: chatId,
+      text: "Review cancelled. You can start again anytime with /review",
+      parse_mode: "HTML"
+    });
+    return;
+  }
+
+  if (data.startsWith("review_rating:")) {
+    const session = await getReviewSession(telegramId);
+    if (!session) {
+      await callTelegram("sendMessage", {
+        chat_id: chatId,
+        text: "No active review found. Start one with /review",
+        parse_mode: "HTML"
+      });
+      return;
+    }
+    const value = data.split(":")[1];
+    const rating = value === "skip" ? null : parseInt(value, 10);
+    await completeReview(chatId, session, rating);
+    return;
+  }
+
+  if (data.startsWith("review_approve:") || data.startsWith("review_reject:")) {
+    const adminId = process.env.REVIEW_ADMIN_TELEGRAM_ID;
+    if (!adminId || String(fromId) !== String(adminId)) {
+      await callTelegram("sendMessage", {
+        chat_id: chatId,
+        text: "⛔ You're not authorized to moderate reviews.",
+        parse_mode: "HTML"
+      });
+      return;
+    }
+    const reviewId = data.split(":")[1];
+    if (data.startsWith("review_approve:")) {
+      await supabaseRequest(`/reviews?id=eq.${encodeURIComponent(reviewId)}`, {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: { is_approved: true }
+      });
+      await callTelegram("sendMessage", {
+        chat_id: chatId,
+        text: "✅ Review approved.",
+        parse_mode: "HTML"
+      });
+    } else {
+      await callTelegram("sendMessage", {
+        chat_id: chatId,
+        text: "❌ Review rejected (kept unapproved).",
+        parse_mode: "HTML"
+      });
+    }
+    return;
+  }
 
   // Bureau selected (from /unlock flow)
   if (data.startsWith("pick_bureau:")) {
@@ -571,7 +764,7 @@ export default async function handler(req, res) {
       if (!userRecord) {
         userRecord = await upsertUser(telegramId, from.first_name, from.last_name, from.username);
       }
-      await handleCallback(chatId, userRecord, data);
+      await handleCallback(chatId, userRecord, data, String(from.id));
       return sendJson(res, 200, { ok: true, handled: "callback" });
     }
 
@@ -617,21 +810,46 @@ export default async function handler(req, res) {
       return sendJson(res, 200, { ok: true, handled: "notifications" });
     }
 
+    // /review command
+    if (text.startsWith("/review")) {
+      let userRecord = await getUserRecordByTelegramId(telegramId);
+      if (!userRecord) {
+        userRecord = await upsertUser(telegramId, from.first_name, from.last_name, from.username);
+      }
+      await handleReviewStart(chatId, userRecord);
+      return sendJson(res, 200, { ok: true, handled: "review" });
+    }
+
     // /help command
     if (text.startsWith("/help")) {
       await callTelegram("sendMessage", {
         chat_id: chatId,
-        text: `🤖 <b>Bot Commands</b>\n\n<b>/start</b> — View your profile & dashboard\n<b>/unlock CODE</b> — Unlock committee access\n<b>/notifications</b> — Subscribe to session reminders\n\nYou can also:\n• Tap the buttons below any message to open the app\n• Update your matric number or kulliyyah anytime\n• Check your attendance progress\n\n📢 Join our community: https://t.me/taweprohelp`,
+        text: `🤖 <b>Bot Commands</b>\n\n<b>/start</b> — View your profile & dashboard\n<b>/unlock CODE</b> — Unlock committee access\n<b>/notifications</b> — Subscribe to session reminders\n<b>/review</b> — Rate your Ta'aruf Week experience\n\nYou can also:\n• Tap the buttons below any message to open the app\n• Update your matric number or kulliyyah anytime\n• Check your attendance progress\n\n📢 Join our community: https://t.me/taweprohelp`,
         parse_mode: "HTML",
         reply_markup: { remove_keyboard: true }
       });
       return sendJson(res, 200, { ok: true, handled: "help" });
     }
 
-    // Text input (matric number during registration)
+    // Text input (matric number during registration, /review content)
     if (text && !text.startsWith("/")) {
       const userRecord = await getUserRecordByTelegramId(telegramId);
       if (!userRecord) return sendJson(res, 200, { ok: true, ignored: true });
+
+      // /review flow: capture the review text when a session is waiting for it
+      const session = await getReviewSession(telegramId);
+      if (session) {
+        if (!session.content) {
+          await handleReviewText(chatId, userRecord, session, text);
+        } else {
+          await callTelegram("sendMessage", {
+            chat_id: chatId,
+            text: "Please pick a rating below, or tap Skip rating. ⭐",
+            parse_mode: "HTML"
+          });
+        }
+        return sendJson(res, 200, { ok: true, handled: "review" });
+      }
 
       const step = userRecord.registration_step;
       if (step && ["matric", "change_matric"].includes(step)) {

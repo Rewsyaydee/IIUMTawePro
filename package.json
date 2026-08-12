@@ -10,6 +10,7 @@
     "smoke:auth": "node tools/smoke-auth.mjs"
   },
   "dependencies": {
+    "@supabase/realtime-js": "^2.112.3",
     "@vercel/analytics": "^2.0.1",
     "@vercel/og": "^0.11.1",
     "@vercel/speed-insights": "^2.0.0",
