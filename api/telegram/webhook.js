@@ -145,10 +145,22 @@ async function getReviewSession(telegramId) {
 }
 
 async function upsertReviewSession(telegramId, fields) {
+  // Full-row upsert (merge-duplicates) — only safe when every NOT NULL column
+  // is supplied. Used for session creation only.
   await supabaseRequest("/review_sessions?on_conflict=telegram_id&select=telegram_id", {
     method: "POST",
     headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
     body: [{ telegram_id: telegramId, updated_at: new Date().toISOString(), ...fields }]
+  });
+}
+
+async function updateReviewSession(telegramId, fields) {
+  // Partial update via PATCH — only the supplied columns change, so NOT NULL
+  // columns like display_name are never overwritten with null.
+  await supabaseRequest(`/review_sessions?telegram_id=eq.${encodeURIComponent(telegramId)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: { updated_at: new Date().toISOString(), ...fields }
   });
 }
 
@@ -179,7 +191,7 @@ async function handleReviewText(chatId, session, text) {
     });
     return;
   }
-  await upsertReviewSession(session.telegram_id, { content });
+  await updateReviewSession(session.telegram_id, { content });
   await callTelegram("sendMessage", {
     chat_id: chatId,
     text: "Got it! How many stars would you give your Ta'aruf Week experience? ⭐",
