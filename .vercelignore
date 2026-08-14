@@ -1,0 +1,21 @@
+node_modules
+dist
+.npm-cache
+.env
+.env.local
+.vercel
+*.log
+*.tsbuildinfo
+
+# Dev-only, never needed for the production build
+tests
+screenshots
+.ctx
+data.sql
+schema.sql
+supabase/.temp
+supabase/.branches
+supabase/migrations
+.opencode
+.agents
+.github
