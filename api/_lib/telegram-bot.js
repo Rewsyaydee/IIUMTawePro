@@ -6,7 +6,21 @@ export function getBotToken() {
   return token.trim();
 }
 
-export async function sendTelegramMessage(telegramId, text) {
+// Public app base URL for deep links into the Mini App (mirrors webhook.js).
+export function getAppBaseUrl() {
+  return (
+    process.env.TELEGRAM_WEB_APP_URL ||
+    process.env.VITE_API_BASE_URL ||
+    process.env.VERCEL_URL ||
+    "https://iium-tawe-pro.vercel.app"
+  ).replace(/\/$/, "");
+}
+
+export function escapeHtml(str) {
+  return String(str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+export async function sendTelegramMessage(telegramId, text, replyMarkup) {
   const token = getBotToken();
   if (!token) throw new Error("TELEGRAM_BOT_TOKEN is not configured.");
 
@@ -17,7 +31,8 @@ export async function sendTelegramMessage(telegramId, text) {
       chat_id: telegramId,
       text,
       parse_mode: "HTML",
-      disable_web_page_preview: true
+      disable_web_page_preview: true,
+      ...(replyMarkup ? { reply_markup: replyMarkup } : {})
     })
   });
 

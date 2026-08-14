@@ -3,9 +3,10 @@ import { createAuditLog, getUserById, getUserRecordByTelegramId, SupabaseRequest
 import { verifyAppSessionFromRequest } from "./_lib/auth-utils.js";
 
 import { insertReport, listReportsForUser, mapWellbeingReport, updateReportStatus, validateReportInput } from "./_lib/wellbeing-utils.js";
-import { insertTask, listTasksForUser, mapPoaTask, updateTaskStatus, updateTaskDetails, deleteTaskRecord } from "./_lib/tasks-utils.js";
+import { dispatchTaskNotifications, insertTask, listTasksForUser, mapPoaTask, updateTaskStatus, updateTaskDetails, deleteTaskRecord } from "./_lib/tasks-utils.js";
 import { listOperationsForUser, mapBureauOperation, updateOperationStatus } from "./_lib/bureau-ops-utils.js";
 import { broadcastToTargets } from "./_lib/telegram-bot.js";
+import { buildBlockId, formatIsoDate, getActiveSessionWindow, getLoopCycleKey, getSessionDelayMinutes, getVirtualScheduleDate, parseBlockId } from "./_lib/schedule-utils.js";
 
 const SCHEDULE_SELECT = "id,date,day,week,scheduled_start_time,scheduled_end_time,title,venue,tag,audience,description,is_live,notify_minutes_before,responsible_bureau,readiness_status,pre_session_tasks,venue_code,block,block_group,is_concurrent,is_attendance_required,track,program_count";
 
@@ -81,6 +82,41 @@ function mapAuditRow(row) {
     recordId: row.record_id || undefined,
     details: row.details,
     timestamp: row.timestamp
+  };
+}
+
+function mapEmergencyContact(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    role: row.role,
+    phone: row.phone,
+    priority: Boolean(row.priority),
+    sortOrder: row.sort_order
+  };
+}
+
+function mapCouponLocation(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    location: row.location,
+    accepts: row.accepts,
+    hours: row.hours,
+    sortOrder: row.sort_order
+  };
+}
+
+function mapLaunchItem(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    category: row.category,
+    owner: row.owner,
+    status: row.status,
+    sortOrder: row.sort_order,
+    updatedBy: row.updated_by || undefined,
+    updatedAt: row.updated_at
   };
 }
 
@@ -202,7 +238,7 @@ export default async function handler(req, res) {
       case "wellbeing.submit": {
         const err = validateReportInput(body);
         if (err) return sendJson(res, 400, { error: err });
-        const row = await insertReport({ user, studentName: body.studentName.trim(), phone: body.phone.trim(), category: body.category, notes: body.notes.trim() });
+        const row = await insertReport({ user, studentName: body.studentName.trim(), phone: body.phone.trim(), category: body.category, notes: body.notes.trim(), medicalConditions: body.medicalConditions });
         if (!row) return sendJson(res, 500, { error: "Failed to create report." });
 
         // Persist phone for future form prefill (best-effort, non-blocking)
@@ -213,7 +249,10 @@ export default async function handler(req, res) {
         }).catch(() => {});
 
         // Instant alert to Welfare bureau (committee members + head) — fire-and-forget
-        const welfareText = `🆘 <b>New Wellbeing Report</b>\n\n<b>${escapeHtml(row.reference)}</b>\n👤 ${escapeHtml(row.student_name)}\n🏷️ ${escapeHtml(row.category)}\n📝 ${escapeHtml(String(row.notes || "").slice(0, 140))}\n\n👉 Open TawePro to respond: t.me/iiumtaweprobot`;
+        const conditions = Array.isArray(row.medical_conditions) && row.medical_conditions.length > 0
+          ? `\n🏥 ${row.medical_conditions.map((c) => escapeHtml(c)).join(", ")}`
+          : "";
+        const welfareText = `🆘 <b>New Wellbeing Report</b>\n\n<b>${escapeHtml(row.reference)}</b>\n👤 ${escapeHtml(row.student_name)}\n🏷️ ${escapeHtml(row.category)}${conditions}\n📝 ${escapeHtml(String(row.notes || "").slice(0, 140))}\n\n👉 Open TawePro to respond: t.me/iiumtaweprobot`;
         broadcastToTargets({ targetBureau: "Welfare", text: welfareText }).catch(() => {});
 
         return sendJson(res, 201, { report: mapWellbeingReport(row) });
@@ -236,6 +275,13 @@ export default async function handler(req, res) {
         if (!body.title || !body.bureau) return sendJson(res, 400, { error: "Title and bureau are required." });
         const row = await insertTask({ user, task: body });
         if (!row) return sendJson(res, 500, { error: "Failed to create task." });
+        // Notify assigned committee members via the Telegram bot (fire-and-forget with dispatch log)
+        try {
+          const dispatch = await dispatchTaskNotifications({ task: row, assigneeIds: body.assignedToIds });
+          await createAuditLog({ actor: user, action: "notified_task_assignees", tableName: "task_notifications", recordId: row.id, details: `Task "${row.title}": ${dispatch.sent} DMs sent, ${dispatch.failed} failed.` });
+        } catch (error) {
+          console.error("Task notification dispatch failed", error?.message || error);
+        }
         return sendJson(res, 201, { task: mapPoaTask(row) });
       }
       case "tasks.update": {
@@ -248,8 +294,23 @@ export default async function handler(req, res) {
       case "tasks.edit": {
         if (!user || (user.role !== "mainboard" && user.role !== "head")) return sendJson(res, 403, { error: "Mainboard or head only." });
         if (!body.id) return sendJson(res, 400, { error: "Task ID is required." });
+        let previousAssignees = [];
+        try {
+          const existing = await supabaseRequest(`/poa_tasks?id=eq.${encodeURIComponent(body.id)}&select=assigned_to_ids&limit=1`);
+          previousAssignees = Array.isArray(existing) && Array.isArray(existing[0]?.assigned_to_ids) ? existing[0].assigned_to_ids : [];
+        } catch { /* ignore — notification is best-effort */ }
         const row = await updateTaskDetails({ id: body.id, fields: body, user });
         if (!row) return sendJson(res, 404, { error: "Task not found." });
+        // DM only newly added assignees when the assignee list changes
+        const newAssignees = (Array.isArray(body.assignedToIds) ? body.assignedToIds : []).filter((id) => !previousAssignees.includes(id));
+        if (newAssignees.length > 0) {
+          try {
+            const dispatch = await dispatchTaskNotifications({ task: row, assigneeIds: newAssignees });
+            await createAuditLog({ actor: user, action: "notified_task_assignees", tableName: "task_notifications", recordId: row.id, details: `Task "${row.title}": ${dispatch.sent} DMs sent to new assignees, ${dispatch.failed} failed.` });
+          } catch (error) {
+            console.error("Task notification dispatch failed", error?.message || error);
+          }
+        }
         return sendJson(res, 200, { task: mapPoaTask(row) });
       }
       case "tasks.delete": {
@@ -266,7 +327,7 @@ export default async function handler(req, res) {
         if (user.role !== "mainboard" && user.bureau !== bureau) {
           return sendJson(res, 403, { error: "You can only view your own bureau." });
         }
-        const rows = await supabaseRequest(`/users?bureau=eq.${encodeURIComponent(bureau)}&status=eq.active&select=id,name,matric_number,telegram_username,role&order=name.asc`);
+        const rows = await supabaseRequest(`/users?bureau=eq.${encodeURIComponent(bureau)}&status=eq.active&select=id,name,matric_number,telegram_username,role,photo_url&order=name.asc`);
         return sendJson(res, 200, { members: Array.isArray(rows) ? rows : [] });
       }
 
@@ -380,6 +441,20 @@ export default async function handler(req, res) {
         return sendJson(res, 200, { item: mapScheduleItem(item) });
       }
 
+      case "schedule.delete": {
+        if (user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
+        if (!body.id) return sendJson(res, 400, { error: "Schedule item ID is required." });
+        const existing = await supabaseRequest(`/schedule_items?id=eq.${encodeURIComponent(body.id)}&select=title&limit=1`);
+        const title = (Array.isArray(existing) ? existing[0]?.title : undefined) || "Unknown";
+        await supabaseRequest(`/schedule_items?id=eq.${encodeURIComponent(body.id)}`, {
+          method: "DELETE",
+          headers: { Prefer: "return=minimal" }
+        });
+        await createAuditLog({ actor: user, action: "deleted_schedule_item", tableName: "schedule_items", recordId: body.id, details: `Schedule item "${title}" deleted.` });
+        setCache("schedule.list", undefined);
+        return sendJson(res, 200, { deleted: true });
+      }
+
       // ── BUREAU OPS ALERT ──
       case "ops.alert": {
         const opRows = await supabaseRequest(`/bureau_operations?id=eq.${encodeURIComponent(body.id)}&select=id,bureau,title,metric&limit=1`);
@@ -435,6 +510,209 @@ export default async function handler(req, res) {
         await createAuditLog({ actor: user, action: "deactivated_announcement", tableName: "banners", recordId: body.id, details: `Announcement "${item.title}" deactivated.` });
         setCache("announcements.list", undefined); // invalidate
         return sendJson(res, 200, { item: mapBannerRow(item) });
+      }
+      case "announcements.update": {
+        if (!user || user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
+        if (!body.id) return sendJson(res, 400, { error: "Announcement ID is required." });
+        if (body.type !== undefined && !["info", "urgent", "emergency", "success", "warning"].includes(body.type)) return sendJson(res, 400, { error: "Invalid announcement type." });
+        const patch = { updated_at: new Date().toISOString() };
+        if (body.title !== undefined) patch.title = body.title;
+        if (body.body !== undefined) patch.body = body.body;
+        if (body.type !== undefined) patch.type = body.type;
+        if (body.expiresAt !== undefined) patch.expires_at = body.expiresAt || null;
+        if (body.tags !== undefined) patch.tags = Array.isArray(body.tags) ? body.tags : [];
+        if (body.links !== undefined) patch.links = Array.isArray(body.links) ? body.links : [];
+        const rows = await supabaseRequest(`/banners?id=eq.${encodeURIComponent(body.id)}&select=id,title,body,type,is_active,created_at,expires_at,tags,links`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: patch });
+        const item = Array.isArray(rows) ? rows[0] : undefined;
+        if (!item) return sendJson(res, 404, { error: "Announcement not found." });
+        await createAuditLog({ actor: user, action: "updated_announcement", tableName: "banners", recordId: body.id, details: `Announcement "${item.title}" updated.` });
+        setCache("announcements.list", undefined); // invalidate
+        return sendJson(res, 200, { item: mapBannerRow(item) });
+      }
+      case "announcements.delete": {
+        if (!user || user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
+        if (!body.id) return sendJson(res, 400, { error: "Announcement ID is required." });
+        const existing = await supabaseRequest(`/banners?id=eq.${encodeURIComponent(body.id)}&select=title&limit=1`);
+        const title = (Array.isArray(existing) ? existing[0]?.title : undefined) || "Unknown";
+        await supabaseRequest(`/banners?id=eq.${encodeURIComponent(body.id)}`, {
+          method: "DELETE",
+          headers: { Prefer: "return=minimal" }
+        });
+        await createAuditLog({ actor: user, action: "deleted_announcement", tableName: "banners", recordId: body.id, details: `Announcement "${title}" deleted.` });
+        setCache("announcements.list", undefined); // invalidate
+        return sendJson(res, 200, { deleted: true });
+      }
+
+      // ── GUIDES (emergency contacts + coupon locations) ──
+      case "guides.emergency.list": {
+        const rows = await supabaseRequest("/emergency_contacts?select=*&order=sort_order.asc");
+        return sendJson(res, 200, { contacts: (Array.isArray(rows) ? rows : []).map(mapEmergencyContact) });
+      }
+      case "guides.emergency.create": {
+        if (user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
+        if (!body.name || !body.role || !body.phone) return sendJson(res, 400, { error: "Name, role and phone are required." });
+        const rows = await supabaseRequest("/emergency_contacts?select=*", { method: "POST", headers: { Prefer: "return=representation" }, body: [{ name: body.name, role: body.role, phone: body.phone, priority: Boolean(body.priority), sort_order: Number(body.sortOrder) || 0 }] });
+        const contact = Array.isArray(rows) ? rows[0] : undefined;
+        if (!contact) return sendJson(res, 500, { error: "Failed to create contact." });
+        await createAuditLog({ actor: user, action: "created_emergency_contact", tableName: "emergency_contacts", recordId: contact.id, details: `Emergency contact "${contact.name}" added.` });
+        return sendJson(res, 201, { contact: mapEmergencyContact(contact) });
+      }
+      case "guides.emergency.update": {
+        if (user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
+        if (!body.id) return sendJson(res, 400, { error: "Contact ID is required." });
+        const patch = { updated_at: new Date().toISOString() };
+        if (body.name !== undefined) patch.name = body.name;
+        if (body.role !== undefined) patch.role = body.role;
+        if (body.phone !== undefined) patch.phone = body.phone;
+        if (body.priority !== undefined) patch.priority = Boolean(body.priority);
+        if (body.sortOrder !== undefined) patch.sort_order = Number(body.sortOrder) || 0;
+        const rows = await supabaseRequest(`/emergency_contacts?id=eq.${encodeURIComponent(body.id)}&select=*`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: patch });
+        const contact = Array.isArray(rows) ? rows[0] : undefined;
+        if (!contact) return sendJson(res, 404, { error: "Contact not found." });
+        await createAuditLog({ actor: user, action: "updated_emergency_contact", tableName: "emergency_contacts", recordId: body.id, details: `Emergency contact "${contact.name}" updated.` });
+        return sendJson(res, 200, { contact: mapEmergencyContact(contact) });
+      }
+      case "guides.emergency.delete": {
+        if (user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
+        if (!body.id) return sendJson(res, 400, { error: "Contact ID is required." });
+        const existing = await supabaseRequest(`/emergency_contacts?id=eq.${encodeURIComponent(body.id)}&select=name&limit=1`);
+        const name = (Array.isArray(existing) ? existing[0]?.name : undefined) || "Unknown";
+        await supabaseRequest(`/emergency_contacts?id=eq.${encodeURIComponent(body.id)}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+        await createAuditLog({ actor: user, action: "deleted_emergency_contact", tableName: "emergency_contacts", recordId: body.id, details: `Emergency contact "${name}" deleted.` });
+        return sendJson(res, 200, { deleted: true });
+      }
+      case "guides.coupon.list": {
+        const rows = await supabaseRequest("/coupon_locations?select=*&order=sort_order.asc");
+        return sendJson(res, 200, { locations: (Array.isArray(rows) ? rows : []).map(mapCouponLocation) });
+      }
+      case "guides.coupon.create": {
+        if (user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
+        if (!body.name || !body.location) return sendJson(res, 400, { error: "Name and location are required." });
+        const rows = await supabaseRequest("/coupon_locations?select=*", { method: "POST", headers: { Prefer: "return=representation" }, body: [{ name: body.name, location: body.location, accepts: body.accepts || "All meals", hours: body.hours || "", sort_order: Number(body.sortOrder) || 0 }] });
+        const location = Array.isArray(rows) ? rows[0] : undefined;
+        if (!location) return sendJson(res, 500, { error: "Failed to create location." });
+        await createAuditLog({ actor: user, action: "created_coupon_location", tableName: "coupon_locations", recordId: location.id, details: `Coupon location "${location.name}" added.` });
+        return sendJson(res, 201, { location: mapCouponLocation(location) });
+      }
+      case "guides.coupon.update": {
+        if (user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
+        if (!body.id) return sendJson(res, 400, { error: "Location ID is required." });
+        const patch = { updated_at: new Date().toISOString() };
+        if (body.name !== undefined) patch.name = body.name;
+        if (body.location !== undefined) patch.location = body.location;
+        if (body.accepts !== undefined) patch.accepts = body.accepts;
+        if (body.hours !== undefined) patch.hours = body.hours;
+        if (body.sortOrder !== undefined) patch.sort_order = Number(body.sortOrder) || 0;
+        const rows = await supabaseRequest(`/coupon_locations?id=eq.${encodeURIComponent(body.id)}&select=*`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: patch });
+        const location = Array.isArray(rows) ? rows[0] : undefined;
+        if (!location) return sendJson(res, 404, { error: "Location not found." });
+        await createAuditLog({ actor: user, action: "updated_coupon_location", tableName: "coupon_locations", recordId: body.id, details: `Coupon location "${location.name}" updated.` });
+        return sendJson(res, 200, { location: mapCouponLocation(location) });
+      }
+      case "guides.coupon.delete": {
+        if (user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
+        if (!body.id) return sendJson(res, 400, { error: "Location ID is required." });
+        const existing = await supabaseRequest(`/coupon_locations?id=eq.${encodeURIComponent(body.id)}&select=name&limit=1`);
+        const name = (Array.isArray(existing) ? existing[0]?.name : undefined) || "Unknown";
+        await supabaseRequest(`/coupon_locations?id=eq.${encodeURIComponent(body.id)}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+        await createAuditLog({ actor: user, action: "deleted_coupon_location", tableName: "coupon_locations", recordId: body.id, details: `Coupon location "${name}" deleted.` });
+        return sendJson(res, 200, { deleted: true });
+      }
+
+      // ── OPS SETTINGS (global session delay) ──
+      case "ops.settings.get": {
+        const delayMinutes = await getSessionDelayMinutes();
+        return sendJson(res, 200, { settings: { sessionDelayMinutes: delayMinutes } });
+      }
+      case "ops.settings.set": {
+        if (user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
+        const delayMinutes = Number(body.sessionDelayMinutes);
+        if (!Number.isFinite(delayMinutes) || delayMinutes < 0 || delayMinutes > 180) return sendJson(res, 400, { error: "Session delay must be between 0 and 180 minutes." });
+        await supabaseRequest("/ops_settings?on_conflict=key", {
+          method: "POST",
+          headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+          body: [{ key: "session_delay_minutes", value: delayMinutes, updated_at: new Date().toISOString() }]
+        });
+        await createAuditLog({ actor: user, action: "updated_ops_setting", tableName: "ops_settings", recordId: "session_delay_minutes", details: `Session delay set to ${delayMinutes} minutes.` });
+        if (body.broadcast !== false) {
+          const text = delayMinutes > 0
+            ? `⏱️ <b>Schedule update</b>\n\nAll session check-in windows are now extended by <b>+${delayMinutes} mins</b>. Please adjust your operations accordingly.`
+            : `⏱️ <b>Schedule update</b>\n\nSession delay removed. Check-in windows are back to the published times.`;
+          broadcastToTargets({ targetRole: "committee", text }).catch(() => {});
+        }
+        return sendJson(res, 200, { settings: { sessionDelayMinutes: delayMinutes } });
+      }
+
+      // ── OPS LIVE (real-time check-in counts per venue) ──
+      case "ops.live": {
+        if (user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
+        const now = new Date();
+        const virtualDate = formatIsoDate(getVirtualScheduleDate(now));
+        const cycle = getLoopCycleKey(now);
+        const delayMinutes = await getSessionDelayMinutes();
+        const blocks = ["before_break", "after_break"];
+        const blockIds = blocks.map((block) => buildBlockId(virtualDate, block, now));
+        const scheduleRows = await supabaseRequest(`/schedule_items?block_group=eq.${encodeURIComponent(virtualDate)}&is_concurrent=is.false&select=block,venue,venue_code&limit=100`);
+        const scheduleItems = Array.isArray(scheduleRows) ? scheduleRows : [];
+        const venueMap = new Map();
+        for (const item of scheduleItems) {
+          if (!item.block) continue;
+          const key = `${virtualDate}-${item.block}`;
+          const entry = venueMap.get(key) || { venue: item.venue, venueCode: item.venue_code || null };
+          venueMap.set(key, entry);
+        }
+
+        const sessions = [];
+        for (const block of blocks) {
+          const window = await getActiveSessionWindow({ blockGroup: virtualDate, block, delayMinutes });
+          sessions.push({
+            block,
+            blockId: buildBlockId(virtualDate, block, now),
+            venue: venueMap.get(`${virtualDate}-${block}`)?.venue || null,
+            venueCode: venueMap.get(`${virtualDate}-${block}`)?.venueCode || null,
+            open: window ? now.getTime() >= window.windowStart && now.getTime() <= window.windowEnd : false,
+            windowStart: window ? window.windowStart : null,
+            windowEnd: window ? window.windowEnd : null
+          });
+        }
+
+        const attRows = await supabaseRequest(`/student_attendance?schedule_item_id=in.(${blockIds.map(encodeURIComponent).join(",")})&select=schedule_item_id&limit=2000`);
+        const attendanceRows = Array.isArray(attRows) ? attRows : [];
+
+        const blockToSession = new Map(sessions.map((s) => [s.blockId, s]));
+        const byVenueMap = new Map();
+        for (const row of attendanceRows) {
+          const session = blockToSession.get(String(row.schedule_item_id || ""));
+          const key = session?.venue || session?.venueCode || "Unknown";
+          byVenueMap.set(key, (byVenueMap.get(key) || 0) + 1);
+        }
+        const byVenue = Array.from(byVenueMap.entries()).map(([venue, count]) => ({ venue, count })).sort((a, b) => b.count - a.count);
+
+        return sendJson(res, 200, {
+          session: { virtualDate, cycle },
+          delayMinutes,
+          sessions,
+          byVenue,
+          total: attendanceRows.length,
+          updatedAt: now.toISOString()
+        });
+      }
+
+      // ── LAUNCH CHECKLIST ──
+      case "launch.list": {
+        if (user.role === "student") return sendJson(res, 403, { error: "Committee only." });
+        const rows = await supabaseRequest("/launch_checklist_items?select=*&order=sort_order.asc");
+        return sendJson(res, 200, { items: (Array.isArray(rows) ? rows : []).map(mapLaunchItem) });
+      }
+      case "launch.update": {
+        if (user.role !== "mainboard" && user.role !== "head") return sendJson(res, 403, { error: "Mainboard or head only." });
+        if (!body.id) return sendJson(res, 400, { error: "Checklist item ID is required." });
+        if (!["pending", "ready", "issue"].includes(body.status)) return sendJson(res, 400, { error: "Invalid status. Use pending, ready, or issue." });
+        const rows = await supabaseRequest(`/launch_checklist_items?id=eq.${encodeURIComponent(body.id)}&select=*`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: { status: body.status, updated_by: user.id, updated_at: new Date().toISOString() } });
+        const item = Array.isArray(rows) ? rows[0] : undefined;
+        if (!item) return sendJson(res, 404, { error: "Checklist item not found." });
+        await createAuditLog({ actor: user, action: "updated_launch_checklist", tableName: "launch_checklist_items", recordId: body.id, details: `Checklist "${item.title}" set to ${body.status}.` });
+        return sendJson(res, 200, { item: mapLaunchItem(item) });
       }
 
       // ── AUDIT ──
@@ -494,6 +772,25 @@ export default async function handler(req, res) {
         const lat = Number(body.latitude), lng = Number(body.longitude);
         if (!isFinite(lat) || lat < -90 || lat > 90) return sendJson(res, 400, { error: "Invalid latitude." });
         if (!isFinite(lng) || lng < -180 || lng > 180) return sendJson(res, 400, { error: "Invalid longitude." });
+
+        // Server-side session window enforcement. Disable with CHECKIN_SKIP_WINDOW=1
+        // (dev/QA only) — otherwise retroactive and future check-ins are rejected.
+        if (process.env.CHECKIN_SKIP_WINDOW !== "1") {
+          const parsed = parseBlockId(body.scheduleItemId);
+          if (!parsed) return sendJson(res, 400, { error: "Invalid session block ID." });
+          const now = new Date();
+          const virtualDate = formatIsoDate(getVirtualScheduleDate(now));
+          const expectedCycle = getLoopCycleKey(now);
+          if (parsed.date !== virtualDate || parsed.cycle !== expectedCycle) {
+            return sendJson(res, 400, { error: "This session is not currently open for check-in." });
+          }
+          const delayMinutes = await getSessionDelayMinutes();
+          const window = await getActiveSessionWindow({ blockGroup: parsed.date, block: parsed.block, delayMinutes });
+          if (!window) return sendJson(res, 400, { error: "This session has no check-in window configured." });
+          if (now.getTime() < window.windowStart) return sendJson(res, 400, { error: "Check-in for this session has not opened yet." });
+          if (now.getTime() > window.windowEnd) return sendJson(res, 400, { error: "This session's check-in window has closed." });
+        }
+
         try {
           const rows = await supabaseRequest("/student_attendance?select=id,user_id,schedule_item_id,status", {
             method: "POST",

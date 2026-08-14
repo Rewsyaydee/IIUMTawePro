@@ -1,7 +1,11 @@
-import { Activity, AlertTriangle, CheckCircle2, ExternalLink, KeyRound, Rocket, ShieldAlert, ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Activity, AlertTriangle, CheckCircle2, ClipboardCheck, ExternalLink, KeyRound, Rocket, ShieldAlert, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { StatusBadge } from "../components/StatusBadge";
 import { getLaunchReadiness, type LaunchStatus } from "../lib/launchReadiness";
+import { authSessionChangedEvent, shouldUseApiAuth } from "../lib/apiAuth";
+import { listLaunchChecklist, updateLaunchChecklist, type LaunchChecklistItem } from "../lib/guidesApi";
+import { hapticError, hapticImpact } from "../lib/telegram";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 
@@ -11,10 +15,60 @@ const statusIcons: Record<LaunchStatus, typeof CheckCircle2> = {
   missing: ShieldAlert
 };
 
+const checklistStatuses: LaunchChecklistItem["status"][] = ["pending", "ready", "issue"];
+
 function LaunchReadiness() {
   const { user } = useMockUser();
   const { auditLog, attendanceProofs, bureauOperations, notifications, schedule } = useMockData();
   const readiness = getLaunchReadiness();
+  const apiMode = shouldUseApiAuth();
+  const [items, setItems] = useState<LaunchChecklistItem[]>([]);
+  const [loadingChecklist, setLoadingChecklist] = useState(false);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [checklistError, setChecklistError] = useState("");
+  const [authTick, setAuthTick] = useState(0);
+
+  const canManageChecklist = user.role === "mainboard" || user.role === "head";
+
+  useEffect(() => {
+    const h = () => setAuthTick((v) => v + 1);
+    window.addEventListener(authSessionChangedEvent, h);
+    return () => window.removeEventListener(authSessionChangedEvent, h);
+  }, []);
+
+  useEffect(() => {
+    if (!apiMode || user.role === "student") return;
+    let cancelled = false;
+    setLoadingChecklist(true);
+    setChecklistError("");
+    listLaunchChecklist()
+      .then((loaded) => { if (!cancelled) setItems(loaded); })
+      .catch((error) => {
+        if (!cancelled) setChecklistError(error instanceof Error ? error.message : "Unable to load checklist.");
+      })
+      .finally(() => { if (!cancelled) setLoadingChecklist(false); });
+    return () => { cancelled = true; };
+  }, [apiMode, authTick, user.role]);
+
+  const setChecklistStatus = async (id: string, status: LaunchChecklistItem["status"]) => {
+    if (updatingId) return;
+    setUpdatingId(id);
+    setChecklistError("");
+    try {
+      if (apiMode) {
+        const updated = await updateLaunchChecklist(id, status);
+        setItems((current) => current.map((item) => (item.id === id ? updated : item)));
+      } else {
+        setItems((current) => current.map((item) => (item.id === id ? { ...item, status } : item)));
+      }
+      hapticImpact(status === "issue" ? "heavy" : "light");
+    } catch (error) {
+      setChecklistError(error instanceof Error ? error.message : "Failed to update checklist item.");
+      hapticError();
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
   const launchNumbers = [
     { label: "Ready checks", value: readiness.summary.ready },
@@ -46,13 +100,13 @@ function LaunchReadiness() {
     }
   ];
 
-  if (user.role !== "mainboard") {
+  if (user.role === "student") {
     return (
       <section className="page-stack">
         <div className="empty-state tall">
           <ShieldAlert size={28} aria-hidden="true" />
-          <strong>Mainboard only</strong>
-          <p>Switch to the mainboard mock profile to review launch readiness.</p>
+          <strong>Committee area</strong>
+          <p>Launch readiness is available to committee, heads, and mainboard roles.</p>
         </div>
       </section>
     );
@@ -119,6 +173,56 @@ function LaunchReadiness() {
             );
           })}
         </div>
+      </section>
+
+      <section className="ops-panel">
+        <div className="section-heading">
+          <h3>Event readiness checklist</h3>
+          <span>{loadingChecklist ? "loading" : `${items.filter((i) => i.status === "ready").length}/${items.length} ready`}</span>
+        </div>
+        <p className="muted">
+          Logistics officers toggle each item as it is confirmed on the ground.
+        </p>
+        {checklistError && <p className="muted" style={{ color: "#c93d37" }}>{checklistError}</p>}
+        {loadingChecklist ? (
+          <div className="skeleton-page" />
+        ) : items.length === 0 ? (
+          <div className="empty-state">
+            <ClipboardCheck size={24} aria-hidden="true" />
+            <strong>No checklist items</strong>
+            <p>Checklist items will appear once seeded in the database.</p>
+          </div>
+        ) : (
+          <div className="launch-checklist-list">
+            {items.map((item) => (
+              <article key={item.id} className={`launch-checklist-item status-${item.status}`}>
+                <div className="launch-checklist-main">
+                  <strong>{item.title}</strong>
+                  <span>
+                    {item.category} · {item.owner || "Unassigned"}
+                  </span>
+                </div>
+                {canManageChecklist ? (
+                  <div className="segmented-actions launch-checklist-status">
+                    {checklistStatuses.map((status) => (
+                      <button
+                        key={status}
+                        className={item.status === status ? "selected" : ""}
+                        type="button"
+                        disabled={updatingId !== null}
+                        onClick={() => setChecklistStatus(item.id, status)}
+                      >
+                        {updatingId === item.id ? "..." : status}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <StatusBadge value={item.status === "ready" ? "ready" : item.status === "issue" ? "blocked" : "pending"} />
+                )}
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="ops-panel">

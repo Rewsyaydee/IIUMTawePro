@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Map, BookOpen, CalendarDays, ClipboardCheck, ClipboardList, Grid3X3, HeartPulse, Rocket, ShieldAlert } from "lucide-react";
+import { Map, BookOpen, CalendarDays, ClipboardCheck, ClipboardList, Grid3X3, Rocket, ShieldAlert, Trophy } from "lucide-react";
 import { MenuTile } from "../components/MenuTile";
 import { EventCarousel } from "../components/EventCarousel";
 import { StreakWidget } from "../components/StreakWidget";
@@ -23,7 +23,7 @@ function Dashboard() {
   const studentTiles: Array<{ to: string; title: string; meta: string; icon: typeof CalendarDays; tone: TileTone }> = [
     { to: "/resources", title: "Guides", meta: "Booklet, dress code and contacts", icon: BookOpen, tone: "amber" as const },
     { to: "/announcements", title: "News", meta: "Latest announcement", icon: CalendarDays, tone: "blue" as const },
-    { to: "/wellbeing", title: "Get Help", meta: "Report health to Welfare committee", icon: HeartPulse, tone: "red" as const },
+    { to: "/leaderboard", title: "Leaderboard", meta: "Rankings and mahallah points", icon: Trophy, tone: "violet" as const },
     { to: "/map", title: "Map", meta: "Interactive IIUM campus map", icon: Map, tone: "green" as const }
   ];
 
@@ -31,7 +31,7 @@ function Dashboard() {
     { to: "/schedule", title: "Today's Programme", meta: "View live schedule", icon: CalendarDays, tone: "blue" as const },
     { to: "/bureau", title: "Bureau Ops", meta: `${opsIssues} need attention`, icon: Grid3X3, tone: "violet" as const },
     { to: "/tasks", title: "Tasks", meta: `${bureauTasks.length} visible tasks`, icon: ClipboardList, tone: "green" as const },
-    { to: "/wellbeing", title: "Get Help", meta: `${openReports} open reports`, icon: HeartPulse, tone: "red" as const }
+    { to: "/leaderboard", title: "Leaderboard", meta: "Rankings and mahallah points", icon: Trophy, tone: "amber" as const }
   ];
 
   const mainboardTiles: Array<{ to: string; title: string; meta: string; icon: typeof CalendarDays; tone: TileTone }> = [

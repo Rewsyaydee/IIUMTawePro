@@ -5,33 +5,10 @@ import { useNavigate } from "react-router-dom";
 import { fetchLeaderboardData, buildIndividualRanking, buildMahallahRanking, getMahallahShort, getMahallahName } from "../lib/leaderboard";
 import type { LeaderboardRow } from "../lib/leaderboard";
 import { allMahallahs } from "../features/navigation/data/mahallahs";
+import { UserAvatar } from "../components/UserAvatar";
 import type { LeaderboardEntry, MahallahRanking } from "../types";
 
 type Tab = "day" | "week" | "mahallah";
-
-function UserAvatar({
-  photoUrl,
-  label,
-  imgClassName,
-  textClassName,
-  textStyle
-}: {
-  photoUrl: string;
-  label: string;
-  imgClassName: string;
-  textClassName: string;
-  textStyle?: React.CSSProperties;
-}) {
-  const [failed, setFailed] = useState(false);
-  if (photoUrl && !failed) {
-    return <img src={photoUrl} alt={label} className={imgClassName} onError={() => setFailed(true)} />;
-  }
-  return (
-    <span className={textClassName} style={textStyle}>
-      {label.charAt(0)}
-    </span>
-  );
-}
 
 function Leaderboard() {
   const navigate = useNavigate();

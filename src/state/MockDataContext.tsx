@@ -33,7 +33,7 @@ import type {
 } from "../types";
 import { useMockUser } from "./MockUserContext";
 
-type ReportInput = Pick<WellbeingReport, "studentName" | "phone" | "category" | "notes">;
+type ReportInput = Pick<WellbeingReport, "studentName" | "phone" | "category" | "notes" | "medicalConditions">;
 
 type TaskInput = Pick<PoaTask, "bureau" | "title" | "description" | "dueDate" | "dueTime" | "assignedTo" | "priority">;
 

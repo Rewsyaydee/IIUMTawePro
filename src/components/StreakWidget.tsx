@@ -1,24 +1,14 @@
 import { Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useMockData } from "../state/MockDataContext";
-import { useMockUser } from "../state/MockUserContext";
+import { useStudentAttendanceSummary } from "../lib/useStudentAttendanceSummary";
 
 export function StreakWidget() {
-  const { schedule, studentAttendances } = useMockData();
-  const { user } = useMockUser();
+  const { schedule } = useMockData();
   const navigate = useNavigate();
+  const { attendedCount, totalRequired, remaining } = useStudentAttendanceSummary(schedule);
 
-  const requiredEvents = schedule.filter((s) => s.isAttendanceRequired);
-  const totalRequired = requiredEvents.length || 9;
-
-  const attendedCount = user.role === "student"
-    ? studentAttendances.filter(
-        (a) => a.userId === user.id && (a.status === "present" || a.status === "excused")
-      ).length
-    : 0;
-
-  const remaining = Math.max(totalRequired - attendedCount, 0);
-  const progressPct = Math.round((attendedCount / totalRequired) * 100);
+  const progressPct = totalRequired > 0 ? Math.round((attendedCount / totalRequired) * 100) : 0;
 
   return (
     <div className="streak-widget glass-card">

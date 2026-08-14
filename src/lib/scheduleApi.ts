@@ -50,3 +50,7 @@ export async function updateScheduleItem(id: string, input: Partial<ScheduleItem
   const payload = (await rpc("schedule.update", { id, ...input })) as ScheduleItemResponse;
   return payload.item;
 }
+
+export async function deleteScheduleItemApi(id: string) {
+  await rpc("schedule.delete", { id });
+}

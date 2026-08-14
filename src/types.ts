@@ -104,6 +104,7 @@ export interface WellbeingReport {
   category: string;
   notes: string;
   status: "submitted" | "responded" | "resolved" | "escalated";
+  medicalConditions?: string[];
   submittedAt: string;
   assignedTo?: string;
   resolvedAt?: string;

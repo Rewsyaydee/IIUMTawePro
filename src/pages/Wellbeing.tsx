@@ -16,6 +16,14 @@ import type { WellbeingReport } from "../types";
 
 const categories = ["Dizzy", "Injury", "Lost group", "Medication", "Anxiety", "Other"];
 
+const medicalConditionPresets = [
+  "Asthma",
+  "Food Allergies",
+  "Physical Disabilities",
+  "Chronic Illnesses",
+  "Mental Health Considerations"
+];
+
 const PHONE_STORAGE_KEY = "tawepro-wellbeing-phone";
 
 const MANAGER_STATUS_ACTIONS: Array<{ db: WellbeingReport["status"]; label: string }> = [
@@ -35,7 +43,8 @@ function Wellbeing() {
     studentName: user.name || "",
     phone: localStorage.getItem(PHONE_STORAGE_KEY) || "",
     category: categories[0],
-    notes: ""
+    notes: "",
+    medicalConditions: [] as string[]
   }));
   const [latestReference, setLatestReference] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -86,7 +95,7 @@ function Wellbeing() {
         setLatestReference(report.reference);
       }
 
-      setForm((current) => ({ ...current, studentName: user.name || "", notes: "" }));
+      setForm((current) => ({ ...current, studentName: user.name || "", notes: "", medicalConditions: [] }));
       localStorage.setItem(PHONE_STORAGE_KEY, form.phone);
       hapticSuccess();
     } catch (error) {
@@ -178,6 +187,32 @@ function Wellbeing() {
           </select>
         </label>
         <label>
+          <span>Medical conditions (optional, select all that apply)</span>
+          <div className="medical-condition-chips">
+            {medicalConditionPresets.map((condition) => {
+              const selected = form.medicalConditions.includes(condition);
+              return (
+                <button
+                  key={condition}
+                  type="button"
+                  className={`medical-condition-chip ${selected ? "selected" : ""}`}
+                  onClick={() =>
+                    setForm((current) => ({
+                      ...current,
+                      medicalConditions: selected
+                        ? current.medicalConditions.filter((c) => c !== condition)
+                        : [...current.medicalConditions, condition]
+                    }))
+                  }
+                >
+                  <span className="medical-condition-check">{selected ? "☑" : "☐"}</span>
+                  {condition}
+                </button>
+              );
+            })}
+          </div>
+        </label>
+        <label>
           <span>Notes</span>
           <textarea
             value={form.notes}
@@ -226,6 +261,13 @@ function Wellbeing() {
                       </div>
                       <h4>{report.studentName}</h4>
                       <p>{report.category}</p>
+                      {report.medicalConditions && report.medicalConditions.length > 0 && (
+                        <div className="medical-condition-tags">
+                          {report.medicalConditions.map((condition) => (
+                            <span key={condition}>{condition}</span>
+                          ))}
+                        </div>
+                      )}
                       <p className="muted">{report.notes}</p>
                     </div>
                     <div className="segmented-actions">
@@ -268,6 +310,13 @@ function Wellbeing() {
                       </div>
                       <h4>{report.studentName}</h4>
                       <p>{report.category}</p>
+                      {report.medicalConditions && report.medicalConditions.length > 0 && (
+                        <div className="medical-condition-tags">
+                          {report.medicalConditions.map((condition) => (
+                            <span key={condition}>{condition}</span>
+                          ))}
+                        </div>
+                      )}
                       <p className="muted">{report.notes}</p>
                     </div>
                   </motion.article>

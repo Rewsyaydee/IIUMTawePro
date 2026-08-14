@@ -34,13 +34,27 @@ interface SelectOption {
   name: string;
 }
 
+// Pseudo-venues that should never appear in the Origin/Destination dropdowns.
+// They stay in the venues registry so getVenue() fallbacks for schedule lookups
+// still resolve. "icc" is deduplicated in favour of "icc-main-hall".
+const DROPDOWN_EXCLUDED_VENUE_CODES = new Set([
+  "mahallah-zone",
+  "bus-stop",
+  "kulliyyah-zone",
+  "tbc",
+  "online",
+  "icc"
+]);
+
 function buildOptions(): SelectOption[] {
-  const venueOptions: SelectOption[] = venues.map((v) => ({
-    code: v.code,
-    label: v.shortName,
-    group: "Venues",
-    name: v.name
-  }));
+  const venueOptions: SelectOption[] = venues
+    .filter((v) => !DROPDOWN_EXCLUDED_VENUE_CODES.has(v.code))
+    .map((v) => ({
+      code: v.code,
+      label: v.shortName,
+      group: "Venues",
+      name: v.name
+    }));
 
   const kulliyyahOptions: SelectOption[] = kulliyyahs.map((k) => ({
     code: k.code,

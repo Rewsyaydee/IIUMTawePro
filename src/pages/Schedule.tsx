@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { MapPin, Clock3 } from "lucide-react";
+import { Check, MapPin, Clock3, PenLine, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { formatScheduleClock, getScheduleClock, getScheduleStatus, scheduleDateTime, buildBlockId } from "../lib/scheduleTime";
-import { hapticImpact, hapticSuccess } from "../lib/telegram";
+import { hapticError, hapticImpact, hapticSuccess } from "../lib/telegram";
 import { ColorSweepText } from "../components/ColorSweepText";
 import { shouldUseApiAuth } from "../lib/apiAuth";
 import { useApiSchedule } from "../lib/apiHooks";
+import { deleteScheduleItemApi, updateScheduleItem } from "../lib/scheduleApi";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 import type { ScheduleItem } from "../types";
@@ -37,8 +38,15 @@ function Schedule() {
   const [selectedView, setSelectedView] = useState<SelectedView>("main");
   const nowRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [editingItem, setEditingItem] = useState<ScheduleItem | null>(null);
+  const [editForm, setEditForm] = useState({ title: "", venue: "", scheduledStartTime: "", scheduledEndTime: "" });
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState("");
 
-  const { items: remoteSchedule, loading: loadingSchedule } = useApiSchedule(apiMode);
+  const isMainboard = user.role === "mainboard";
+
+  const { items: remoteSchedule, loading: loadingSchedule, reload: reloadSchedule } = useApiSchedule(apiMode);
   const activeSchedule = apiMode ? remoteSchedule : schedule;
 
   const scheduleClock = useMemo(() => getScheduleClock(activeSchedule), [clockTick, activeSchedule]);
@@ -102,6 +110,48 @@ function Schedule() {
     setSelectedView(view);
   };
 
+  const startEditItem = (item: ScheduleItem) => {
+    setEditForm({ title: item.title, venue: item.venue, scheduledStartTime: item.scheduledStartTime, scheduledEndTime: item.scheduledEndTime });
+    setEditingItem(item);
+    setEditError("");
+    hapticImpact("light");
+  };
+
+  const saveEditItem = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (saving || !editingItem) return;
+    setSaving(true);
+    setEditError("");
+    try {
+      if (apiMode) {
+        await updateScheduleItem(editingItem.id, editForm);
+      }
+      setEditingItem(null);
+      reloadSchedule();
+      hapticSuccess();
+    } catch (error) {
+      setEditError(error instanceof Error ? error.message : "Failed to update session.");
+      hapticError();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteItem = async (id: string) => {
+    setEditError("");
+    try {
+      if (apiMode) {
+        await deleteScheduleItemApi(id);
+      }
+      setConfirmDeleteId(null);
+      reloadSchedule();
+      hapticSuccess();
+    } catch (error) {
+      setEditError(error instanceof Error ? error.message : "Failed to delete session.");
+      hapticError();
+    }
+  };
+
   const renderEventCard = (item: ScheduleItem, index: number) => {
     const status = getScheduleStatus(item, scheduleClock.now);
     const statusClass = status === "live" ? "now" : status === "done" ? "past" : "upcoming";
@@ -136,9 +186,61 @@ function Schedule() {
           {status === "done" && (
             <span className="timeline-past-label">PAST</span>
           )}
+          {isMainboard && apiMode && (
+            <div className="inline-row-actions" onClick={(e) => e.stopPropagation()}>
+              {confirmDeleteId === item.id ? (
+                <div className="inline-confirm">
+                  <span>Delete?</span>
+                  <button type="button" className="danger-outline-button" onClick={() => handleDeleteItem(item.id)}>Yes</button>
+                  <button type="button" className="outline-button" onClick={() => setConfirmDeleteId(null)}>No</button>
+                </div>
+              ) : (
+                <button className="icon-button" type="button" aria-label="Delete session" onClick={() => setConfirmDeleteId(item.id)}>
+                  <Trash2 size={14} />
+                </button>
+              )}
+              <button className="icon-button" type="button" aria-label="Edit session" onClick={() => startEditItem(item)}>
+                <PenLine size={14} />
+              </button>
+            </div>
+          )}
         </div>
         {item.track && (
           <span className="timeline-track-label">{item.track}</span>
+        )}
+        {isMainboard && apiMode && editingItem?.id === item.id && (
+          <motion.form className="form-card compact inline-editor" onSubmit={saveEditItem} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} onClick={(e) => e.stopPropagation()}>
+            <div className="form-grid">
+              <label>
+                <span>Title</span>
+                <input required value={editForm.title} onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))} />
+              </label>
+              <label>
+                <span>Venue</span>
+                <input required value={editForm.venue} onChange={(e) => setEditForm((f) => ({ ...f, venue: e.target.value }))} />
+              </label>
+            </div>
+            <div className="form-grid">
+              <label>
+                <span>Start</span>
+                <input required type="time" value={editForm.scheduledStartTime} onChange={(e) => setEditForm((f) => ({ ...f, scheduledStartTime: e.target.value }))} />
+              </label>
+              <label>
+                <span>End</span>
+                <input required type="time" value={editForm.scheduledEndTime} onChange={(e) => setEditForm((f) => ({ ...f, scheduledEndTime: e.target.value }))} />
+              </label>
+            </div>
+            {editError && (
+              <p className="muted" style={{ color: "#c93d37" }}>{editError}</p>
+            )}
+            <div className="form-actions">
+              <button className="primary-button" type="submit" disabled={saving}>
+                <Check size={15} aria-hidden="true" />
+                <span>{saving ? "..." : "Save"}</span>
+              </button>
+              <button className="outline-button" type="button" onClick={() => setEditingItem(null)}>Cancel</button>
+            </div>
+          </motion.form>
         )}
       </motion.div>
     );

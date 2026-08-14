@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { UsersRound } from "lucide-react";
 import { EmptyState } from "../components/EmptyState";
+import { UserAvatar } from "../components/UserAvatar";
 import { authSessionChangedEvent, shouldUseApiAuth } from "../lib/apiAuth";
 import { listBureauMembers, type BureauMember } from "../lib/usersApi";
 import { useMockUser } from "../state/MockUserContext";
@@ -17,7 +18,12 @@ function MemberRow({ member, index }: { member: BureauMember; index: number }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.03 }}
     >
-      <div className="member-avatar">{member.name.charAt(0).toUpperCase()}</div>
+      <UserAvatar
+        photoUrl={member.photo_url || null}
+        label={member.name}
+        imgClassName="member-avatar"
+        textClassName="member-avatar"
+      />
       <div className="admin-row-main">
         <strong>{member.name}</strong>
         <span>

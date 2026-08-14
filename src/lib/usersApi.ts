@@ -41,6 +41,7 @@ export type BureauMember = {
   matric_number?: string | null;
   telegram_username?: string | null;
   role: string;
+  photo_url?: string | null;
 };
 
 export async function listBureauMembers(bureau?: string) {

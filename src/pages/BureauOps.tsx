@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { BellRing, ClipboardCheck, ExternalLink, Grid3X3, ShieldCheck } from "lucide-react";
+import { BellRing, ClipboardCheck, ExternalLink, Grid3X3, ShieldCheck, TimerReset } from "lucide-react";
 import { EmptyState } from "../components/EmptyState";
 import { StatusBadge } from "../components/StatusBadge";
 import { BUREAUS, bureauShortLabels } from "../constants";
 import { authSessionChangedEvent, shouldUseApiAuth } from "../lib/apiAuth";
 import { listBureauOperations, updateBureauOperationStatus as updateOpsStatusApi } from "../lib/bureauOpsApi";
+import { fetchOpsLive, getOpsSettings, setOpsSettings, type OpsLiveData } from "../lib/guidesApi";
 import { sendBureauAlert } from "../lib/notifyApi";
 import { hapticError, hapticImpact, hapticSuccess } from "../lib/telegram";
 import { useMockData } from "../state/MockDataContext";
@@ -51,7 +52,12 @@ function BureauOps() {
   const [selectedBureau, setSelectedBureau] = useState<Bureau | "all">(user.role === "mainboard" ? "all" : user.bureau || "Catering");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [alertingId, setAlertingId] = useState<string | null>(null);
+  const [liveData, setLiveData] = useState<OpsLiveData | null>(null);
+  const [delayMinutes, setDelayMinutes] = useState(0);
+  const [applyingDelay, setApplyingDelay] = useState(false);
+  const [liveError, setLiveError] = useState("");
 
+  const isMainboard = user.role === "mainboard";
   const activeOps = apiMode ? remoteOperations : bureauOperations;
 
   useEffect(() => {
@@ -82,6 +88,48 @@ function BureauOps() {
 
     return () => { cancelled = true; };
   }, [apiMode, authRefreshTick, user.role]);
+
+  // Live ops dashboard (mainboard only): session delay + check-in counts polled every 10s
+  useEffect(() => {
+    if (!apiMode || !isMainboard) return;
+
+    let cancelled = false;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+    getOpsSettings()
+      .then((settings) => {
+        if (!cancelled) setDelayMinutes(settings.sessionDelayMinutes);
+      })
+      .catch(() => {});
+
+    const loadLive = () => {
+      fetchOpsLive()
+        .then((data) => { if (!cancelled) { setLiveData(data); setLiveError(""); } })
+        .catch(() => { if (!cancelled) setLiveError("Live feed unavailable."); });
+    };
+    loadLive();
+    pollTimer = setInterval(loadLive, 10000);
+
+    return () => { cancelled = true; if (pollTimer) clearInterval(pollTimer); };
+  }, [apiMode, authRefreshTick, isMainboard]);
+
+  const applyDelay = async (minutes: number) => {
+    if (applyingDelay || minutes === delayMinutes) return;
+    setApplyingDelay(true);
+    setLiveError("");
+    try {
+      if (apiMode) {
+        await setOpsSettings(minutes, true);
+      }
+      setDelayMinutes(minutes);
+      hapticSuccess();
+    } catch (error) {
+      setLiveError(error instanceof Error ? error.message : "Failed to update session delay.");
+      hapticError();
+    } finally {
+      setApplyingDelay(false);
+    }
+  };
 
   const hasOpsAccess = user.role === "mainboard" || Boolean(user.bureau);
   const visibleOperations = useMemo(() => {
@@ -183,6 +231,69 @@ function BureauOps() {
           <strong>{summary.ready}</strong>
         </article>
       </div>
+
+      {isMainboard && (
+        <section className="ops-panel">
+          <div className="section-heading">
+            <h3>Live check-ins</h3>
+            {liveData ? <span>{liveData.total} today · {liveData.session.virtualDate}</span> : <span>—</span>}
+          </div>
+
+          {liveError && <p className="muted" style={{ color: "#c93d37" }}>{liveError}</p>}
+
+          {liveData ? (
+            <>
+              <div className="metric-grid">
+                <article>
+                  <span>Total check-ins</span>
+                  <strong>{liveData.total}</strong>
+                </article>
+                {liveData.sessions.map((session) => (
+                  <article key={session.block}>
+                    <span>{session.block === "before_break" ? "Morning" : "Afternoon"}</span>
+                    <strong style={{ color: session.open ? "var(--gold-accent)" : undefined }}>{session.open ? "OPEN" : "Closed"}</strong>
+                  </article>
+                ))}
+              </div>
+
+              {liveData.byVenue.length === 0 ? (
+                <p className="muted">No check-ins recorded yet for today's sessions.</p>
+              ) : (
+                <div className="live-venue-grid">
+                  {liveData.byVenue.map(({ venue, count }) => (
+                    <div key={venue} className="live-venue-chip">
+                      <strong>{count}</strong>
+                      <span>{venue}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="skeleton-page" />
+          )}
+
+          <div className="delay-control">
+            <span className="delay-control-label">
+              <TimerReset size={15} aria-hidden="true" />
+              Session delay (broadcast to committee)
+            </span>
+            <div className="segmented-actions">
+              {[0, 15, 30].map((minutes) => (
+                <button
+                  key={minutes}
+                  className={delayMinutes === minutes ? "selected" : ""}
+                  type="button"
+                  disabled={applyingDelay}
+                  onClick={() => applyDelay(minutes)}
+                >
+                  {minutes === 0 ? "On time" : `+${minutes} mins`}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {user.role === "mainboard" && (
         <div className="bureau-filter" aria-label="Bureau filter">

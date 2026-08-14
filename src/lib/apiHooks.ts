@@ -12,7 +12,7 @@ export function useScheduleCache() {
   return useDeviceCache("schedule_list", listSchedule, 30 * 60 * 1000);
 }
 
-export function useApiSchedule(enabled: boolean): { items: ScheduleItem[]; loading: boolean } {
+export function useApiSchedule(enabled: boolean): { items: ScheduleItem[]; loading: boolean; reload: () => void } {
   const [items, setItems] = useState<ScheduleItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [authTick, setAuthTick] = useState(0);
@@ -40,7 +40,9 @@ export function useApiSchedule(enabled: boolean): { items: ScheduleItem[]; loadi
     return () => { cancelled = true; };
   }, [enabled, authTick]);
 
-  return { items, loading };
+  const reload = () => setAuthTick((v) => v + 1);
+
+  return { items, loading, reload };
 }
 
 export function useTasksCache() {

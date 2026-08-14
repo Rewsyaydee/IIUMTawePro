@@ -1,7 +1,7 @@
 import { sendJson, verifyAppSessionFromRequest } from "./auth-utils.js";
 import { createAuditLog, getUserById, supabaseRequest } from "./supabase.js";
 
-const REPORT_SELECT = "id,reference,submitted_by,student_name,phone,category,notes,status,assigned_to,submitted_at,resolved_at";
+const REPORT_SELECT = "id,reference,submitted_by,student_name,phone,category,notes,medical_conditions,status,assigned_to,submitted_at,resolved_at";
 
 export function generateReference() {
   const seq = Math.floor(Date.now() / 1000).toString(36).toUpperCase().slice(-4);
@@ -18,6 +18,7 @@ export function mapWellbeingReport(row) {
     category: row.category,
     notes: row.notes,
     status: row.status,
+    medicalConditions: Array.isArray(row.medical_conditions) ? row.medical_conditions : [],
     assignedTo: row.assigned_to || undefined,
     submittedAt: row.submitted_at,
     resolvedAt: row.resolved_at || undefined
@@ -61,7 +62,7 @@ export async function listReportsForUser(user) {
   return supabaseRequest(path);
 }
 
-export async function insertReport({ user, studentName, phone, category, notes }) {
+export async function insertReport({ user, studentName, phone, category, notes, medicalConditions }) {
   const reference = generateReference();
   const rows = await supabaseRequest(`/wellbeing_reports?select=${REPORT_SELECT}`, {
     method: "POST",
@@ -74,6 +75,7 @@ export async function insertReport({ user, studentName, phone, category, notes }
         phone,
         category,
         notes,
+        medical_conditions: Array.isArray(medicalConditions) ? medicalConditions : [],
         status: "submitted"
       }
     ]

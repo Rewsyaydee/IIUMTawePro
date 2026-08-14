@@ -46,6 +46,15 @@ export async function deactivateAnnouncementApi(id: string) {
   return payload.item;
 }
 
+export async function updateAnnouncement(id: string, input: { title?: string; body?: string; type?: string }) {
+  const payload = (await rpc("announcements.update", { id, ...input })) as AnnouncementResponse;
+  return payload.item;
+}
+
+export async function deleteAnnouncementApi(id: string) {
+  await rpc("announcements.delete", { id });
+}
+
 export async function listAuditLog() {
   const payload = (await rpc("audit.list")) as { items: unknown[]; error?: string };
   return payload.items;

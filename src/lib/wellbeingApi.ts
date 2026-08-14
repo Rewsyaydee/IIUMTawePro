@@ -46,6 +46,7 @@ export async function submitWellbeingReport(input: {
   phone: string;
   category: string;
   notes: string;
+  medicalConditions?: string[];
 }) {
   const payload = (await rpc("wellbeing.submit", input)) as ReportResponse;
   return payload.report;

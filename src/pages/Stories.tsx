@@ -1,13 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   Award,
   CalendarDays,
   MapPin,
-  Share2,
   Trophy,
-  UserPlus,
-  X
+  UserPlus
 } from "lucide-react";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
@@ -24,21 +22,10 @@ function formatBlockTime(start: string, end: string): string {
   return `${s} – ${e}`;
 }
 
-function buildOgUrl(template: string, data: Record<string, unknown>): string {
-  const base = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-  const params = new URLSearchParams({ template });
-  Object.entries(data).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === "") return;
-    params.set(key, typeof value === "object" ? JSON.stringify(value) : String(value));
-  });
-  return `${base}/api/og?${params.toString()}`;
-}
-
 function Stories() {
   const { user } = useMockUser();
   const { schedule, studentAttendances } = useMockData();
   const now = getVirtualScheduleDate();
-  const [serverPreview, setServerPreview] = useState<{ template: string; url: string } | null>(null);
 
   const blocks = useMemo(() => getSessionBlocks(schedule), [schedule]);
   const totalRequired = useMemo(() => getRequiredBlockCount(schedule), [schedule]);
@@ -165,17 +152,7 @@ function Stories() {
       color: "#E5D3B3",
       template: "wrapped" as const,
       getData: () => wrappedData,
-      buttonLabel: "Share Wrapped",
-      serverParams: () => ({
-        username: wrappedData.username,
-        attended: wrappedData.attendedCount,
-        total: wrappedData.totalRequired,
-        pct: wrappedData.attendedPct,
-        venues: wrappedData.venuesVisited,
-        firstPlace: wrappedData.firstCheckInPlace,
-        firstTime: wrappedData.firstCheckInTime,
-        weekProgress: wrappedData.weekProgress
-      })
+      buttonLabel: "Share Wrapped"
     },
     {
       id: "achievement",
@@ -185,13 +162,7 @@ function Stories() {
       color: "#22a879",
       template: "achievement" as const,
       getData: () => achievementData,
-      buttonLabel: "Share Achievement",
-      serverParams: () => ({
-        username: achievementData.username,
-        attended: achievementData.attendedCount,
-        total: achievementData.totalRequired,
-        earned: achievementData.earnedKit
-      })
+      buttonLabel: "Share Achievement"
     },
     {
       id: "schedule",
@@ -201,12 +172,7 @@ function Stories() {
       color: "#5b9eb8",
       template: "schedule" as const,
       getData: () => scheduleData,
-      buttonLabel: "Share Schedule",
-      serverParams: () => ({
-        dayLabel,
-        dateDisplay,
-        blocks: scheduleData.blocks
-      })
+      buttonLabel: "Share Schedule"
     },
     {
       id: "checkin",
@@ -222,15 +188,7 @@ function Stories() {
         ...latestCheckIn
       } : null as unknown as CheckInCardData,
       buttonLabel: "Share Check-In",
-      disabled: !latestCheckIn,
-      serverParams: () => latestCheckIn ? {
-        username: user.name.split(" ")[0],
-        eventTitle: latestCheckIn.eventTitle,
-        venue: latestCheckIn.venue,
-        time: latestCheckIn.time,
-        lat: latestCheckIn.lat,
-        lng: latestCheckIn.lng
-      } : null
+      disabled: !latestCheckIn
     },
     {
       id: "invite",
@@ -240,18 +198,9 @@ function Stories() {
       color: "#9b8ac9",
       template: "invite" as const,
       getData: () => inviteData,
-      buttonLabel: "Share Invite",
-      serverParams: () => ({
-        username: inviteData.username,
-        roleLabel: inviteData.roleLabel
-      })
+      buttonLabel: "Share Invite"
     }
   ] as const;
-
-  const handleServerPreview = (template: string, params: Record<string, unknown> | null) => {
-    if (!params) return;
-    setServerPreview({ template, url: buildOgUrl(template, params) });
-  };
 
   return (
     <section className="page-stack">
@@ -305,43 +254,9 @@ function Stories() {
               disabled={(card as any).disabled}
               className="share-card-button"
             />
-            <button
-              className="outline-button full-width"
-              type="button"
-              disabled={(card as any).disabled}
-              onClick={() => handleServerPreview(card.template, card.serverParams())}
-            >
-              <Share2 size={15} aria-hidden="true" />
-              <span>Server preview</span>
-            </button>
           </motion.article>
         ))}
       </div>
-
-      {serverPreview && (
-        <div className="share-preview-overlay" role="dialog" aria-label="Server-side card preview">
-          <button
-            className="share-preview-close"
-            type="button"
-            onClick={() => setServerPreview(null)}
-            aria-label="Close preview"
-          >
-            <X size={22} />
-          </button>
-          <div className="share-preview-body">
-            <div className="share-preview-image-wrap">
-              <img
-                src={serverPreview.url}
-                alt={`${serverPreview.template} server-side preview`}
-                className="share-preview-image"
-              />
-            </div>
-            <p className="share-preview-hint">
-              Rendered server-side with @vercel/og. Long-press to save.
-            </p>
-          </div>
-        </div>
-      )}
     </section>
   );
 }

@@ -1,16 +1,12 @@
-import { useEffect, useState } from "react";
 import { MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useMockData } from "../state/MockDataContext";
-import { useMockUser } from "../state/MockUserContext";
-import { shouldUseApiAuth, authSessionChangedEvent } from "../lib/apiAuth";
-import { listStudentAttendance } from "../lib/studentAttendanceApi";
+import { useStudentAttendanceSummary } from "../lib/useStudentAttendanceSummary";
 import { CheckInForm } from "./CheckInForm";
 import {
-  getSessionBlocks,
-  getRequiredBlockCount
+  getSessionBlocks
 } from "../data/eventSchedule";
-import type { StudentAttendance, StudentAttendanceStatus } from "../types";
+import type { StudentAttendanceStatus } from "../types";
 
 type CheckInState = {
   blockLabel: string;
@@ -19,43 +15,20 @@ type CheckInState = {
 } | null;
 
 export function StudentAttendanceView({ checkInState }: { checkInState?: CheckInState }) {
-  const { user } = useMockUser();
-  const { schedule, studentAttendances } = useMockData();
-  const apiMode = shouldUseApiAuth();
-  const [attendances, setAttendances] = useState<StudentAttendance[]>([]);
-  const [authTick, setAuthTick] = useState(0);
-
-  const blocks = getSessionBlocks(schedule);
-  const totalRequired = getRequiredBlockCount(schedule);
+  const { schedule } = useMockData();
+  const { attendances, attendedCount, totalRequired } = useStudentAttendanceSummary(schedule);
   const milestones = totalRequired <= 3 ? [1, 2, 3] : totalRequired <= 5 ? [2, 4, 5] : [3, 5, totalRequired];
 
-  useEffect(() => {
-    const h = () => setAuthTick((v) => v + 1);
-    window.addEventListener(authSessionChangedEvent, h);
-    return () => window.removeEventListener(authSessionChangedEvent, h);
-  }, []);
-
-  useEffect(() => {
-    if (!apiMode) {
-      setAttendances(studentAttendances.filter((a) => a.userId === user.id));
-      return;
-    }
-    let c = false;
-    listStudentAttendance()
-      .then((a) => { if (!c) setAttendances(a); })
-      .catch(() => {});
-    return () => { c = true; };
-  }, [apiMode, authTick, studentAttendances, user.id]);
+  const blocks = getSessionBlocks(schedule);
 
   const getBlockStatus = (blockId: string): StudentAttendanceStatus | null => {
     return attendances.find((a) => a.scheduleItemId === blockId)?.status || null;
   };
 
-  const attendedCount = attendances.filter((a) => a.status === "present" || a.status === "excused").length;
   const remaining = Math.max(totalRequired - attendedCount, 0);
   const nextMilestone = milestones.find((m) => attendedCount < m) || totalRequired;
 
-  const recentBlocks = blocks.slice(0, 7);
+  const recentBlocks = blocks.slice(0, 8);
 
   return (
     <section className="page-stack">
@@ -98,7 +71,7 @@ export function StudentAttendanceView({ checkInState }: { checkInState?: CheckIn
       </div>
 
       <div className="milestone-card glass-card">
-        <p className="milestone-title">Complete all 7 days to claim your Ta'aruf Kit.</p>
+        <p className="milestone-title">Complete all 8 sessions to claim your Ta'aruf Kit.</p>
         <div className="milestone-grid">
           {milestones.map((target) => {
             const reached = attendedCount >= target;
