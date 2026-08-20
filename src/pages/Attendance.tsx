@@ -13,6 +13,7 @@ import {
 } from "../lib/attendanceApi";
 import { authSessionChangedEvent, shouldUseApiAuth } from "../lib/apiAuth";
 import { hapticError, hapticImpact, hapticSuccess } from "../lib/telegram";
+import { playSfx, startLoop, stopLoop } from "../lib/sfx";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 import type { AttendanceProof, ClockType, CommitteeDailyStatus } from "../types";
@@ -129,7 +130,10 @@ function Attendance() {
       if (clockType === "clock-in") setSelfieDataUrl(result);
       else setClockOutSelfie(result);
     };
-    reader.onerror = () => hapticError();
+    reader.onerror = () => {
+      hapticError();
+      playSfx("error");
+    };
     reader.readAsDataURL(file);
   };
 
@@ -140,6 +144,7 @@ function Attendance() {
 
     if (!selfie || locked || !user.bureau || isSubmitting) {
       hapticError();
+      playSfx("blocked");
       return;
     }
 
@@ -151,11 +156,13 @@ function Attendance() {
       const label = clockType === "clock-in" ? "8:00 AM – 8:30 AM" : "5:00 PM – 5:30 PM";
       setErrorMessage(`${clockType === "clock-in" ? "Clock-in" : "Clock-out"} window is currently closed. Valid hours: ${label}.`);
       hapticError();
+      playSfx("warning");
       return;
     }
 
     setIsSubmitting(true);
     setActiveClockType(clockType);
+    const loopHandle = startLoop("processing");
     try {
       setErrorMessage("");
       if (apiMode) {
@@ -164,14 +171,19 @@ function Attendance() {
       } else {
         submitAttendanceProof({ selfieDataUrl: selfie, clockType });
       }
+      stopLoop(loopHandle);
       if (clockType === "clock-in") setSelfieDataUrl("");
       else setClockOutSelfie("");
       setLatestStatus(`${clockType === "clock-in" ? "Clock-in" : "Clock-out"} proof sent to Special Task review.`);
       hapticSuccess();
+      playSfx("send");
     } catch (error) {
+      stopLoop(loopHandle);
       setErrorMessage(error instanceof Error ? error.message : "Unable to submit attendance proof.");
       hapticError();
+      playSfx("error");
     } finally {
+      stopLoop(loopHandle);
       setIsSubmitting(false);
     }
   };
@@ -187,9 +199,11 @@ function Attendance() {
       }
       setRejectionForm(null);
       hapticImpact(status === "sent_to_mainboard" ? "medium" : "light");
+      playSfx(status === "sent_to_mainboard" ? "success" : "toggle-off");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to review attendance proof.");
       hapticError();
+      playSfx("error");
     }
   };
 

@@ -4,6 +4,7 @@ import { ArrowLeft, Crown, TrendingUp, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { fetchLeaderboardData, buildIndividualRanking, buildMahallahRanking, getMahallahShort, getMahallahName } from "../lib/leaderboard";
 import type { LeaderboardRow } from "../lib/leaderboard";
+import { playSfx } from "../lib/sfx";
 import { allMahallahs } from "../features/navigation/data/mahallahs";
 import { UserAvatar } from "../components/UserAvatar";
 import type { LeaderboardEntry, MahallahRanking } from "../types";
@@ -51,18 +52,18 @@ function Leaderboard() {
   return (
     <section className="page-stack">
       <div className="leaderboard-header">
-        <button className="leaderboard-back" type="button" onClick={() => navigate(-1)}>
+        <button className="leaderboard-back" type="button" onClick={() => { playSfx("back"); navigate(-1); }}>
           <ArrowLeft size={20} aria-hidden="true" />
         </button>
         <h2 className="leaderboard-title">LEADERBOARD</h2>
-        <button className="leaderboard-back" type="button" onClick={load} title="Refresh">
+        <button className="leaderboard-back" type="button" onClick={() => { playSfx("retry"); load(); }} title="Refresh">
           <RefreshCw size={16} aria-hidden="true" />
         </button>
       </div>
 
       <div className="leaderboard-tabs">
         {tabs.map((t) => (
-          <button key={t.key} className={`leaderboard-tab ${tab === t.key ? "active" : ""}`} type="button" onClick={() => setTab(t.key)}>
+          <button key={t.key} className={`leaderboard-tab ${tab === t.key ? "active" : ""}`} type="button" onClick={() => { if (tab !== t.key) playSfx("select"); setTab(t.key); }}>
             {t.label}
           </button>
         ))}

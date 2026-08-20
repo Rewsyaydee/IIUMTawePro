@@ -6,6 +6,7 @@ import { getLaunchReadiness, type LaunchStatus } from "../lib/launchReadiness";
 import { authSessionChangedEvent, shouldUseApiAuth } from "../lib/apiAuth";
 import { listLaunchChecklist, updateLaunchChecklist, type LaunchChecklistItem } from "../lib/guidesApi";
 import { hapticError, hapticImpact } from "../lib/telegram";
+import { playSfx } from "../lib/sfx";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 
@@ -62,9 +63,11 @@ function LaunchReadiness() {
         setItems((current) => current.map((item) => (item.id === id ? { ...item, status } : item)));
       }
       hapticImpact(status === "issue" ? "heavy" : "light");
+      playSfx(status === "issue" ? "warning" : status === "ready" ? "check" : "uncheck");
     } catch (error) {
       setChecklistError(error instanceof Error ? error.message : "Failed to update checklist item.");
       hapticError();
+      playSfx("error");
     } finally {
       setUpdatingId(null);
     }

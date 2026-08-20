@@ -4,6 +4,7 @@ import { Check, ChevronDown, ExternalLink, Megaphone, PenLine, Trash2, X, AlertT
 import { EmptyState } from "../components/EmptyState";
 import { authSessionChangedEvent, shouldUseApiAuth } from "../lib/apiAuth";
 import { deactivateAnnouncementApi, deleteAnnouncementApi, listAnnouncements, updateAnnouncement } from "../lib/announcementsApi";
+import { playSfx } from "../lib/sfx";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 import type { Announcement } from "../types";
@@ -73,13 +74,16 @@ function Announcements() {
   const isMainboard = user.role === "mainboard";
 
   const toggleExpand = (id: string) => {
-    setExpandedId(expandedId === id ? null : id);
+    const willExpand = expandedId !== id;
+    playSfx(willExpand ? "expand" : "collapse");
+    setExpandedId(willExpand ? id : null);
   };
 
   const startEdit = (announcement: Announcement) => {
     setEditForm({ title: announcement.title, body: announcement.body, type: announcement.type });
     setEditingId(announcement.id);
     setErrorMessage("");
+    playSfx("open");
   };
 
   const saveEdit = async (event: FormEvent) => {
@@ -91,8 +95,10 @@ function Announcements() {
       const updated = await updateAnnouncement(editingId, editForm);
       setRemoteAnnouncements((items) => items.map((item) => (item.id === editingId ? updated : item)));
       setEditingId(null);
+      playSfx("success");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to save announcement.");
+      playSfx("error");
     } finally {
       setSaving(false);
     }
@@ -108,8 +114,10 @@ function Announcements() {
         deactivateAnnouncement(id);
       }
       setConfirmDeleteId(null);
+      playSfx("delete");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to delete announcement.");
+      playSfx("error");
     }
   };
 
@@ -122,8 +130,10 @@ function Announcements() {
       } else {
         deactivateAnnouncement(id);
       }
+      playSfx("toggle-off");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to deactivate announcement.");
+      playSfx("error");
     }
   };
 
@@ -165,7 +175,10 @@ function Announcements() {
                 dragConstraints={{ left: -200, right: 0 }}
                 dragElastic={0.7}
                 onDragEnd={(_, info) => {
-                  if (!apiMode && info.offset.x < -120) dismissAnnouncement(announcement.id, user.id);
+                  if (!apiMode && info.offset.x < -120) {
+                    dismissAnnouncement(announcement.id, user.id);
+                    playSfx("swipe");
+                  }
                 }}
                 whileDrag={{ scale: 0.98, transition: { type: "spring", stiffness: 300, damping: 20 } }}
                 className="swipeable-card"
@@ -210,6 +223,7 @@ function Announcements() {
                           onClick={(e) => {
                             e.stopPropagation();
                             dismissAnnouncement(announcement.id, user.id);
+                            playSfx("delete");
                           }}
                           aria-label="Dismiss announcement"
                         >
@@ -266,7 +280,7 @@ function Announcements() {
                           <Check size={15} aria-hidden="true" />
                           <span>{saving ? "..." : "Save"}</span>
                         </button>
-                        <button className="outline-button" type="button" onClick={() => setEditingId(null)}>Cancel</button>
+                        <button className="outline-button" type="button" onClick={() => { playSfx("cancel"); setEditingId(null); }}>Cancel</button>
                       </div>
                     </motion.form>
                   ) : (
@@ -310,7 +324,7 @@ function Announcements() {
                                 <div className="inline-confirm">
                                   <span>Delete permanently?</span>
                                   <button type="button" className="danger-outline-button" onClick={() => handleDelete(announcement.id)}>Yes</button>
-                                  <button type="button" className="outline-button" onClick={() => setConfirmDeleteId(null)}>No</button>
+                                  <button type="button" className="outline-button" onClick={() => { playSfx("cancel"); setConfirmDeleteId(null); }}>No</button>
                                 </div>
                               ) : (
                                 <button

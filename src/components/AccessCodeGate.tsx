@@ -4,6 +4,7 @@ import { KeyRound, ShieldCheck } from "lucide-react";
 import { BUREAUS, roleLabels } from "../constants";
 import { redeemAccessCode, shouldUseApiAuth } from "../lib/apiAuth";
 import { hapticError, hapticSuccess } from "../lib/telegram";
+import { playSfx, startLoop, stopLoop } from "../lib/sfx";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 import type { Bureau, Role } from "../types";
@@ -40,11 +41,14 @@ export function AccessCodeGate({ compact = false }: AccessCodeGateProps) {
     setSubmitting(true);
     setMessage("");
     let unlockStarted = false;
+    const loopHandle = startLoop("processing");
 
     const finishUnlock = (nextId: string) => {
       unlockStarted = true;
+      stopLoop(loopHandle);
       setUnlocking(true);
       hapticSuccess();
+      playSfx("unlock");
       unlockTimer.current = window.setTimeout(() => setUserId(nextId), 1280);
     };
 
@@ -64,8 +68,10 @@ export function AccessCodeGate({ compact = false }: AccessCodeGateProps) {
 
       const invite = redeemInviteCode(form.code, displayName);
       if (!invite) {
+        stopLoop(loopHandle);
         setMessage("Code not recognised or already used.");
         hapticError();
+        playSfx("error");
         return;
       }
 
@@ -77,9 +83,12 @@ export function AccessCodeGate({ compact = false }: AccessCodeGateProps) {
       });
       finishUnlock(next.id);
     } catch (error) {
+      stopLoop(loopHandle);
       setMessage(error instanceof Error ? error.message : "Unable to unlock committee mode.");
       hapticError();
+      playSfx("error");
     } finally {
+      stopLoop(loopHandle);
       if (!unlockStarted) setSubmitting(false);
     }
   };

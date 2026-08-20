@@ -24,10 +24,12 @@ import { roleLabels } from "../constants";
 import { hapticImpact } from "../lib/telegram";
 import { applyRoleTheme } from "../lib/themes";
 import { getTelegramWebApp } from "../lib/telegram";
+import { playSfx } from "../lib/sfx";
 import { useMockUser } from "../state/MockUserContext";
 import { CheckInReminder } from "./CheckInReminder";
 import type { Role } from "../types";
 import { RoleSwitcher } from "./RoleSwitcher";
+import { SoundSettings } from "./SoundSettings";
 
 type CenterMenuItem = {
   to: string;
@@ -130,7 +132,10 @@ export function AppShell() {
                   className="app-header-avatar"
                   src={avatarUrl}
                   alt="Profile"
-                  onClick={() => setAccountOpen((v) => !v)}
+                  onClick={() => {
+                    playSfx(accountOpen ? "close" : "open");
+                    setAccountOpen((v) => !v);
+                  }}
                 />
               ) : (
                 <button
@@ -138,7 +143,10 @@ export function AppShell() {
                   type="button"
                   aria-expanded={accountOpen}
                   aria-controls="account-menu"
-                  onClick={() => setAccountOpen((v) => !v)}
+                  onClick={() => {
+                    playSfx(accountOpen ? "close" : "open");
+                    setAccountOpen((v) => !v);
+                  }}
                 >
                   {initials}
                 </button>
@@ -163,7 +171,7 @@ export function AppShell() {
                       {roleSuffix ? ` ${roleSuffix}` : ""}
                     </strong>
                   </div>
-                  <button className="icon-button" type="button" aria-label="Close account menu" onClick={() => setAccountOpen(false)}>
+                  <button className="icon-button" type="button" aria-label="Close account menu" onClick={() => { playSfx("close"); setAccountOpen(false); }}>
                     <X size={15} aria-hidden="true" />
                   </button>
                 </div>
@@ -192,6 +200,7 @@ export function AppShell() {
                 {user.role !== "student" && (
                   <p className="account-note">Committee workspace is active. Use the center menu for your operational sections.</p>
                 )}
+                <SoundSettings />
               </section>
             )}
             </div>
@@ -231,6 +240,7 @@ export function AppShell() {
           aria-label="Open menu"
           onClick={() => {
             hapticImpact("medium");
+            playSfx("open");
             setCenterMenuOpen(true);
           }}
         >
@@ -262,7 +272,10 @@ export function AppShell() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              onClick={() => setCenterMenuOpen(false)}
+              onClick={() => {
+                playSfx("close");
+                setCenterMenuOpen(false);
+              }}
             />
             <motion.div
               className="center-menu-sheet"
@@ -282,6 +295,7 @@ export function AppShell() {
                       type="button"
                       onClick={() => {
                         hapticImpact("light");
+                        playSfx("close");
                         setCenterMenuOpen(false);
                         navigate(item.to);
                       }}
@@ -300,6 +314,7 @@ export function AppShell() {
                 type="button"
                 onClick={() => {
                   hapticImpact("medium");
+                  playSfx("close");
                   setCenterMenuOpen(false);
                   navigate("/stories");
                 }}

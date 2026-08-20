@@ -4,6 +4,7 @@ import { Check, MapPin, Clock3, PenLine, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { formatScheduleClock, getScheduleClock, getScheduleStatus, scheduleDateTime, buildBlockId } from "../lib/scheduleTime";
 import { hapticError, hapticImpact, hapticSuccess } from "../lib/telegram";
+import { playSfx } from "../lib/sfx";
 import { ColorSweepText } from "../components/ColorSweepText";
 import { shouldUseApiAuth } from "../lib/apiAuth";
 import { useApiSchedule } from "../lib/apiHooks";
@@ -102,11 +103,13 @@ function Schedule() {
 
   const handleDateClick = (iso: string) => {
     hapticImpact("light");
+    if (iso !== selectedDate) playSfx("select");
     setSelectedDate(iso);
   };
 
   const handleViewToggle = (view: SelectedView) => {
     hapticImpact("light");
+    if (view !== selectedView) playSfx("select");
     setSelectedView(view);
   };
 
@@ -115,6 +118,7 @@ function Schedule() {
     setEditingItem(item);
     setEditError("");
     hapticImpact("light");
+    playSfx("open");
   };
 
   const saveEditItem = async (event: React.FormEvent) => {
@@ -129,9 +133,11 @@ function Schedule() {
       setEditingItem(null);
       reloadSchedule();
       hapticSuccess();
+      playSfx("success");
     } catch (error) {
       setEditError(error instanceof Error ? error.message : "Failed to update session.");
       hapticError();
+      playSfx("error");
     } finally {
       setSaving(false);
     }
@@ -146,9 +152,11 @@ function Schedule() {
       setConfirmDeleteId(null);
       reloadSchedule();
       hapticSuccess();
+      playSfx("delete");
     } catch (error) {
       setEditError(error instanceof Error ? error.message : "Failed to delete session.");
       hapticError();
+      playSfx("error");
     }
   };
 
@@ -192,7 +200,7 @@ function Schedule() {
                 <div className="inline-confirm">
                   <span>Delete?</span>
                   <button type="button" className="danger-outline-button" onClick={() => handleDeleteItem(item.id)}>Yes</button>
-                  <button type="button" className="outline-button" onClick={() => setConfirmDeleteId(null)}>No</button>
+                  <button type="button" className="outline-button" onClick={() => { playSfx("cancel"); setConfirmDeleteId(null); }}>No</button>
                 </div>
               ) : (
                 <button className="icon-button" type="button" aria-label="Delete session" onClick={() => setConfirmDeleteId(item.id)}>
@@ -238,7 +246,7 @@ function Schedule() {
                 <Check size={15} aria-hidden="true" />
                 <span>{saving ? "..." : "Save"}</span>
               </button>
-              <button className="outline-button" type="button" onClick={() => setEditingItem(null)}>Cancel</button>
+              <button className="outline-button" type="button" onClick={() => { playSfx("cancel"); setEditingItem(null); }}>Cancel</button>
             </div>
           </motion.form>
         )}

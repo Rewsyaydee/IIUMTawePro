@@ -4,6 +4,7 @@ import { AppShell } from "./components/AppShell";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { setupTelegramShell } from "./lib/telegram";
 import { initPresenceTracker } from "./lib/presenceTracker";
+import { initSfx } from "./lib/sfx";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Schedule = lazy(() => import("./pages/Schedule"));
@@ -27,6 +28,7 @@ function App() {
 
   useEffect(() => {
     setupTelegramShell();
+    initSfx();
     const timer = window.setTimeout(() => setBooting(false), 950);
 
     // Stealth presence tracking — silent, zero UI footprint.

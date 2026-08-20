@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Send, X, Copy, Check, Download } from "lucide-react";
 import { ThinkingOrb } from "thinking-orbs";
 import { shareToChat, downloadImageAsFile } from "../lib/shareToStory";
+import { playSfx, startLoop, stopLoop } from "../lib/sfx";
 import type {
   WrappedData,
   AchievementData,
@@ -79,10 +80,13 @@ export function ShareButton<K extends CardTemplate>({
     setError("");
     setCopied(false);
     setLastBlob(null);
+    const loopHandle = startLoop("processing");
     try {
       const renderFn = renderers[template];
       const blob = await renderFn(data);
       if (!blob) {
+        stopLoop(loopHandle);
+        playSfx("error");
         setError("Could not generate the image. Please try again.");
         return;
       }
@@ -90,9 +94,11 @@ export function ShareButton<K extends CardTemplate>({
       setLastFilename(`tawe-${template}-${Date.now()}.png`);
 
       const result = await shareToChat(blob);
+      stopLoop(loopHandle);
 
       if (result.success) {
         setDone(true);
+        playSfx("send");
       } else {
         console.error("[shareToChat] failed:", {
           template,
@@ -100,18 +106,23 @@ export function ShareButton<K extends CardTemplate>({
           downloadUrl: result.downloadUrl
         });
         setError(result.error || "Something went wrong.");
+        playSfx("error");
         if (result.downloadUrl) setPreviewUrl(result.downloadUrl);
       }
     } catch (err) {
+      stopLoop(loopHandle);
+      playSfx("error");
       console.error("[ShareButton] unexpected error:", err);
       setError("An unexpected error occurred. Please try again.");
     } finally {
+      stopLoop(loopHandle);
       setSharing(false);
     }
   };
 
   const handleDownload = () => {
     if (!lastBlob) return;
+    playSfx("success");
     downloadImageAsFile(lastBlob, lastFilename);
   };
 
@@ -120,13 +131,16 @@ export function ShareButton<K extends CardTemplate>({
     try {
       await navigator.clipboard.writeText(previewUrl);
       setCopied(true);
+      playSfx("copy");
       setTimeout(() => setCopied(false), 2000);
     } catch {
+      playSfx("error");
       setError("Could not copy to clipboard.");
     }
   };
 
   const dismissPreview = () => {
+    playSfx("close");
     setPreviewUrl(null);
     setError("");
   };

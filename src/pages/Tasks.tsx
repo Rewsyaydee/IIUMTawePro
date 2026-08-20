@@ -4,6 +4,7 @@ import { ClipboardCheck, PenLine, Plus, Trash2, UsersRound } from "lucide-react"
 import { BUREAUS } from "../constants";
 import { authSessionChangedEvent, shouldUseApiAuth } from "../lib/apiAuth";
 import { hapticError, hapticImpact } from "../lib/telegram";
+import { playSfx } from "../lib/sfx";
 import { createTask as createTaskApi, deleteTaskApi, listTasks, updateTaskDetails as updateTaskDetailsApi, updateTaskStatus as updateTaskStatusApi } from "../lib/tasksApi";
 import { listBureauMembers, type BureauMember } from "../lib/usersApi";
 import { StatusBadge } from "../components/StatusBadge";
@@ -165,9 +166,11 @@ function Tasks() {
       setAssigneeIds([]);
       setFormOpen(false);
       hapticImpact("medium");
+      playSfx("success");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to save task.");
       hapticError();
+      playSfx("error");
     } finally {
       setSaving(false);
     }
@@ -184,9 +187,11 @@ function Tasks() {
         updateTaskStatus(id, status);
       }
       hapticImpact("light");
+      playSfx("select");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to update task.");
       hapticError();
+      playSfx("error");
     } finally {
       setUpdatingStatusId(null);
     }
@@ -204,18 +209,22 @@ function Tasks() {
       }
       setConfirmDelete(null);
       hapticImpact("medium");
+      playSfx("delete");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to delete task.");
       hapticError();
+      playSfx("error");
     } finally {
       setUpdatingStatusId(null);
     }
   };
 
   const toggleAssignee = (id: string) => {
-    setAssigneeIds((current) =>
-      current.includes(id) ? current.filter((x) => x !== id) : [...current, id]
-    );
+    setAssigneeIds((current) => {
+      const selected = !current.includes(id);
+      playSfx(selected ? "check" : "uncheck");
+      return selected ? [...current, id] : current.filter((x) => x !== id);
+    });
   };
 
   const startEdit = (task: PoaTask) => {
@@ -231,6 +240,7 @@ function Tasks() {
     setAssigneeIds(task.assignedToIds || []);
     setEditingId(task.id);
     setFormOpen(true);
+    playSfx("open");
   };
 
   return (
@@ -257,7 +267,12 @@ function Tasks() {
       )}
 
       {canCreate && (
-        <button className="icon-text-button" style={{ justifySelf: "start" }} onClick={() => setFormOpen((value) => !value)}>
+        <button className="icon-text-button" style={{ justifySelf: "start" }} onClick={() => {
+          const next = !formOpen;
+          if (next && editingId) setEditingId(null);
+          setFormOpen(next);
+          playSfx(next ? "open" : "close");
+        }}>
           <Plus size={16} aria-hidden="true" />
           <span>Add task</span>
         </button>
@@ -359,7 +374,7 @@ function Tasks() {
               )}
             </button>
             {editingId && (
-              <button className="outline-button" type="button" onClick={() => { setEditingId(null); setFormOpen(false); }}>
+              <button className="outline-button" type="button" onClick={() => { playSfx("cancel"); setEditingId(null); setFormOpen(false); }}>
                 Cancel
               </button>
             )}
@@ -408,7 +423,7 @@ function Tasks() {
                   <div className="rejection-form">
                     <span style={{ fontSize: "0.85rem" }}>Delete this task?</span>
                     <div className="rejection-form-actions">
-                      <button type="button" className="outline-button" onClick={() => setConfirmDelete(null)}>No</button>
+                      <button type="button" className="outline-button" onClick={() => { playSfx("cancel"); setConfirmDelete(null); }}>No</button>
                       <button type="button" className="danger-outline-button" onClick={() => handleDeleteTask(task.id)}>Yes, delete</button>
                     </div>
                   </div>

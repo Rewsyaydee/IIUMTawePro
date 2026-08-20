@@ -5,6 +5,7 @@ import { EmptyState } from "../components/EmptyState";
 import { StatusBadge } from "../components/StatusBadge";
 import { authSessionChangedEvent, shouldUseApiAuth } from "../lib/apiAuth";
 import { hapticError, hapticSuccess } from "../lib/telegram";
+import { playSfx } from "../lib/sfx";
 import {
   listWellbeingReports,
   submitWellbeingReport as submitWellbeingReportApi,
@@ -98,9 +99,11 @@ function Wellbeing() {
       setForm((current) => ({ ...current, studentName: user.name || "", notes: "", medicalConditions: [] }));
       localStorage.setItem(PHONE_STORAGE_KEY, form.phone);
       hapticSuccess();
+      playSfx("success");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to submit report.");
       hapticError();
+      playSfx("error");
     } finally {
       setSubmitting(false);
     }
@@ -118,9 +121,11 @@ function Wellbeing() {
         updateReportStatus(id, status);
       }
       hapticSuccess();
+      playSfx("success");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to update report.");
       hapticError();
+      playSfx("error");
     } finally {
       setUpdatingId(null);
     }
@@ -196,14 +201,16 @@ function Wellbeing() {
                   key={condition}
                   type="button"
                   className={`medical-condition-chip ${selected ? "selected" : ""}`}
-                  onClick={() =>
+                  onClick={() => {
+                    const nextSelected = !selected;
+                    playSfx(nextSelected ? "check" : "uncheck");
                     setForm((current) => ({
                       ...current,
-                      medicalConditions: selected
-                        ? current.medicalConditions.filter((c) => c !== condition)
-                        : [...current.medicalConditions, condition]
-                    }))
-                  }
+                      medicalConditions: nextSelected
+                        ? [...current.medicalConditions, condition]
+                        : current.medicalConditions.filter((c) => c !== condition)
+                    }));
+                  }}
                 >
                   <span className="medical-condition-check">{selected ? "☑" : "☐"}</span>
                   {condition}

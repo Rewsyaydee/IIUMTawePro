@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { emergencyContacts as mockContacts } from "../data/mockData";
 import { couponCafes as mockCoupons } from "../data/couponCafes";
 import { hapticImpact, hapticSuccess } from "../lib/telegram";
+import { playSfx } from "../lib/sfx";
 import { motion } from "framer-motion";
 import { authSessionChangedEvent, shouldUseApiAuth } from "../lib/apiAuth";
 import { useMockUser } from "../state/MockUserContext";
@@ -133,8 +134,10 @@ function Resources() {
       setContactFormOpen(false);
       setEditingContactId(null);
       hapticSuccess();
+      playSfx("success");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to save contact.");
+      playSfx("error");
     } finally {
       setSaving(false);
     }
@@ -145,6 +148,7 @@ function Resources() {
     setEditingContactId(contact.id);
     setContactFormOpen(true);
     hapticImpact("light");
+    playSfx("open");
   };
 
   const handleDeleteContact = async (id: string) => {
@@ -156,8 +160,10 @@ function Resources() {
       setContacts((items) => items.filter((item) => item.id !== id));
       setConfirmContactDelete(null);
       hapticSuccess();
+      playSfx("delete");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to delete contact.");
+      playSfx("error");
     }
   };
 
@@ -184,8 +190,10 @@ function Resources() {
       setCouponFormOpen(false);
       setEditingCouponId(null);
       hapticSuccess();
+      playSfx("success");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to save location.");
+      playSfx("error");
     } finally {
       setSaving(false);
     }
@@ -196,6 +204,7 @@ function Resources() {
     setEditingCouponId(coupon.id);
     setCouponFormOpen(true);
     hapticImpact("light");
+    playSfx("open");
   };
 
   const handleDeleteCoupon = async (id: string) => {
@@ -207,8 +216,10 @@ function Resources() {
       setCoupons((items) => items.filter((item) => item.id !== id));
       setConfirmCouponDelete(null);
       hapticSuccess();
+      playSfx("delete");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to delete location.");
+      playSfx("error");
     }
   };
 

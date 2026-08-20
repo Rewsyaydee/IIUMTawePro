@@ -8,6 +8,7 @@ import { listBureauOperations, updateBureauOperationStatus as updateOpsStatusApi
 import { fetchOpsLive, getOpsSettings, setOpsSettings, type OpsLiveData } from "../lib/guidesApi";
 import { sendBureauAlert } from "../lib/notifyApi";
 import { hapticError, hapticImpact, hapticSuccess } from "../lib/telegram";
+import { playSfx } from "../lib/sfx";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
 import type { Bureau, BureauOperation, BureauOperationStatus } from "../types";
@@ -123,9 +124,11 @@ function BureauOps() {
       }
       setDelayMinutes(minutes);
       hapticSuccess();
+      playSfx("success");
     } catch (error) {
       setLiveError(error instanceof Error ? error.message : "Failed to update session delay.");
       hapticError();
+      playSfx("error");
     } finally {
       setApplyingDelay(false);
     }
@@ -160,9 +163,11 @@ function BureauOps() {
         updateBureauOperationStatus(id, status);
       }
       hapticImpact(status === "issue" ? "heavy" : "light");
+      playSfx(status === "issue" ? "warning" : "select");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to update operation.");
       hapticError();
+      playSfx("error");
     } finally {
       setUpdatingId(null);
     }
@@ -179,8 +184,10 @@ function BureauOps() {
         sendBureauOperationAlert(id);
       }
       hapticSuccess();
+      playSfx("send");
     } catch {
       hapticError();
+      playSfx("error");
     } finally {
       setAlertingId(null);
     }

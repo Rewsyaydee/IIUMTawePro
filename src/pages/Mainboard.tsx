@@ -29,6 +29,7 @@ import { listUsers, revokeUserApi, updateUser as updateUserApi } from "../lib/us
 import { sendBureauAlert, sendEmergency as sendEmergencyApi, sendNotification } from "../lib/notifyApi";
 import { listWellbeingReports } from "../lib/wellbeingApi";
 import { confirmNative, hapticError, hapticSuccess } from "../lib/telegram";
+import { playSfx } from "../lib/sfx";
 import { StatusBadge } from "../components/StatusBadge";
 import { useMockData } from "../state/MockDataContext";
 import { useMockUser } from "../state/MockUserContext";
@@ -237,9 +238,11 @@ function Mainboard() {
       setEmergencyForm((current) => ({ ...current, body: "" }));
       setEmergencyError("");
       hapticSuccess();
+      playSfx("send");
     } catch (err) {
       setEmergencyError(err instanceof Error ? err.message : "Emergency broadcast failed. Check bot token is configured.");
       hapticError();
+      playSfx("error");
     } finally {
       setBusy(null);
     }
@@ -270,9 +273,11 @@ function Mainboard() {
       setNoticeForm((current) => ({ ...current, body: "" }));
       setNoticeError("");
       hapticSuccess();
+      playSfx("send");
     } catch (err) {
       setNoticeError(err instanceof Error ? err.message : "Notification failed to send.");
       hapticError();
+      playSfx("error");
     } finally {
       setBusy(null);
     }
@@ -286,6 +291,7 @@ function Mainboard() {
       expiresAt: inviteForm.expiresAt ? new Date(inviteForm.expiresAt).toISOString() : undefined
     });
     hapticSuccess();
+    playSfx("success");
   };
 
   const submitSchedule = async (event: FormEvent) => {
@@ -326,8 +332,10 @@ function Mainboard() {
       setScheduleForm(defaultScheduleForm);
       setEditingId(null);
       hapticSuccess();
+      playSfx("success");
     } catch (error) {
       hapticError();
+      playSfx("error");
     } finally {
       setBusy(null);
     }
@@ -346,6 +354,7 @@ function Mainboard() {
       details: `${name} was removed from local mock access.`
     });
     hapticSuccess();
+    playSfx("delete");
   };
 
   const submitAnnouncement = async (event: FormEvent) => {
@@ -389,8 +398,10 @@ function Mainboard() {
       }
       setAnnouncementForm({ title: "", body: "", type: "info", tags: "", links: "", notifyTelegram: true });
       hapticSuccess();
+      playSfx("success");
     } catch {
       hapticError();
+      playSfx("error");
     } finally {
       setBusy(null);
     }
@@ -402,21 +413,25 @@ function Mainboard() {
 
     deleteScheduleItem(item.id);
     hapticSuccess();
+    playSfx("delete");
   };
 
   const handlePublishToggle = async (item: ScheduleItem) => {
     if (busy) return;
     setBusy(`publish:${item.id}`);
     try {
+      const nextLive = !item.isLive;
       if (apiMode) {
-        const updated = await publishScheduleItem(item.id, !item.isLive);
+        const updated = await publishScheduleItem(item.id, nextLive);
         setRemoteSchedule((items) => items.map((i) => (i.id === updated.id ? updated : i)));
       } else {
-        updateScheduleItem(item.id, { isLive: !item.isLive });
+        updateScheduleItem(item.id, { isLive: nextLive });
       }
       hapticSuccess();
+      playSfx(nextLive ? "toggle-on" : "toggle-off");
     } catch {
       hapticError();
+      playSfx("error");
     } finally {
       setBusy(null);
     }
@@ -1160,7 +1175,8 @@ function Mainboard() {
                           deactivateAnnouncement(announcement.id);
                         }
                         hapticSuccess();
-                      } catch { hapticError(); }
+                        playSfx("toggle-off");
+                      } catch { hapticError(); playSfx("error"); }
                     }}>
                       <X size={14} />
                       <span>Deactivate</span>
@@ -1201,7 +1217,7 @@ function Mainboard() {
               key={tab.id}
               role="tab"
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => { if (activeTab !== tab.id) playSfx("select"); setActiveTab(tab.id); }}
             >
               <Icon size={16} aria-hidden="true" />
               <span>{tab.label}</span>

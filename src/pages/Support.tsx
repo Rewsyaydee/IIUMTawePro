@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { APP_INFO } from "../lib/appInfo";
 import { getTelegramWebApp, hapticError, hapticSuccess } from "../lib/telegram";
+import { playSfx, startLoop, stopLoop } from "../lib/sfx";
 
 const DONATION_AMOUNTS = [10, 25, 50, 100, 250, 500];
 const MIN_STARS = 10;
@@ -97,10 +98,12 @@ function Support() {
     if (!Number.isFinite(stars) || stars < MIN_STARS || stars > MAX_STARS) {
       setDonateError(`Amount must be between ${MIN_STARS} and ${MAX_STARS} Stars.`);
       hapticError();
+      playSfx("warning");
       return;
     }
     setDonating(true);
     setDonateError("");
+    const loopHandle = startLoop("processing");
     try {
       const response = await fetch(`${apiBase()}/api/donate`, {
         method: "POST",
@@ -113,18 +116,29 @@ function Support() {
       }
       const webApp = getTelegramWebApp();
       if (!webApp || typeof webApp.openInvoice !== "function") {
+        stopLoop(loopHandle);
         setDonateError("Stars payments are only available inside the Telegram Mini App.");
         hapticError();
+        playSfx("blocked");
         return;
       }
       webApp.openInvoice(payload.link, (status) => {
-        if (status === "paid") hapticSuccess();
-        else if (status === "failed") hapticError();
+        stopLoop(loopHandle);
+        if (status === "paid") {
+          hapticSuccess();
+          playSfx("purchase");
+        } else if (status === "failed") {
+          hapticError();
+          playSfx("error");
+        }
       });
     } catch (err) {
+      stopLoop(loopHandle);
       setDonateError(err instanceof Error ? err.message : "Donation failed. Please try again.");
       hapticError();
+      playSfx("error");
     } finally {
+      stopLoop(loopHandle);
       setDonating(false);
     }
   };

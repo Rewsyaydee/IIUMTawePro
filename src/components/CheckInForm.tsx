@@ -10,6 +10,7 @@ import { getCurrentPosition, isWithinRadius, type Coordinates } from "../lib/loc
 import { getVenue } from "../features/navigation/data/venues";
 import { hapticError, hapticSuccess } from "../lib/telegram";
 import { shareToChat } from "../lib/shareToStory";
+import { playSfx, startLoop, stopLoop } from "../lib/sfx";
 
 const OFFLINE_QUEUE_KEY = "tawe_offline_checkins";
 
@@ -50,19 +51,30 @@ export function CheckInForm({ blockLabel, blockId, venueCodes, onDone }: CheckIn
   const [sharingCheckIn, setSharingCheckIn] = useState(false);
 
   const handleShareCheckIn = async () => {
-    const { renderCheckInCard } = await import("../lib/shareTemplates");
-    const blob = await renderCheckInCard({
-      username: user.name.split(" ")[0],
-      eventTitle: blockLabel,
-      venue: getVenue(venueCodes[0])?.name || "IIUM Campus",
-      time: new Date().toLocaleString("en-MY", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" }),
-      lat: gpsCoords?.lat || 0,
-      lng: gpsCoords?.lng || 0
-    });
-    if (!blob) return;
-    setSharingCheckIn(true);
-    await shareToChat(blob);
-    setSharingCheckIn(false);
+    const loopHandle = startLoop("processing");
+    try {
+      const { renderCheckInCard } = await import("../lib/shareTemplates");
+      const blob = await renderCheckInCard({
+        username: user.name.split(" ")[0],
+        eventTitle: blockLabel,
+        venue: getVenue(venueCodes[0])?.name || "IIUM Campus",
+        time: new Date().toLocaleString("en-MY", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" }),
+        lat: gpsCoords?.lat || 0,
+        lng: gpsCoords?.lng || 0
+      });
+      stopLoop(loopHandle);
+      if (!blob) return;
+      setSharingCheckIn(true);
+      const result = await shareToChat(blob);
+      setSharingCheckIn(false);
+      playSfx(result.success ? "send" : "error");
+    } catch {
+      stopLoop(loopHandle);
+      playSfx("error");
+      setSharingCheckIn(false);
+    } finally {
+      stopLoop(loopHandle);
+    }
   };
 
   const venueCoords = venueCodes
@@ -110,32 +122,43 @@ export function CheckInForm({ blockLabel, blockId, venueCodes, onDone }: CheckIn
   const handleVerifyLocation = async () => {
     setGpsStatus("scanning");
     setError("");
+    const loopHandle = startLoop("scanning");
     try {
       if (SKIP_GPS) {
+        stopLoop(loopHandle);
         setGpsCoords(venueCoords[0] || null);
         setGpsStatus("success");
         hapticSuccess();
+        playSfx("success");
         return;
       }
       const pos = await getCurrentPosition();
       setGpsCoords(pos);
       if (noGpsNeeded) {
+        stopLoop(loopHandle);
         setGpsStatus("success");
         hapticSuccess();
+        playSfx("success");
         return;
       }
       const withinRange = venueCoords.some((vc) => isWithinRadius(pos, vc, 200));
       if (withinRange) {
+        stopLoop(loopHandle);
         setGpsStatus("success");
         hapticSuccess();
+        playSfx("success");
       } else {
+        stopLoop(loopHandle);
         setGpsStatus("failed");
         hapticError();
+        playSfx("warning");
       }
     } catch (err) {
+      stopLoop(loopHandle);
       setGpsStatus("failed");
       setError(err instanceof Error ? err.message : "Location access failed.");
       hapticError();
+      playSfx("error");
     }
   };
 
@@ -145,6 +168,7 @@ export function CheckInForm({ blockLabel, blockId, venueCodes, onDone }: CheckIn
     if (!canSubmit) return;
     setSubmitting(true);
     setError("");
+    const loopHandle = startLoop("processing");
     try {
       const lat = gpsCoords?.lat || 0;
       const lng = gpsCoords?.lng || 0;
@@ -172,9 +196,12 @@ export function CheckInForm({ blockLabel, blockId, venueCodes, onDone }: CheckIn
           note: note.trim() || undefined
         });
       }
+      stopLoop(loopHandle);
       hapticSuccess();
+      playSfx("success");
       setSuccess(true);
     } catch (err) {
+      stopLoop(loopHandle);
       if (apiMode) {
         try {
           const raw = localStorage.getItem(OFFLINE_QUEUE_KEY);
@@ -194,7 +221,9 @@ export function CheckInForm({ blockLabel, blockId, venueCodes, onDone }: CheckIn
       }
       setError(err instanceof Error ? err.message : "Failed to submit. Saved offline — will retry later.");
       hapticError();
+      playSfx("error");
     } finally {
+      stopLoop(loopHandle);
       setSubmitting(false);
     }
   };
