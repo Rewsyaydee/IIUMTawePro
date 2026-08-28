@@ -1,6 +1,6 @@
-import { getBotToken } from "../_lib/telegram-bot.js";
 import { supabaseRequest } from "../_lib/supabase.js";
 import { sendJson } from "../_lib/auth-utils.js";
+import { buildEveningRichMessage, buildMorningRichMessage, buildSessionStartingRichMessage, sendRichWithFallback } from "../_lib/rich-messages.js";
 
 // Set to null in production to use real date.
 const DEMO_DATE = null;
@@ -77,26 +77,6 @@ async function recordPing() {
   } catch {}
 }
 
-async function callTelegram(method, payload) {
-  const token = getBotToken();
-  if (!token) throw new Error("TELEGRAM_BOT_TOKEN is not configured.");
-  const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-  return response.json();
-}
-
-async function sendOne(telegramId, text) {
-  return callTelegram("sendMessage", {
-    chat_id: telegramId,
-    text,
-    parse_mode: "HTML",
-    disable_web_page_preview: true
-  });
-}
-
 async function getUsersByTier(tier) {
   const rows = await supabaseRequest(
     `/users?notify_tier=eq.${encodeURIComponent(tier)}&status=eq.active&select=telegram_id&limit=500`
@@ -166,10 +146,14 @@ export default async function handler(req, res) {
       const dailyIds = await getUsersByTier("daily");
       const sessionIds = await getUsersByTier("session");
       const ids = [...new Set([...dailyIds, ...sessionIds])];
-      const text = `🌅 <b>Ta'aruf Week Morning!</b>\n\nFirst session today: <b>${html(s.title)}</b>\n📍 ${html(s.venue)}\n🕐 ${s.scheduled_start_time.slice(0, 5)}\n\n👉 Open TawePro: t.me/iiumtaweprobot`;
+      const fallbackText = `🌅 <b>Ta'aruf Week Morning!</b>\n\nFirst session today: <b>${html(s.title)}</b>\n📍 ${html(s.venue)}\n🕐 ${s.scheduled_start_time.slice(0, 5)}\n\n👉 Open TawePro: t.me/iiumtaweprobot`;
+      const richMessage = buildMorningRichMessage({ title: s.title, venue: s.venue, time: s.scheduled_start_time.slice(0, 5) });
       let morningSent = 0;
       for (const id of ids) {
-        try { await sendOne(id, text); morningSent++; } catch {}
+        try {
+          const outcome = await sendRichWithFallback(id, { richMessage, fallbackText });
+          if (outcome.used !== "none") morningSent++;
+        } catch {}
       }
       sent += morningSent;
       results.push({ tier: "morning", queued: ids.length, sent: morningSent });
@@ -190,10 +174,16 @@ export default async function handler(req, res) {
         return h >= 13;
       });
       const eveningList = eveningSessions.slice(0, 3).map((s) => `• ${s.scheduled_start_time?.slice(0, 5)} — ${html(s.title)} (${html(s.venue)})`).join("\n");
-      const text = `🕐 <b>Evening Sessions Reminder</b>\n\nUpcoming today:\n${eveningList || "No evening sessions."}\n\n👉 Open TawePro: t.me/iiumtaweprobot`;
+      const fallbackText = `🕐 <b>Evening Sessions Reminder</b>\n\nUpcoming today:\n${eveningList || "No evening sessions."}\n\n👉 Open TawePro: t.me/iiumtaweprobot`;
+      const richMessage = buildEveningRichMessage({
+        lines: eveningSessions.slice(0, 3).map((s) => `• ${s.scheduled_start_time?.slice(0, 5)} — ${s.title} (${s.venue})`)
+      });
       let eveningSent = 0;
       for (const id of ids) {
-        try { await sendOne(id, text); eveningSent++; } catch {}
+        try {
+          const outcome = await sendRichWithFallback(id, { richMessage, fallbackText });
+          if (outcome.used !== "none") eveningSent++;
+        } catch {}
       }
       sent += eveningSent;
       results.push({ tier: "session", queued: ids.length, sent: eveningSent });
@@ -220,11 +210,19 @@ export default async function handler(req, res) {
     }
 
     const ids = await getUsersByTier("live");
-    const text = `⏰ <b>Session Starting Soon!</b>\n\n<b>${html(s.title)}</b>\n📍 ${html(s.venue)}\n🕐 Starting in ${diff} min\n\n👉 Open TawePro to check in: t.me/iiumtaweprobot`;
+    const fallbackText = `⏰ <b>Session Starting Soon!</b>\n\n<b>${html(s.title)}</b>\n📍 ${html(s.venue)}\n🕐 Starting in ${diff} min\n\n👉 Open TawePro to check in: t.me/iiumtaweprobot`;
+    const richMessage = buildSessionStartingRichMessage({
+      sessionName: s.title,
+      location: s.venue,
+      timeRemaining: `Starting in ${diff} min`
+    });
 
     let batchSent = 0;
     for (const id of ids) {
-      try { await sendOne(id, text); batchSent++; } catch {}
+      try {
+        const outcome = await sendRichWithFallback(id, { richMessage, fallbackText });
+        if (outcome.used !== "none") batchSent++;
+      } catch {}
     }
     if (batchSent > 0) sent += batchSent;
     results.push({ tier: "live", session: s.title, queued: ids.length, sent: batchSent });
