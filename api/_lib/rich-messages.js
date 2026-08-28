@@ -14,6 +14,70 @@
 
 import { getAppBaseUrl, getBotToken, sendTelegramMessage } from "./telegram-bot.js";
 
+// ── Rich message block factories (Bot API 10.3 verified schema) ──
+
+export function richHeading(text, size = 2) {
+  return { type: "heading", text, size };
+}
+
+export function richParagraph(text) {
+  return { type: "paragraph", text };
+}
+
+export function richPre(text, language) {
+  return { type: "pre", text, ...(language ? { language } : {}) };
+}
+
+export function richFooter(text) {
+  return { type: "footer", text };
+}
+
+export function richDetails(summary, blocks, isOpen) {
+  return { type: "details", summary, blocks, ...(typeof isOpen === "boolean" ? { is_open: isOpen } : {}) };
+}
+
+export function richBlockquote(text, credit) {
+  return { type: "expandable_blockquote", text, ...(credit ? { credit } : {}) };
+}
+
+export function richList(items) {
+  return {
+    type: "list",
+    items: items.map((item) => {
+      const { blocks, hasCheckbox, isChecked } = item;
+      return {
+        blocks,
+        ...(typeof hasCheckbox === "boolean" ? { has_checkbox: hasCheckbox } : {}),
+        ...(typeof isChecked === "boolean" ? { is_checked: isChecked } : {})
+      };
+    })
+  };
+}
+
+export function richTable(rows, { compact = true, bordered = true, striped = false } = {}) {
+  return {
+    type: "table",
+    cells: rows.map((row) => row.map((cell) => (typeof cell === "string" ? { text: cell } : cell))),
+    ...(bordered ? { is_bordered: true } : {}),
+    ...(striped ? { is_striped: true } : {}),
+    ...(compact ? { is_compact: true } : {})
+  };
+}
+
+export function richButtonsRow(buttons, align = "left") {
+  return { type: "buttons", buttons, align };
+}
+
+export function richButton({ text, style, callbackData, webApp, url }) {
+  return {
+    text,
+    ...(style ? { style } : {}),
+    ...(callbackData ? { callback_data: callbackData } : {}),
+    ...(webApp ? { web_app: { url: webApp } } : {}),
+    ...(url ? { url } : {})
+  };
+}
+
 export function buildRichMessage({ heading, lines, buttonLabel = "Open TawePro", webAppPath = "/attendance" }) {
   return {
     blocks: [
@@ -87,8 +151,9 @@ export async function sendRichMessage(chatId, richMessage) {
 
 // Preferred path: try the native Rich Message; if the Bot API server rejects it
 // (e.g. temporarily behind on the 10.3 release) or the network fails, fall back
-// to the legacy HTML text message so no user is ever missed.
-export async function sendRichWithFallback(chatId, { richMessage, fallbackText }) {
+// to the legacy HTML text message (+ optional inline keyboard) so no user is
+// ever missed.
+export async function sendRichWithFallback(chatId, { richMessage, fallbackText, fallbackReplyMarkup }) {
   try {
     const payload = await sendRichMessage(chatId, richMessage);
     if (payload.ok) return { used: "rich" };
@@ -97,7 +162,7 @@ export async function sendRichWithFallback(chatId, { richMessage, fallbackText }
     console.error(`[rich-message] sendRichMessage threw for ${chatId}:`, error?.message || error);
   }
   try {
-    await sendTelegramMessage(chatId, fallbackText);
+    await sendTelegramMessage(chatId, fallbackText, fallbackReplyMarkup);
     return { used: "fallback" };
   } catch (error) {
     console.error(`[rich-message] legacy fallback failed for ${chatId}:`, error?.message || error);
