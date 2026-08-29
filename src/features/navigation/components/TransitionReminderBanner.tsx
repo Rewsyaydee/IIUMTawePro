@@ -1,6 +1,7 @@
 import { Navigation, X } from "lucide-react";
 import type { Transition } from "../hooks/useScheduleTransition";
 import { getVenue } from "../data/venues";
+import { playSfx } from "../../../lib/sfx";
 
 type TransitionReminderBannerProps = {
   transition: Transition;
@@ -24,10 +25,10 @@ export function TransitionReminderBanner({ transition, onNavigate, onDismiss }: 
         </div>
       </div>
       <div className="transition-reminder-actions">
-        <button className="primary-button" type="button" onClick={onNavigate}>
+        <button className="primary-button" type="button" onClick={() => { playSfx("forward"); onNavigate(); }}>
           View route
         </button>
-        <button className="icon-button" type="button" onClick={onDismiss} aria-label="Dismiss reminder">
+        <button className="icon-button" type="button" onClick={() => { playSfx("close"); onDismiss(); }} aria-label="Dismiss reminder">
           <X size={15} />
         </button>
       </div>

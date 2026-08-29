@@ -1,6 +1,7 @@
 import { UserCog } from "lucide-react";
 import { roleLabels } from "../constants";
 import { hapticImpact } from "../lib/telegram";
+import { playSfx } from "../lib/sfx";
 import { useMockUser } from "../state/MockUserContext";
 
 export function RoleSwitcher() {
@@ -17,7 +18,10 @@ export function RoleSwitcher() {
   if (!shouldShow) return null;
 
   return (
-    <details className="role-switcher" aria-label="Preview role switcher">
+    <details className="role-switcher" aria-label="Preview role switcher" onToggle={(event) => {
+      const details = event.currentTarget;
+      playSfx(details.open ? "expand" : "collapse");
+    }}>
       <summary>
         <UserCog size={16} aria-hidden="true" />
         <span>Preview mode</span>
@@ -30,6 +34,7 @@ export function RoleSwitcher() {
         value={user.id}
         onChange={(event) => {
           hapticImpact("light");
+          playSfx("select");
           setUserId(event.target.value);
         }}
       >

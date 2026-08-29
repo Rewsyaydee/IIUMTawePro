@@ -447,8 +447,10 @@ function Mainboard() {
       } else {
         updateScheduleItem(item.id, { readinessStatus: readinessStatus as NonNullable<ScheduleItem["readinessStatus"]> });
       }
+      playSfx("select");
     } catch {
       hapticError();
+      playSfx("error");
     } finally {
       setBusy(null);
     }
@@ -532,7 +534,7 @@ function Mainboard() {
         <div className="form-grid">
           <label>
             <span>Role</span>
-            <select value={inviteForm.role} onChange={(event) => setInviteForm((current) => ({ ...current, role: event.target.value as AdminRole }))}>
+            <select value={inviteForm.role} onChange={(event) => { playSfx("select"); setInviteForm((current) => ({ ...current, role: event.target.value as AdminRole })); }}>
               {ADMIN_ROLES.map((role) => (
                 <option key={role} value={role}>
                   {roleLabels[role]}
@@ -545,7 +547,7 @@ function Mainboard() {
             <select
               value={inviteForm.bureau}
               disabled={inviteForm.role === "mainboard"}
-              onChange={(event) => setInviteForm((current) => ({ ...current, bureau: event.target.value as Bureau }))}
+              onChange={(event) => { playSfx("select"); setInviteForm((current) => ({ ...current, bureau: event.target.value as Bureau })); }}
             >
               {BUREAUS.map((bureau) => (
                 <option key={bureau} value={bureau}>
@@ -600,9 +602,11 @@ function Mainboard() {
                     if (apiMode) {
                       await updateUserApi(person.id, { role, bureau: role === "student" || role === "mainboard" ? null : (person.bureau || "Catering") }).then(() => {
                         setRemoteUsers((items) => items.map((u) => (u.id === person.id ? { ...u, role, bureau: role === "student" || role === "mainboard" ? null : (u.bureau || "Catering") } : u)));
-                      }).catch(() => hapticError());
+                        playSfx("select");
+                      }).catch(() => { hapticError(); playSfx("error"); });
                     } else {
                       updateMockUser(person.id, { role, bureau: role === "student" || role === "mainboard" ? undefined : person.bureau || "Catering" });
+                      playSfx("select");
                     }
                     recordAuditLog({
                       action: "Updated user role",
@@ -626,9 +630,11 @@ function Mainboard() {
                     if (apiMode) {
                       await updateUserApi(person.id, { bureau }).then(() => {
                         setRemoteUsers((items) => items.map((u) => (u.id === person.id ? { ...u, bureau } : u)));
-                      }).catch(() => hapticError());
+                        playSfx("select");
+                      }).catch(() => { hapticError(); playSfx("error"); });
                     } else {
                       updateMockUser(person.id, { bureau });
+                      playSfx("select");
                     }
                     recordAuditLog({
                       action: "Updated user bureau",
@@ -650,8 +656,9 @@ function Mainboard() {
                       if (!confirmed) return;
                       await revokeUserApi(person.id).then(() => {
                         setRemoteUsers((items) => items.filter((u) => u.id !== person.id));
-                      }).catch(() => hapticError());
+                      }).catch(() => { hapticError(); playSfx("error"); });
                       hapticSuccess();
+                      playSfx("delete");
                     } else {
                       revokeUser(person.id, person.name);
                     }
@@ -709,6 +716,7 @@ function Mainboard() {
             <select
               value={scheduleForm.venueCode}
               onChange={(event) => {
+                playSfx("select");
                 const v = venues.find((vn) => vn.code === event.target.value);
                 setScheduleForm((current) => ({
                   ...current,
@@ -759,7 +767,7 @@ function Mainboard() {
             <span>Audience</span>
             <select
               value={scheduleForm.audience}
-              onChange={(event) => setScheduleForm((current) => ({ ...current, audience: event.target.value as ScheduleItem["audience"] }))}
+              onChange={(event) => { playSfx("select"); setScheduleForm((current) => ({ ...current, audience: event.target.value as ScheduleItem["audience"] })); }}
             >
               <option value="All">All</option>
               <option value="Students">Students</option>
@@ -770,7 +778,7 @@ function Mainboard() {
             <span>Responsible bureau</span>
             <select
               value={scheduleForm.responsibleBureau}
-              onChange={(event) => setScheduleForm((current) => ({ ...current, responsibleBureau: event.target.value as Bureau }))}
+              onChange={(event) => { playSfx("select"); setScheduleForm((current) => ({ ...current, responsibleBureau: event.target.value as Bureau })); }}
             >
               {BUREAUS.map((bureau) => (
                 <option key={bureau} value={bureau}>
@@ -848,6 +856,7 @@ function Mainboard() {
                       className="outline-button"
                       type="button"
                       onClick={() => {
+                        playSfx("open");
                         setScheduleForm({
                           date: item.date,
                           day: item.day,
@@ -908,7 +917,7 @@ function Mainboard() {
         <div className="banner banner-emergency" style={{ marginBottom: 12 }}>
           <AlertTriangle size={18} />
           <div><strong>Notice failed</strong><p>{noticeError}</p></div>
-          <button className="icon-button" onClick={() => setNoticeError("")}>×</button>
+          <button className="icon-button" onClick={() => { playSfx("close"); setNoticeError(""); }}>×</button>
         </div>
       )}
       <form className="form-card" onSubmit={submitNotice}>
@@ -927,7 +936,7 @@ function Mainboard() {
         <div className="form-grid">
           <label>
             <span>Role</span>
-            <select value={noticeForm.targetRole} onChange={(event) => setNoticeForm((current) => ({ ...current, targetRole: event.target.value }))}>
+            <select value={noticeForm.targetRole} onChange={(event) => { playSfx("select"); setNoticeForm((current) => ({ ...current, targetRole: event.target.value })); }}>
               <option value="all">All roles</option>
               {ROLES.map((role) => (
                 <option key={role} value={role}>
@@ -940,7 +949,7 @@ function Mainboard() {
             <span>Bureau</span>
             <select
               value={noticeForm.targetBureau}
-              onChange={(event) => setNoticeForm((current) => ({ ...current, targetBureau: event.target.value }))}
+              onChange={(event) => { playSfx("select"); setNoticeForm((current) => ({ ...current, targetBureau: event.target.value })); }}
             >
               <option value="all">All bureaus</option>
               {BUREAUS.map((bureau) => (
@@ -955,7 +964,11 @@ function Mainboard() {
           <input
             type="checkbox"
             checked={noticeForm.createBanner}
-            onChange={(event) => setNoticeForm((current) => ({ ...current, createBanner: event.target.checked }))}
+            onChange={(event) => {
+              const checked = event.target.checked;
+              playSfx(checked ? "check" : "uncheck");
+              setNoticeForm((current) => ({ ...current, createBanner: checked }));
+            }}
           />
           <span>Show as in-app banner</span>
         </label>
@@ -969,7 +982,7 @@ function Mainboard() {
         <div className="banner banner-emergency" style={{ marginBottom: 12 }}>
           <AlertTriangle size={18} />
           <div><strong>Emergency broadcast failed</strong><p>{emergencyError}</p></div>
-          <button className="icon-button" onClick={() => setEmergencyError("")}>×</button>
+          <button className="icon-button" onClick={() => { playSfx("close"); setEmergencyError(""); }}>×</button>
         </div>
       )}
       <form className="form-card emergency-card" onSubmit={submitEmergency}>
@@ -993,7 +1006,7 @@ function Mainboard() {
         <div className="form-grid">
           <label>
             <span>Role</span>
-            <select value={emergencyForm.targetRole} onChange={(event) => setEmergencyForm((current) => ({ ...current, targetRole: event.target.value }))}>
+            <select value={emergencyForm.targetRole} onChange={(event) => { playSfx("select"); setEmergencyForm((current) => ({ ...current, targetRole: event.target.value })); }}>
               <option value="all">All roles</option>
               {ROLES.map((role) => (
                 <option key={role} value={role}>
@@ -1006,7 +1019,7 @@ function Mainboard() {
             <span>Bureau</span>
             <select
               value={emergencyForm.targetBureau}
-              onChange={(event) => setEmergencyForm((current) => ({ ...current, targetBureau: event.target.value }))}
+              onChange={(event) => { playSfx("select"); setEmergencyForm((current) => ({ ...current, targetBureau: event.target.value })); }}
             >
               <option value="all">All bureaus</option>
               {BUREAUS.map((bureau) => (
@@ -1105,7 +1118,7 @@ function Mainboard() {
             <span>Type</span>
             <select
               value={announcementForm.type}
-              onChange={(event) => setAnnouncementForm((c) => ({ ...c, type: event.target.value as "info" | "urgent" | "emergency" }))}
+              onChange={(event) => { playSfx("select"); setAnnouncementForm((c) => ({ ...c, type: event.target.value as "info" | "urgent" | "emergency" })); }}
             >
               <option value="info">Info</option>
               <option value="urgent">Urgent</option>
@@ -1134,7 +1147,11 @@ function Mainboard() {
           <input
             type="checkbox"
             checked={announcementForm.notifyTelegram}
-            onChange={(event) => setAnnouncementForm((c) => ({ ...c, notifyTelegram: event.target.checked }))}
+            onChange={(event) => {
+              const checked = event.target.checked;
+              playSfx(checked ? "check" : "uncheck");
+              setAnnouncementForm((c) => ({ ...c, notifyTelegram: checked }));
+            }}
           />
           <span>Also notify all users via Telegram</span>
         </label>

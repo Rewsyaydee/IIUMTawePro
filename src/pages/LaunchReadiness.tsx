@@ -266,7 +266,7 @@ function LaunchReadiness() {
         </div>
       </section>
 
-      <Link className="ops-link" to="/mainboard">
+      <Link className="ops-link" to="/mainboard" onClick={() => playSfx("forward")}>
         <ExternalLink size={16} aria-hidden="true" />
         <span>Return to Control Room</span>
       </Link>

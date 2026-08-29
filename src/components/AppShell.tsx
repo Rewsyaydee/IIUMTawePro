@@ -191,7 +191,7 @@ export function AppShell() {
                         )}
                       </div>
                     ) : (
-                      <a className="account-register-link" href="https://t.me/iiumtaweprobot" target="_blank" rel="noreferrer">
+                      <a className="account-register-link" href="https://t.me/iiumtaweprobot" target="_blank" rel="noreferrer" onClick={() => playSfx("forward")}>
                         Register via @iiumtaweprobot /start →
                       </a>
                     )}
@@ -225,7 +225,10 @@ export function AppShell() {
               key={item.to}
               to={item.to}
               end={item.to === "/"}
-              onClick={() => hapticImpact("light")}
+              onClick={() => {
+                hapticImpact("light");
+                if (location.pathname !== item.to) playSfx("select");
+              }}
               className={({ isActive }) => (isActive ? "nav-item active" : "nav-item")}
             >
               <Icon size={22} aria-hidden="true" />
@@ -253,7 +256,10 @@ export function AppShell() {
             <NavLink
               key={item.to}
               to={item.to}
-              onClick={() => hapticImpact("light")}
+              onClick={() => {
+                hapticImpact("light");
+                if (location.pathname !== item.to) playSfx("select");
+              }}
               className={({ isActive }) => (isActive ? "nav-item active" : "nav-item")}
             >
               <Icon size={22} aria-hidden="true" />

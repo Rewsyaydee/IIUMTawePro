@@ -2,6 +2,7 @@ import { Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useMockData } from "../state/MockDataContext";
 import { useStudentAttendanceSummary } from "../lib/useStudentAttendanceSummary";
+import { playSfx } from "../lib/sfx";
 
 export function StreakWidget() {
   const { schedule } = useMockData();
@@ -38,7 +39,10 @@ export function StreakWidget() {
       <button
         className="streak-share-btn"
         type="button"
-        onClick={() => navigate("/stories")}
+        onClick={() => {
+          playSfx("forward");
+          navigate("/stories");
+        }}
         title="Share your progress"
       >
         <Send size={16} aria-hidden="true" />

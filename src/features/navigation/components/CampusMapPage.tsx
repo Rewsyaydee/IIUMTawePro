@@ -20,6 +20,7 @@ import { RouteMapViewer } from "./RouteMapViewer";
 import { RouteStepsList } from "./RouteStepsList";
 import { RouteSummaryBar } from "./RouteSummaryBar";
 import { EmptyState } from "../../../components/EmptyState";
+import { playSfx } from "../../../lib/sfx";
 import {
   appleMapsUrl,
   googleMapsWalkingUrl,
@@ -139,6 +140,7 @@ function CampusMapPage() {
     setSearched(true);
     const found = lookup(fromCode, toCode);
     setActiveRoute(found || null);
+    playSfx(found ? "success" : "blocked");
   };
 
   const isExternalOnly = isKulliyyahOrMahallah(fromCode) || isKulliyyahOrMahallah(toCode);
@@ -166,6 +168,7 @@ function CampusMapPage() {
               className="route-select"
               value={fromCode}
               onChange={(e) => {
+                playSfx("select");
                 setFromCode(e.target.value);
                 setSearched(false);
               }}
@@ -193,6 +196,7 @@ function CampusMapPage() {
               className="route-select"
               value={toCode}
               onChange={(e) => {
+                playSfx("select");
                 setToCode(e.target.value);
                 setSearched(false);
               }}
@@ -279,21 +283,21 @@ function CampusMapPage() {
               <div className="directions-buttons">
                 <button
                   className="directions-btn"
-                  onClick={() => openExternalMap(googleMapsWalkingUrl(fromCode, toCode))}
+                  onClick={() => { playSfx("forward"); openExternalMap(googleMapsWalkingUrl(fromCode, toCode)); }}
                 >
                   <MapPin size={15} />
                   <span>Google Maps</span>
                 </button>
                 <button
                   className="directions-btn"
-                  onClick={() => openExternalMap(wazeUrl(toCode))}
+                  onClick={() => { playSfx("forward"); openExternalMap(wazeUrl(toCode)); }}
                 >
                   <Navigation size={15} />
                   <span>Waze</span>
                 </button>
                 <button
                   className="directions-btn"
-                  onClick={() => openExternalMap(appleMapsUrl(fromCode, toCode))}
+                  onClick={() => { playSfx("forward"); openExternalMap(appleMapsUrl(fromCode, toCode)); }}
                 >
                   <span style={{ fontSize: "16px", fontWeight: 900 }}>&#x2318;</span>
                   <span>Apple Maps</span>

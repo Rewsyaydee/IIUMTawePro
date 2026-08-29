@@ -1,5 +1,6 @@
 import { Navigation } from "lucide-react";
 import { hapticImpact } from "../../../lib/telegram";
+import { playSfx } from "../../../lib/sfx";
 
 type NavigateButtonProps = {
   onClick: () => void;
@@ -12,6 +13,7 @@ export function NavigateButton({ onClick }: NavigateButtonProps) {
       type="button"
       onClick={() => {
         hapticImpact("medium");
+        playSfx("forward");
         onClick();
       }}
     >

@@ -154,7 +154,7 @@ function Announcements() {
             <strong>Error</strong>
             <p>{errorMessage}</p>
           </div>
-          <button className="icon-button" onClick={() => setErrorMessage("")} aria-label="Dismiss error">
+          <button className="icon-button" onClick={() => { playSfx("close"); setErrorMessage(""); }} aria-label="Dismiss error">
             <X size={15} />
           </button>
         </div>
@@ -265,7 +265,10 @@ function Announcements() {
                       </label>
                       <label>
                         <span>Type</span>
-                        <select value={editForm.type} onChange={(e) => setEditForm((f) => ({ ...f, type: e.target.value }))}>
+                        <select value={editForm.type} onChange={(e) => {
+                          playSfx("select");
+                          setEditForm((f) => ({ ...f, type: e.target.value }));
+                        }}>
                           {announcementTypes.map((type) => (
                             <option key={type} value={type}>{type}</option>
                           ))}
@@ -310,7 +313,7 @@ function Announcements() {
                           {announcement.links && announcement.links.length > 0 && (
                             <div className="announcement-links" style={{ marginTop: "10px" }}>
                               {announcement.links.map((link) => (
-                                <a key={link.label} className="announcement-link-btn" href={link.url} target="_blank" rel="noreferrer">
+                                <a key={link.label} className="announcement-link-btn" href={link.url} target="_blank" rel="noreferrer" onClick={() => playSfx("forward")}>
                                   <ExternalLink size={14} />
                                   <span>{link.label}</span>
                                 </a>
@@ -330,7 +333,7 @@ function Announcements() {
                                 <button
                                   className="danger-outline-button"
                                   type="button"
-                                  onClick={() => setConfirmDeleteId(announcement.id)}
+                                  onClick={() => { playSfx("press"); setConfirmDeleteId(announcement.id); }}
                                 >
                                   <Trash2 size={14} aria-hidden="true" />
                                   <span>Delete</span>

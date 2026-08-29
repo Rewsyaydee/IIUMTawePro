@@ -241,7 +241,7 @@ export function CheckInForm({ blockLabel, blockId, venueCodes, onDone }: CheckIn
           <p>Your attendance for <strong>{blockLabel}</strong> has been recorded.</p>
           <div className="check-in-success-actions" style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap", justifyContent: "center" }}>
             {onDone && (
-              <button className="check-in-submit" style={{ width: "auto", paddingLeft: 20, paddingRight: 20 }} onClick={onDone}>
+              <button className="check-in-submit" style={{ width: "auto", paddingLeft: 20, paddingRight: 20 }} onClick={() => { playSfx("back"); onDone(); }}>
                 Back to Schedule
               </button>
             )}

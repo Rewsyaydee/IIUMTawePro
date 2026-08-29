@@ -124,7 +124,7 @@ export function AccessCodeGate({ compact = false }: AccessCodeGateProps) {
         </label>
         <label>
           <span>Role</span>
-          <select value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as Role }))}>
+          <select value={form.role} onChange={(event) => { playSfx("select"); setForm((current) => ({ ...current, role: event.target.value as Role })); }}>
             {allowedRoles.map((role) => (
               <option key={role} value={role}>
                 {roleLabels[role]}
@@ -134,7 +134,7 @@ export function AccessCodeGate({ compact = false }: AccessCodeGateProps) {
         </label>
         <label>
           <span>Bureau</span>
-          <select value={form.bureau} disabled={form.role === "mainboard"} onChange={(event) => setForm((current) => ({ ...current, bureau: event.target.value as Bureau }))}>
+          <select value={form.bureau} disabled={form.role === "mainboard"} onChange={(event) => { playSfx("select"); setForm((current) => ({ ...current, bureau: event.target.value as Bureau })); }}>
             {BUREAUS.map((bureau) => (
               <option key={bureau} value={bureau}>
                 {bureau}

@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { hapticImpact } from "../lib/telegram";
+import { playSfx } from "../lib/sfx";
 
 type MenuTileProps = {
   to: string;
@@ -14,7 +15,7 @@ type MenuTileProps = {
 export function MenuTile({ to, title, meta, icon: Icon, tone = "blue" }: MenuTileProps) {
   return (
     <motion.div whileTap={{ scale: 0.98 }}>
-      <Link className={`menu-tile tile-${tone}`} to={to} onClick={() => hapticImpact("medium")}>
+      <Link className={`menu-tile tile-${tone}`} to={to} onClick={() => { hapticImpact("medium"); playSfx("forward"); }}>
         <span className="tile-icon">
           <Icon size={22} aria-hidden="true" />
         </span>

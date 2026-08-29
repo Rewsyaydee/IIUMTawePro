@@ -2,6 +2,7 @@ import { MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useMockData } from "../state/MockDataContext";
 import { useStudentAttendanceSummary } from "../lib/useStudentAttendanceSummary";
+import { playSfx } from "../lib/sfx";
 import { CheckInForm } from "./CheckInForm";
 import {
   getSessionBlocks
@@ -108,7 +109,7 @@ export function StudentAttendanceView({ checkInState }: { checkInState?: CheckIn
           <MapPin size={32} color="var(--gold-accent)" />
           <h3>Ready to Check In?</h3>
           <p>Go to the Schedule page and tap a Check In button to record your attendance for a session block.</p>
-          <Link className="check-in-submit" to="/schedule">Go to Schedule</Link>
+          <Link className="check-in-submit" to="/schedule" onClick={() => playSfx("forward")}>Go to Schedule</Link>
         </div>
       )}
     </section>

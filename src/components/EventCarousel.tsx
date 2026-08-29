@@ -3,6 +3,7 @@ import { MapPin, Info, Plane, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { getScheduleClock, getScheduleStatus, scheduleDateTime, buildBlockId } from "../lib/scheduleTime";
 import { hapticImpact, hapticSuccess } from "../lib/telegram";
+import { playSfx } from "../lib/sfx";
 import { ColorSweepText } from "./ColorSweepText";
 import { shouldUseApiAuth } from "../lib/apiAuth";
 import { useApiSchedule } from "../lib/apiHooks";
@@ -63,12 +64,14 @@ export function EventCarousel() {
 
   const handleCardTap = () => {
     hapticImpact("light");
+    playSfx("forward");
     navigate("/schedule");
   };
 
   const handleCheckIn = (e: React.MouseEvent, item: ScheduleItem) => {
     e.stopPropagation();
     hapticSuccess();
+    playSfx("forward");
     if (item.block && item.blockGroup) {
       const blockLabel = item.block === "before_break" ? "Morning Session" : "Afternoon Session";
       const blockId = buildBlockId(item.blockGroup, item.block);
@@ -82,6 +85,7 @@ export function EventCarousel() {
   const handleNavigate = (e: React.MouseEvent) => {
     e.stopPropagation();
     hapticImpact("medium");
+    playSfx("forward");
     navigate("/map");
   };
 
@@ -134,6 +138,7 @@ export function EventCarousel() {
                   onClick={(e) => {
                     e.stopPropagation();
                     hapticImpact("light");
+                    playSfx("press");
                   }}
                   aria-label="Event info"
                 >

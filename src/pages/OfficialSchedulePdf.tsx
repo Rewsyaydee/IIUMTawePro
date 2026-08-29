@@ -1,10 +1,12 @@
 import { Download, ExternalLink, FileText } from "lucide-react";
 import { getTelegramWebApp, hapticImpact } from "../lib/telegram";
+import { playSfx } from "../lib/sfx";
 
 const pdfPath = "/assets/official-taaruf-schedule-2026.pdf";
 
 function openOfficialPdf() {
   hapticImpact("light");
+  playSfx("forward");
   const url = new URL(pdfPath, window.location.origin).href;
   const webApp = getTelegramWebApp();
   if (webApp?.openLink) {
@@ -16,6 +18,7 @@ function openOfficialPdf() {
 
 function downloadPdf() {
   hapticImpact("medium");
+  playSfx("success");
   const url = new URL(pdfPath, window.location.origin).href;
   const webApp = getTelegramWebApp();
   if (webApp && typeof webApp.downloadFile === "function") {

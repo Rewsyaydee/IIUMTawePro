@@ -3,6 +3,7 @@ import { MapPin, Navigation, X } from "lucide-react";
 import { kulliyyahs, openKulliyyahDirections } from "../data/kulliyyahs";
 import { getVenue } from "../data/venues";
 import { getTelegramWebApp } from "../../../lib/telegram";
+import { playSfx } from "../../../lib/sfx";
 
 type KulliyyahPickerProps = {
   fromCode: string;
@@ -13,11 +14,16 @@ export function KulliyyahPicker({ fromCode, onClose }: KulliyyahPickerProps) {
   const from = getVenue(fromCode);
   const fromName = from?.name || fromCode;
 
+  const closeWithSfx = () => {
+    playSfx("close");
+    onClose();
+  };
+
   return createPortal(
-    <div className="route-planner-overlay" onClick={onClose}>
+    <div className="route-planner-overlay" onClick={closeWithSfx}>
       <div className="route-planner-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="route-planner-header">
-          <button className="icon-button" type="button" onClick={onClose} aria-label="Close">
+          <button className="icon-button" type="button" onClick={closeWithSfx} aria-label="Close">
             <X size={18} />
           </button>
           <h2>Select Your Kulliyyah</h2>
@@ -38,15 +44,15 @@ export function KulliyyahPicker({ fromCode, onClose }: KulliyyahPickerProps) {
                   <p>{k.name}</p>
                 </div>
                 <div className="kulliyyah-actions">
-                  <button className="directions-btn" onClick={directions.google}>
+                  <button className="directions-btn" onClick={() => { playSfx("forward"); directions.google(); }}>
                     <MapPin size={14} />
                     <span>Maps</span>
                   </button>
-                  <button className="directions-btn" onClick={directions.waze}>
+                  <button className="directions-btn" onClick={() => { playSfx("forward"); directions.waze(); }}>
                     <Navigation size={14} />
                     <span>Waze</span>
                   </button>
-                  <button className="directions-btn" onClick={directions.apple}>
+                  <button className="directions-btn" onClick={() => { playSfx("forward"); directions.apple(); }}>
                     <span style={{ fontSize: "14px", fontWeight: 900 }}>&#x2318;</span>
                     <span>Apple</span>
                   </button>

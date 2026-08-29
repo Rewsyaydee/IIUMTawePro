@@ -157,7 +157,7 @@ function Wellbeing() {
             <strong>Error</strong>
             <p>{errorMessage}</p>
           </div>
-          <button className="icon-button" onClick={() => setErrorMessage("")} aria-label="Dismiss error">
+          <button className="icon-button" onClick={() => { playSfx("close"); setErrorMessage(""); }} aria-label="Dismiss error">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
           </button>
         </div>
@@ -183,7 +183,10 @@ function Wellbeing() {
         </label>
         <label>
           <span>Category</span>
-          <select value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))}>
+          <select value={form.category} onChange={(event) => {
+            playSfx("select");
+            setForm((current) => ({ ...current, category: event.target.value }));
+          }}>
             {categories.map((category) => (
               <option key={category} value={category}>
                 {category}

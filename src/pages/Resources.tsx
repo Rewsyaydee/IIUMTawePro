@@ -240,7 +240,7 @@ function Resources() {
             <strong>Notice</strong>
             <p>{errorMessage}</p>
           </div>
-          <button className="icon-button" onClick={() => setErrorMessage("")} aria-label="Dismiss error">
+          <button className="icon-button" onClick={() => { playSfx("close"); setErrorMessage(""); }} aria-label="Dismiss error">
             <X size={15} />
           </button>
         </div>
@@ -254,7 +254,7 @@ function Resources() {
           <h3>Official PDF Schedule</h3>
           <p>Public copy of the IIUM Ta'aruf Semester 2, 2025/2026 programme schedule.</p>
         </div>
-        <Link className="primary-button" to="/official-schedule" onClick={() => hapticImpact("light")}>
+        <Link className="primary-button" to="/official-schedule" onClick={() => { hapticImpact("light"); playSfx("forward"); }}>
           <FileText size={16} aria-hidden="true" />
           <span>View PDF</span>
         </Link>
@@ -310,7 +310,13 @@ function Resources() {
             <p>Hotline numbers for urgent support during the programme.</p>
           </div>
           {isMainboard && (
-            <button className="icon-text-button" type="button" onClick={() => { setContactFormOpen((v) => !v); setEditingContactId(null); setContactForm(emptyContactForm); }}>
+            <button className="icon-text-button" type="button" onClick={() => {
+              const next = !contactFormOpen;
+              playSfx(next ? "open" : "close");
+              setContactFormOpen(next);
+              setEditingContactId(null);
+              setContactForm(emptyContactForm);
+            }}>
               <Plus size={15} aria-hidden="true" />
               <span>Add contact</span>
             </button>
@@ -332,7 +338,11 @@ function Resources() {
               <input required value={contactForm.phone} onChange={(e) => setContactForm((c) => ({ ...c, phone: e.target.value }))} />
             </label>
             <label className="inline-checkbox-row">
-              <input type="checkbox" checked={contactForm.priority} onChange={(e) => setContactForm((c) => ({ ...c, priority: e.target.checked }))} />
+              <input type="checkbox" checked={contactForm.priority} onChange={(e) => {
+                const checked = e.target.checked;
+                playSfx(checked ? "check" : "uncheck");
+                setContactForm((c) => ({ ...c, priority: checked }));
+              }} />
               <span>Priority contact</span>
             </label>
             <div className="form-actions">
@@ -340,7 +350,7 @@ function Resources() {
                 <Check size={15} aria-hidden="true" />
                 <span>{editingContactId ? "Save" : "Add"}</span>
               </button>
-              <button className="outline-button" type="button" onClick={() => { setContactFormOpen(false); setEditingContactId(null); }}>Cancel</button>
+              <button className="outline-button" type="button" onClick={() => { playSfx("cancel"); setContactFormOpen(false); setEditingContactId(null); }}>Cancel</button>
             </div>
           </motion.form>
         )}
@@ -351,7 +361,7 @@ function Resources() {
           <div className="contact-list">
             {contacts.map((contact) => (
               <div key={contact.id} className={contact.priority ? "contact-row-wrap priority" : "contact-row-wrap"}>
-                <a className="contact-row" href={`tel:${contact.phone}`} onClick={() => hapticImpact("medium")}>
+                <a className="contact-row" href={`tel:${contact.phone}`} onClick={() => { hapticImpact("medium"); playSfx("forward"); }}>
                   <div>
                     <strong>{contact.name}</strong>
                     <span>{contact.role}</span>
@@ -370,10 +380,10 @@ function Resources() {
                       <div className="inline-confirm">
                         <span>Delete?</span>
                         <button type="button" className="danger-outline-button" onClick={() => handleDeleteContact(contact.id)}>Yes</button>
-                        <button type="button" className="outline-button" onClick={() => setConfirmContactDelete(null)}>No</button>
+                        <button type="button" className="outline-button" onClick={() => { playSfx("cancel"); setConfirmContactDelete(null); }}>No</button>
                       </div>
                     ) : (
-                      <button className="icon-button" type="button" aria-label="Delete contact" onClick={() => setConfirmContactDelete(contact.id)}>
+                      <button className="icon-button" type="button" aria-label="Delete contact" onClick={() => { playSfx("press"); setConfirmContactDelete(contact.id); }}>
                         <Trash2 size={14} />
                       </button>
                     )}
@@ -395,7 +405,13 @@ function Resources() {
             <p>Cafes and eateries that accept Ta'aruf Week food coupons.</p>
           </div>
           {isMainboard && (
-            <button className="icon-text-button" type="button" onClick={() => { setCouponFormOpen((v) => !v); setEditingCouponId(null); setCouponForm(emptyCouponForm); }}>
+            <button className="icon-text-button" type="button" onClick={() => {
+              const next = !couponFormOpen;
+              playSfx(next ? "open" : "close");
+              setCouponFormOpen(next);
+              setEditingCouponId(null);
+              setCouponForm(emptyCouponForm);
+            }}>
               <Plus size={15} aria-hidden="true" />
               <span>Add location</span>
             </button>
@@ -425,7 +441,7 @@ function Resources() {
                 <Check size={15} aria-hidden="true" />
                 <span>{editingCouponId ? "Save" : "Add"}</span>
               </button>
-              <button className="outline-button" type="button" onClick={() => { setCouponFormOpen(false); setEditingCouponId(null); }}>Cancel</button>
+              <button className="outline-button" type="button" onClick={() => { playSfx("cancel"); setCouponFormOpen(false); setEditingCouponId(null); }}>Cancel</button>
             </div>
           </motion.form>
         )}
@@ -460,10 +476,10 @@ function Resources() {
                       <div className="inline-confirm">
                         <span>Delete?</span>
                         <button type="button" className="danger-outline-button" onClick={() => handleDeleteCoupon(cafe.id)}>Yes</button>
-                        <button type="button" className="outline-button" onClick={() => setConfirmCouponDelete(null)}>No</button>
+                        <button type="button" className="outline-button" onClick={() => { playSfx("cancel"); setConfirmCouponDelete(null); }}>No</button>
                       </div>
                     ) : (
-                      <button className="icon-button" type="button" aria-label="Delete location" onClick={() => setConfirmCouponDelete(cafe.id)}>
+                      <button className="icon-button" type="button" aria-label="Delete location" onClick={() => { playSfx("press"); setConfirmCouponDelete(cafe.id); }}>
                         <Trash2 size={14} />
                       </button>
                     )}

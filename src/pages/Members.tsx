@@ -5,6 +5,7 @@ import { EmptyState } from "../components/EmptyState";
 import { UserAvatar } from "../components/UserAvatar";
 import { authSessionChangedEvent, shouldUseApiAuth } from "../lib/apiAuth";
 import { listBureauMembers, type BureauMember } from "../lib/usersApi";
+import { playSfx } from "../lib/sfx";
 import { useMockUser } from "../state/MockUserContext";
 import { BUREAUS } from "../constants";
 import type { Bureau } from "../types";
@@ -92,7 +93,7 @@ function Members() {
       {isMainboard && (
         <label>
           <span>Bureau</span>
-          <select value={bureau} onChange={(event) => setBureau(event.target.value as Bureau | "all")}>
+          <select value={bureau} onChange={(event) => { playSfx("select"); setBureau(event.target.value as Bureau | "all"); }}>
             <option value="all">All bureaus</option>
             {BUREAUS.map((b) => (
               <option key={b} value={b}>

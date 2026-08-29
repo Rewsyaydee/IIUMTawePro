@@ -94,6 +94,7 @@ function Schedule() {
 
   const handleCheckIn = (blockType: "before_break" | "after_break") => {
     hapticSuccess();
+    playSfx("forward");
     const blockLabel = blockType === "before_break" ? "Morning Session" : "Afternoon Session";
     const blockId = buildBlockId(selectedDate, blockType);
     const blockItems = activeSchedule.filter((s) => s.date === selectedDate && s.block === blockType && !s.isConcurrent);
@@ -203,7 +204,7 @@ function Schedule() {
                   <button type="button" className="outline-button" onClick={() => { playSfx("cancel"); setConfirmDeleteId(null); }}>No</button>
                 </div>
               ) : (
-                <button className="icon-button" type="button" aria-label="Delete session" onClick={() => setConfirmDeleteId(item.id)}>
+                <button className="icon-button" type="button" aria-label="Delete session" onClick={() => { playSfx("press"); setConfirmDeleteId(item.id); }}>
                   <Trash2 size={14} />
                 </button>
               )}

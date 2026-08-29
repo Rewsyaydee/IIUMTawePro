@@ -144,6 +144,7 @@ function Support() {
   };
 
   const openExternal = (url: string) => {
+    playSfx("forward");
     const webApp = getTelegramWebApp();
     if (webApp?.openLink) {
       webApp.openLink(url);
@@ -301,7 +302,7 @@ function Support() {
             <span>LinkedIn</span>
             <ExternalLink size={15} aria-hidden="true" />
           </button>
-          <a className="link-row" href="mailto:work@syedi.my">
+          <a className="link-row" href="mailto:work@syedi.my" onClick={() => playSfx("forward")}>
             <Mail size={15} aria-hidden="true" />
             <span>work@syedi.my</span>
             <ExternalLink size={15} aria-hidden="true" />

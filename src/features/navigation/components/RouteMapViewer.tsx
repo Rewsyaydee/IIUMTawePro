@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { getTelegramWebApp } from "../../../lib/telegram";
+import { playSfx } from "../../../lib/sfx";
 
 type RouteMapViewerProps = {
   mapAssetUrl: string;
@@ -40,6 +41,7 @@ export function RouteMapViewer({ mapAssetUrl, altText }: RouteMapViewerProps) {
           style={{ marginTop: "8px" }}
           type="button"
           onClick={() => {
+            playSfx("forward");
             const tg = getTelegramWebApp();
             if (tg?.openLink) {
               tg.openLink(src);
@@ -73,13 +75,17 @@ export function RouteMapViewer({ mapAssetUrl, altText }: RouteMapViewerProps) {
             setImageError(true);
           }
         }}
-        onClick={() => setZoomed(!zoomed)}
+        onClick={() => {
+          playSfx(zoomed ? "collapse" : "expand");
+          setZoomed(!zoomed);
+        }}
       />
       <button
         className="map-zoom-toggle"
         type="button"
         onClick={(e) => {
           e.stopPropagation();
+          playSfx(zoomed ? "collapse" : "expand");
           setZoomed(!zoomed);
         }}
       >

@@ -260,7 +260,7 @@ function Tasks() {
             <strong>Error</strong>
             <p>{errorMessage}</p>
           </div>
-          <button className="icon-button" onClick={() => setErrorMessage("")} aria-label="Dismiss error">
+          <button className="icon-button" onClick={() => { playSfx("close"); setErrorMessage(""); }} aria-label="Dismiss error">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
           </button>
         </div>
@@ -284,7 +284,10 @@ function Tasks() {
             <span>Bureau</span>
             <select
               value={form.bureau}
-              onChange={(event) => setForm((current) => ({ ...current, bureau: event.target.value as Bureau }))}
+              onChange={(event) => {
+                playSfx("select");
+                setForm((current) => ({ ...current, bureau: event.target.value as Bureau }));
+              }}
               disabled={user.role === "head"}
             >
               {BUREAUS.map((bureau) => (
@@ -354,7 +357,10 @@ function Tasks() {
           </label>
           <label>
             <span>Priority</span>
-            <select value={form.priority} onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value }))}>
+            <select value={form.priority} onChange={(event) => {
+              playSfx("select");
+              setForm((current) => ({ ...current, priority: event.target.value }));
+            }}>
               {priorities.map((priority) => (
                 <option key={priority} value={priority}>
                   {priority}
@@ -428,7 +434,7 @@ function Tasks() {
                     </div>
                   </div>
                 ) : (
-                  <button type="button" className="danger-outline-button" disabled={updatingStatusId !== null} onClick={() => setConfirmDelete(task.id)}>
+                  <button type="button" className="danger-outline-button" disabled={updatingStatusId !== null} onClick={() => { playSfx("press"); setConfirmDelete(task.id); }}>
                     <Trash2 size={14} aria-hidden="true" />
                     <span>Delete</span>
                   </button>

@@ -273,6 +273,7 @@ function Attendance() {
                 capture={captureAttr}
                 required={!clockInLocked}
                 onChange={(e) => handleSelfieChange(e, "clock-in")}
+                onClick={() => playSfx("press")}
                 disabled={clockInLocked}
               />
             </label>
@@ -328,6 +329,7 @@ function Attendance() {
                 capture={captureAttr}
                 required={!clockOutLocked}
                 onChange={(e) => handleSelfieChange(e, "clock-out")}
+                onClick={() => playSfx("press")}
                 disabled={clockOutLocked}
               />
             </label>
@@ -398,7 +400,7 @@ function Attendance() {
                             autoFocus
                           />
                           <div className="rejection-form-actions">
-                            <button type="button" className="outline-button" onClick={() => setRejectionForm(null)}>
+                            <button type="button" className="outline-button" onClick={() => { playSfx("cancel"); setRejectionForm(null); }}>
                               Cancel
                             </button>
                             <button type="button" className="danger-outline-button" onClick={() => reviewProof(proof.id, "rejected", rejectionForm.reason || undefined)}>
@@ -408,7 +410,7 @@ function Attendance() {
                         </div>
                       ) : (
                         <>
-                          <button type="button" className="danger-outline-button" onClick={() => setRejectionForm({ proofId: proof.id, reason: "" })}>
+                          <button type="button" className="danger-outline-button" onClick={() => { playSfx("open"); setRejectionForm({ proofId: proof.id, reason: "" }); }}>
                             <XCircle size={16} aria-hidden="true" />
                             <span>Reject</span>
                           </button>

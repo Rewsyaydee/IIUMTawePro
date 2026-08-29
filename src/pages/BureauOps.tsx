@@ -218,7 +218,7 @@ function BureauOps() {
             <strong>Error</strong>
             <p>{errorMessage}</p>
           </div>
-          <button className="icon-button" onClick={() => setErrorMessage("")} aria-label="Dismiss error">
+          <button className="icon-button" onClick={() => { playSfx("close"); setErrorMessage(""); }} aria-label="Dismiss error">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
           </button>
         </div>
@@ -304,7 +304,7 @@ function BureauOps() {
 
       {user.role === "mainboard" && (
         <div className="bureau-filter" aria-label="Bureau filter">
-          <button className={selectedBureau === "all" ? "selected" : ""} type="button" onClick={() => setSelectedBureau("all")}>
+          <button className={selectedBureau === "all" ? "selected" : ""} type="button" onClick={() => { if (selectedBureau !== "all") playSfx("select"); setSelectedBureau("all"); }}>
             All
           </button>
           {BUREAUS.map((bureau) => (
@@ -312,7 +312,7 @@ function BureauOps() {
               className={selectedBureau === bureau ? "selected" : ""}
               key={bureau}
               type="button"
-              onClick={() => setSelectedBureau(bureau)}
+              onClick={() => { if (selectedBureau !== bureau) playSfx("select"); setSelectedBureau(bureau); }}
             >
               {bureauShortLabels[bureau]}
             </button>
@@ -342,7 +342,7 @@ function BureauOps() {
               </div>
 
               {operation.tool === "attendance_sessions" && (
-                <a className="ops-link" href={qrLinkFor(operation)} target="_blank" rel="noreferrer">
+                <a className="ops-link" href={qrLinkFor(operation)} target="_blank" rel="noreferrer" onClick={() => playSfx("forward")}>
                   <ExternalLink size={15} aria-hidden="true" />
                   <span>Mock QR invite link</span>
                 </a>

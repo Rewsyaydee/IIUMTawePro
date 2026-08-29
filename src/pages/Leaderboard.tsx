@@ -70,7 +70,7 @@ function Leaderboard() {
       </div>
 
       {error && (
-        <button className="leaderboard-retry" type="button" onClick={load}>
+        <button className="leaderboard-retry" type="button" onClick={() => { playSfx("retry"); load(); }}>
           {error}
         </button>
       )}
