@@ -1,6 +1,8 @@
 import { supabaseRequest } from "../_lib/supabase.js";
 import { sendJson } from "../_lib/auth-utils.js";
-import { buildEveningRichMessage, buildMorningRichMessage, buildSessionStartingRichMessage, sendRichWithFallback } from "../_lib/rich-messages.js";
+import { buildEveningRichMessage, buildMorningRichMessage, buildSessionStartingRichMessage, sendRichWithFallback, richButton, richButtonsRow, richHeading, richParagraph } from "../_lib/rich-messages.js";
+import { composeBriefing, fetchDaySchedule, fetchUserTasksDue } from "../_lib/briefing.js";
+import { getAppBaseUrl } from "../_lib/telegram-bot.js";
 
 // Set to null in production to use real date.
 const DEMO_DATE = null;
@@ -33,14 +35,20 @@ function timeInKL(dateOverride, hourOverride, minuteOverride) {
   };
 }
 
-// ── 7-day always-on loop ──
-// The DB schedule template lives on 2026-08-03..09. Real dates map onto the
-// template via days-since-anchor (anchor 2026-08-07 => 9 Aug shows 5 Aug = day 3).
+// ── 7-day always-on loop (preview) vs real production programme ──
+// The DB schedule now carries the REAL 10-25 Sep programme. During the
+// programme window real dates are used as-is; the modulo mapping below only
+// applies outside it (previews).
 const LOOP_ANCHOR_UTC = Date.UTC(2026, 7, 7);
 const TEMPLATE_START_UTC = Date.UTC(2026, 7, 3);
 const DAY_MS = 24 * 60 * 60 * 1000;
+const PROGRAMME_START = "2026-09-10";
+const PROGRAMME_END = "2026-09-25";
 
 function loopVirtualDate(realDateStr) {
+  if (String(realDateStr) >= PROGRAMME_START && String(realDateStr) <= PROGRAMME_END) {
+    return realDateStr;
+  }
   const [y, m, d] = String(realDateStr).split("-").map(Number);
   const real = Date.UTC(y, m - 1, d);
   const days = Math.round((real - LOOP_ANCHOR_UTC) / DAY_MS);
@@ -79,7 +87,7 @@ async function recordPing() {
 
 async function getUsersByTier(tier) {
   const rows = await supabaseRequest(
-    `/users?notify_tier=eq.${encodeURIComponent(tier)}&status=eq.active&select=telegram_id&limit=500`
+    `/users?notify_tier=eq.${encodeURIComponent(tier)}&status=eq.active&role=eq.student&select=telegram_id&limit=500`
   );
   return Array.isArray(rows) ? rows.map((r) => String(r.telegram_id)) : [];
 }
@@ -227,6 +235,125 @@ export default async function handler(req, res) {
     if (batchSent > 0) sent += batchSent;
     results.push({ tier: "live", session: s.title, queued: ids.length, sent: batchSent });
     console.log(`[notify-check] live "${s.title}" sent: ${batchSent}/${ids.length} (key ${liveKey})`);
+  }
+
+  // ── Committee morning briefing: daily at 07:00 KL (±15 min window) ──
+  // Targeted single-user test override: &briefing_for=<telegram_id> forces the
+  // briefing for that one user (bypasses dedup + window, like testMode).
+  const briefingFor = url.searchParams.get("briefing_for") || null;
+  const briefingMatch = inWindow(nowMin, 7, 0) || Boolean(briefingFor);
+  if (briefingMatch) {
+    const briefingDate = testDate || date;
+    if (briefingFor) {
+      const target = await supabaseRequest(`/users?telegram_id=eq.${encodeURIComponent(briefingFor)}&status=eq.active&select=id,telegram_id,name,role,committee_prefs&limit=1`);
+      const targetUser = Array.isArray(target) ? target[0] : undefined;
+      if (targetUser && targetUser.role && targetUser.role !== "student") {
+        try {
+          const dayEvents = await fetchDaySchedule(briefingDate);
+          const tasks = await fetchUserTasksDue(briefingDate, targetUser);
+          const composed = composeBriefing({ user: targetUser, dateIso: briefingDate, dayEvents, tasks });
+          if (composed) {
+            const outcome = await sendRichWithFallback(String(targetUser.telegram_id), composed);
+            results.push({ tier: "briefing", target: briefingFor, sent: outcome.used !== "none" ? 1 : 0 });
+            console.log(`[notify-check] briefing test sent to ${briefingFor}: ${outcome.used}`);
+          } else {
+            results.push({ tier: "briefing", target: briefingFor, sent: 0, skipped: "nothing today" });
+          }
+        } catch (err) {
+          console.error("[notify-check] briefing test failed", err?.message || err);
+        }
+      }
+    } else if (!testMode) {
+      // Production: 07:00-07:15 daily, one per user, deduped per day.
+      let committeeUsers = [];
+      try {
+        const rows = await supabaseRequest("/users?role=in.(committee,head,mainboard)&status=eq.active&select=telegram_id,id,name,committee_prefs&limit=2000");
+        committeeUsers = Array.isArray(rows) ? rows : [];
+      } catch {
+        try {
+          // Pre-migration fallback: committee_prefs column not present yet.
+          const rows = await supabaseRequest("/users?role=in.(committee,head,mainboard)&status=eq.active&select=telegram_id,id,name&limit=2000");
+          committeeUsers = (Array.isArray(rows) ? rows : []).map((r) => ({ ...r, committee_prefs: {} }));
+        } catch { committeeUsers = []; }
+      }
+      let briefingSent = 0;
+      let briefingSkipped = 0;
+      for (const member of committeeUsers) {
+        const prefs = member.committee_prefs && typeof member.committee_prefs === "object" ? member.committee_prefs : {};
+        if (prefs.briefing === "off") continue;
+        const claimed = await claimSend(`briefing:${member.id}:${briefingDate}`);
+        if (!claimed) continue;
+        try {
+          const dayEvents = await fetchDaySchedule(briefingDate);
+          const tasks = await fetchUserTasksDue(briefingDate, member);
+          const composed = composeBriefing({ user: member, dateIso: briefingDate, dayEvents, tasks });
+          if (!composed) { briefingSkipped++; continue; }
+          const outcome = await sendRichWithFallback(String(member.telegram_id), composed);
+          if (outcome.used !== "none") briefingSent++;
+        } catch (err) {
+          console.error(`[notify-check] briefing failed for ${member.id}`, err?.message || err);
+        }
+      }
+      if (briefingSent > 0 || briefingSkipped > 0) {
+        sent += briefingSent;
+        results.push({ tier: "briefing", queued: committeeUsers.length, sent: briefingSent, skipped: briefingSkipped });
+        console.log(`[notify-check] briefing sent: ${briefingSent}/${committeeUsers.length} (key briefing:${briefingDate})`);
+      }
+    }
+  }
+
+  // ── Masterplan reminders: ping assignees shortly before a task is due ──
+  if (!testMode || testDate) {
+    try {
+      const taskRows = await supabaseRequest(`/poa_tasks?due_date=eq.${encodeURIComponent(date)}&status=neq.done&select=id,bureau,title,due_time,notify_minutes_before,assigned_to,assigned_to_ids&limit=100`);
+      const tasks = Array.isArray(taskRows) ? taskRows : [];
+      for (const task of tasks) {
+        if (!task.due_time || !task.notify_minutes_before) continue;
+        const [th, tm] = String(task.due_time).split(":").map(Number);
+        if (!Number.isFinite(th)) continue;
+        const dueMin = th * 60 + (Number.isFinite(tm) ? tm : 0);
+        const target = dueMin - (Number(task.notify_minutes_before) || 20);
+        if (!inWindow(nowMin, Math.floor(target / 60), target % 60, 10)) continue;
+
+        const assigneeIds = (Array.isArray(task.assigned_to_ids) ? task.assigned_to_ids : []).map(String).filter(Boolean);
+        if (assigneeIds.length === 0) continue;
+        let assignees = [];
+        try {
+          const rows = await supabaseRequest(`/users?status=eq.active&id=in.(${assigneeIds.join(",")})&select=id,telegram_id,committee_prefs&limit=50`);
+          assignees = Array.isArray(rows) ? rows : [];
+        } catch {
+          try {
+            const rows = await supabaseRequest(`/users?status=eq.active&id=in.(${assigneeIds.join(",")})&select=id,telegram_id&limit=50`);
+            assignees = (Array.isArray(rows) ? rows : []).map((r) => ({ ...r, committee_prefs: {} }));
+          } catch { assignees = []; }
+        }
+        for (const assignee of assignees) {
+          if (!assignee.telegram_id) continue;
+          const prefs = assignee.committee_prefs && typeof assignee.committee_prefs === "object" ? assignee.committee_prefs : {};
+          if (prefs.masterplan === "off") continue;
+          const claimed = await claimSend(`masterplan:${task.id}:${assignee.id}`);
+          if (!claimed) continue;
+          const appUrl = getAppBaseUrl();
+          const richMessage = {
+            blocks: [
+              richHeading("⏰ Task due soon"),
+              richParagraph([{ type: "bold", text: task.title }]),
+              richParagraph(`🏢 ${task.bureau} · ⏰ ${String(task.due_time).slice(0, 5)}`),
+              richParagraph("Full details in /tasks."),
+              richButtonsRow([richButton({ text: "📋 Open Task", webApp: `${appUrl}/tasks` })])
+            ]
+          };
+          const fallbackText = `⏰ <b>Task due soon</b>\n\n<b>${String(task.title).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</b>\n🏢 ${task.bureau} · ⏰ ${String(task.due_time).slice(0, 5)}\n\n👉 Open TawePro: t.me/iiumtaweprobot`;
+          const outcome = await sendRichWithFallback(String(assignee.telegram_id), { richMessage, fallbackText });
+          if (outcome.used !== "none") {
+            sent++;
+            console.log(`[notify-check] masterplan ping sent (${task.id} -> ${assignee.id})`);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[notify-check] masterplan scan failed", err?.message || err);
+    }
   }
 
   // Heartbeat row so operators can verify server-driven pings are landing.

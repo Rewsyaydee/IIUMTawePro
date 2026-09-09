@@ -1,7 +1,7 @@
 import { MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useMockData } from "../state/MockDataContext";
 import { useStudentAttendanceSummary } from "../lib/useStudentAttendanceSummary";
+import { useActiveSchedule } from "../lib/useActiveSchedule";
 import { playSfx } from "../lib/sfx";
 import { CheckInForm } from "./CheckInForm";
 import {
@@ -16,9 +16,9 @@ type CheckInState = {
 } | null;
 
 export function StudentAttendanceView({ checkInState }: { checkInState?: CheckInState }) {
-  const { schedule } = useMockData();
+  const { schedule } = useActiveSchedule();
   const { attendances, attendedCount, totalRequired } = useStudentAttendanceSummary(schedule);
-  const milestones = totalRequired <= 3 ? [1, 2, 3] : totalRequired <= 5 ? [2, 4, 5] : [3, 5, totalRequired];
+  const milestones = totalRequired <= 3 ? [1, 2, 3] : totalRequired <= 5 ? [2, 4, 5] : totalRequired <= 8 ? [3, 5, 8] : [3, 5, 10];
 
   const blocks = getSessionBlocks(schedule);
 
@@ -29,7 +29,8 @@ export function StudentAttendanceView({ checkInState }: { checkInState?: CheckIn
   const remaining = Math.max(totalRequired - attendedCount, 0);
   const nextMilestone = milestones.find((m) => attendedCount < m) || totalRequired;
 
-  const recentBlocks = blocks.slice(0, 8);
+  // All programme sessions (10 blocks for the real 2026 week) — circles wrap.
+  const recentBlocks = blocks;
 
   return (
     <section className="page-stack">
@@ -72,7 +73,7 @@ export function StudentAttendanceView({ checkInState }: { checkInState?: CheckIn
       </div>
 
       <div className="milestone-card glass-card">
-        <p className="milestone-title">Complete all 8 sessions to claim your Ta'aruf Kit.</p>
+        <p className="milestone-title">Complete all {totalRequired} sessions to claim your Ta'aruf Kit.</p>
         <div className="milestone-grid">
           {milestones.map((target) => {
             const reached = attendedCount >= target;

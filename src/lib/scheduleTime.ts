@@ -8,6 +8,25 @@ const EVENT_WEEK_MONDAY = new Date(2026, 7, 3); // August 3, 2026 — Day 0 of t
 const LOOP_ANCHOR = new Date(2026, 7, 7);
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// Production programme window (REAL TAWE SCHEDULE.md, Semester 1 2026/2027).
+// Inside this window the app clock is the REAL date (identity mode) and the
+// schedule rows are the real 10-25 Sep programme. Outside, the 7-day loop stays
+// for previews.
+const PROGRAMME_START = "2026-09-10";
+const PROGRAMME_END = "2026-09-25";
+
+function localIsoDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+export function isInProgrammeWindow(now: Date = new Date()): boolean {
+  const iso = localIsoDate(now);
+  return iso >= PROGRAMME_START && iso <= PROGRAMME_END;
+}
+
 function startOfDay(date: Date): number {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 }
@@ -17,6 +36,8 @@ function daysSinceAnchor(now: Date): number {
 }
 
 export function getVirtualScheduleDate(now: Date = new Date()): Date {
+  // Production: the schedule is the real programme — the virtual date IS today.
+  if (isInProgrammeWindow(now)) return now;
   const index = ((daysSinceAnchor(now) % 7) + 7) % 7;
   const virtual = new Date(EVENT_WEEK_MONDAY);
   virtual.setDate(EVENT_WEEK_MONDAY.getDate() + index);
@@ -25,8 +46,10 @@ export function getVirtualScheduleDate(now: Date = new Date()): Date {
 }
 
 // Real week index since the loop anchor — keeps attendance block keys unique per
-// week so the same looping session can be checked in again each cycle.
+// week so the same looping session can be checked in again each cycle. In the
+// production programme window every real date is unique, so the cycle is 0.
 export function getLoopCycleKey(now: Date = new Date()): string {
+  if (isInProgrammeWindow(now)) return "0";
   return String(Math.floor(daysSinceAnchor(now) / 7));
 }
 

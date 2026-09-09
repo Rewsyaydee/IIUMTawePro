@@ -10,6 +10,16 @@ const KL_OFFSET_MS = 8 * 60 * 60 * 1000;
 // to Day 0 — must stay in sync with src/lib/scheduleTime.ts.
 const LOOP_ANCHOR_UTC = Date.UTC(2026, 7, 7);
 
+// Production programme window (REAL TAWE SCHEDULE.md): inside it the server
+// clock is the real date (identity mode) and schedule rows carry real dates.
+// Outside it the 7-day preview loop applies.
+const PROGRAMME_START = "2026-09-10";
+const PROGRAMME_END = "2026-09-25";
+
+function isInProgrammeWindowIso(isoDate) {
+  return isoDate >= PROGRAMME_START && isoDate <= PROGRAMME_END;
+}
+
 function startOfKlDay(now) {
   const kl = new Date(now.getTime() + KL_OFFSET_MS);
   return new Date(Date.UTC(kl.getUTCFullYear(), kl.getUTCMonth(), kl.getUTCDate()) - KL_OFFSET_MS);
@@ -30,6 +40,7 @@ function klParts(now) {
 }
 
 export function getVirtualScheduleDate(now = new Date()) {
+  if (isInProgrammeWindowIso(formatIsoDate(now))) return now;
   const index = ((daysSinceAnchor(now) % 7) + 7) % 7;
   const p = klParts(now);
   return new Date(Date.UTC(2026, 7, 3 + index, p.h, p.min, p.s, p.ms) - KL_OFFSET_MS);
@@ -41,7 +52,12 @@ export function formatIsoDate(date) {
 }
 
 export function getLoopCycleKey(now = new Date()) {
+  if (isInProgrammeWindowIso(formatIsoDate(now))) return "0";
   return String(Math.floor(daysSinceAnchor(now) / 7));
+}
+
+export function isProgrammeDateIso(isoDate) {
+  return isInProgrammeWindowIso(String(isoDate || ""));
 }
 
 export function buildBlockId(virtualDate, block, now = new Date()) {

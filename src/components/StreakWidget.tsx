@@ -1,11 +1,11 @@
 import { Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useMockData } from "../state/MockDataContext";
 import { useStudentAttendanceSummary } from "../lib/useStudentAttendanceSummary";
+import { useActiveSchedule } from "../lib/useActiveSchedule";
 import { playSfx } from "../lib/sfx";
 
 export function StreakWidget() {
-  const { schedule } = useMockData();
+  const { schedule } = useActiveSchedule();
   const navigate = useNavigate();
   const { attendedCount, totalRequired, remaining } = useStudentAttendanceSummary(schedule);
 

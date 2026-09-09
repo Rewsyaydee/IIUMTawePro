@@ -192,14 +192,28 @@ function changeRowsForRole(role) {
   return role && role !== "student" ? adminAppRows() : studentChangeRows();
 }
 
-function profileTable(userRecord, rLabel, attendance) {
+function profileTable(userRecord, rLabel, attendance, totalRequired) {
   return richTable([
     [{ text: "🎭 Role", is_header: true }, { text: rLabel }],
     [{ text: "📝 Matric", is_header: true }, { text: html(userRecord?.matric_number || "") }],
     [{ text: "🏛️ Kulliyyah", is_header: true }, { text: html(userRecord?.kulliyyah || "") }],
     [{ text: "🏠 Mahallah", is_header: true }, { text: html(userRecord?.mahallah || "") }],
-    [{ text: "📊 Attendance", is_header: true }, { text: `${attendance}/8 sessions complete` }]
+    [{ text: "📊 Attendance", is_header: true }, { text: `${attendance}/${totalRequired} sessions complete` }]
   ]);
+}
+
+// Number of attendance-required programme sessions (10 in the real 2026 week).
+async function countRequiredSessions() {
+  try {
+    const rows = await supabaseRequest("/schedule_items?is_attendance_required=eq.true&select=block_group,block&limit=50");
+    const seen = new Set();
+    for (const row of Array.isArray(rows) ? rows : []) {
+      if (row.block_group && row.block) seen.add(`${row.block_group}|${row.block}`);
+    }
+    return seen.size || 10;
+  } catch {
+    return 10;
+  }
 }
 
 function kulliyyahPickerBlocks(heading, subline) {
@@ -364,7 +378,88 @@ async function completeReview(chatId, session, rating) {
   }
 }
 
+function committeePrefs(record) {
+  const raw = record?.committee_prefs;
+  const prefs = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+  return {
+    briefing: prefs.briefing === "off" ? "off" : "on",
+    masterplan: prefs.masterplan === "off" ? "off" : "on"
+  };
+}
+
+// Committee settings main menu: Session Notifications vs Masterplan Reminders.
+async function sendCommitteeMenuMain(chatId, userRecord) {
+  const prefs = committeePrefs(userRecord);
+  const fallbackText = `🔔 <b>Committee Notification Settings</b>\n\nWhat would you like to manage?\n\n• <b>Session Notifications</b> — daily morning briefing (${prefs.briefing === "on" ? "ON" : "OFF"})\n• <b>Masterplan Reminders</b> — alerts before your assigned tasks are due (${prefs.masterplan === "on" ? "ON" : "OFF"})`;
+  const fallbackReplyMarkup = {
+    inline_keyboard: [
+      [{ text: "📅 Session Notifications", callback_data: "notify_menu:session" }],
+      [{ text: "📋 Masterplan Reminders", callback_data: "notify_menu:masterplan" }]
+    ]
+  };
+  await richSend(chatId, [
+    richHeading("🔔 Committee Notification Settings"),
+    richParagraph("Committees get a calm setup — no per-session spam. Pick what to manage:"),
+    richParagraph(`📅 Session Notifications — ${prefs.briefing === "on" ? "🌅 Morning briefing ON" : "Morning briefing OFF"}`),
+    richParagraph(`📋 Masterplan Reminders — ${prefs.masterplan === "on" ? "🔔 ON" : "OFF"}`),
+    richButtonsRow([
+      richButton({ text: "📅 Session Notifications", callbackData: "notify_menu:session", style: "primary" }),
+      richButton({ text: "📋 Masterplan Reminders", callbackData: "notify_menu:masterplan" })
+    ])
+  ], { fallbackText, fallbackReplyMarkup });
+}
+
+async function sendCommitteeCategoryMenu(chatId, userRecord, category) {
+  const prefs = committeePrefs(userRecord);
+  const isSession = category === "session";
+  const stateOn = isSession ? prefs.briefing === "on" : prefs.masterplan === "on";
+  const onData = isSession ? "set_briefing:on" : "set_masterplan:on";
+  const offData = isSession ? "set_briefing:off" : "set_masterplan:off";
+
+  if (isSession) {
+    const fallbackText = `📅 <b>Session Notifications</b>\n\nCurrent: <b>Daily morning briefing ${stateOn ? "ON" : "OFF"}</b>\n\nOne short summary every morning at 07:00 with the day's sessions and your tasks. No per-session spam.`;
+    const fallbackReplyMarkup = {
+      inline_keyboard: [
+        [{ text: `${stateOn ? "✅ " : ""}🌅 Daily Morning Briefing — ON`, callback_data: onData }],
+        [{ text: `${!stateOn ? "✅ " : ""}🔕 OFF`, callback_data: offData }],
+        [{ text: "← Back", callback_data: "notify_menu:main" }]
+      ]
+    };
+    await richSend(chatId, [
+      richHeading("📅 Session Notifications"),
+      richParagraph(`Current: Daily morning briefing ${stateOn ? "ON" : "OFF"}`),
+      richParagraph("One short summary every morning at 07:00 with the day's sessions and your tasks. No per-session spam."),
+      richButtonsRow([richButton({ text: `${stateOn ? "✅ " : ""}🌅 Daily Morning Briefing`, callbackData: onData, style: "success" })]),
+      richButtonsRow([richButton({ text: "🔕 Turn OFF", callbackData: offData, style: stateOn ? "link" : undefined })]),
+      richButtonsRow([richButton({ text: "← Back", callbackData: "notify_menu:main", style: "link" })])
+    ], { fallbackText, fallbackReplyMarkup });
+    return;
+  }
+
+  const fallbackText = `📋 <b>Masterplan Reminders</b>\n\nCurrent: <b>${stateOn ? "ON" : "OFF"}</b>\n\nA quick Telegram ping before each task assigned to you is due (lead time set per task). Full details stay in TawePro /tasks.`;
+  const fallbackReplyMarkup = {
+    inline_keyboard: [
+      [{ text: `${stateOn ? "✅ " : ""}🔔 Remind me before tasks are due`, callback_data: onData }],
+      [{ text: `${!stateOn ? "✅ " : ""}🔕 OFF`, callback_data: offData }],
+      [{ text: "← Back", callback_data: "notify_menu:main" }]
+    ]
+  };
+  await richSend(chatId, [
+    richHeading("📋 Masterplan Reminders"),
+    richParagraph(`Current: ${stateOn ? "ON" : "OFF"}`),
+    richParagraph("A quick Telegram ping before each task assigned to you is due. Lead time is set per task — full details stay in /tasks."),
+    richButtonsRow([richButton({ text: "🔔 Remind me before tasks are due", callbackData: onData, style: "success" })]),
+    richButtonsRow([richButton({ text: "🔕 Turn OFF", callbackData: offData, style: stateOn ? "link" : undefined })]),
+    richButtonsRow([richButton({ text: "← Back", callbackData: "notify_menu:main", style: "link" })])
+  ], { fallbackText, fallbackReplyMarkup });
+}
+
 async function handleNotifications(chatId, userRecord) {
+  // Committee / head / mainboard get the committee settings menu.
+  if (userRecord?.role && userRecord.role !== "student") {
+    await sendCommitteeMenuMain(chatId, userRecord);
+    return;
+  }
   const current = userRecord?.notify_tier || "off";
   const tierNames = { daily: "Daily", session: "Session", live: "Live", off: "Off" };
   const tiers = [
@@ -451,7 +546,7 @@ async function sendStart(chatId, userRecord) {
 
   // Registered — show welcome back
   if (!step) {
-    const attendance = await getAttendanceCount(userRecord.id);
+    const [attendance, totalRequired] = await Promise.all([getAttendanceCount(userRecord.id), countRequiredSessions()]);
     const fallbackLines = [
       `✨ <b>Great to see you again, ${html(name)}!</b> 🌙`,
       "",
@@ -460,7 +555,7 @@ async function sendStart(chatId, userRecord) {
       `   📝 Matric:       <code>${html(matric)}</code>`,
       `   🏛️ Kulliyyah:    <b>${html(kulliyyah)}</b>`,
       `   🏠 Mahallah:     <b>${html(mahallah)}</b>`,
-      `   📊 Attendance:   <b>${attendance}/8</b> sessions complete`,
+      `   📊 Attendance:   <b>${attendance}/${totalRequired}</b> sessions complete`,
       ""
     ];
     if (role === "student") {
@@ -472,7 +567,7 @@ async function sendStart(chatId, userRecord) {
     const blocks = [
       richHeading(`✨ Great to see you again, ${name}! 🌙`),
       richParagraph("Your Ta'aruf Week profile:"),
-      profileTable(userRecord, rLabel, attendance),
+      profileTable(userRecord, rLabel, attendance, totalRequired),
       richParagraph(role === "student" ? "Need to update your details or unlock committee access? 👇" : "Need to update anything? Tap below 👇"),
       ...(role === "student" ? studentChangeRows() : adminAppRows())
     ];
@@ -862,11 +957,12 @@ async function handleCallback(chatId, userRecord, data, fromId) {
         ...changeRowsForRole(userRecord.role)
       ], { fallbackText, fallbackReplyMarkup: changeKeyboard(userRecord.role) });
     } else {
+      const totalRequired = await countRequiredSessions();
       const fallbackText = `✅ <b>You're all set, ${html(name)}!</b> 🎉\n\n📋 <b>Your Details:</b>\n   🎭 Role:         <b>Student</b>\n   📝 Matric:       <code>${html(userRecord.matric_number || "")}</code>\n   🏛️ Kulliyyah:    <b>${html(userRecord.kulliyyah || "")}</b>\n   🏠 Mahallah:     <b>${html(m)}</b>\n\nYou're now ready to experience Ta'aruf Week like never before. Track your attendance, navigate venues, and stay updated — all in one place!\n\nTap below to dive in 👇`;
       await richSend(chatId, [
         richHeading(`✅ You're all set, ${name}! 🎉`),
         richParagraph("Your details:"),
-        profileTable({ ...userRecord, mahallah: m }, "Student", 0),
+        profileTable({ ...userRecord, mahallah: m }, "Student", 0, totalRequired),
         richParagraph("You're now ready to experience Ta'aruf Week like never before. Track your attendance, navigate venues, and stay updated — all in one place!"),
         richParagraph("Tap below to dive in 👇"),
         ...adminAppRows()
@@ -883,6 +979,49 @@ async function handleCallback(chatId, userRecord, data, fromId) {
       fallbackText,
       fallbackReplyMarkup: mahallahKeyboard()
     });
+    return;
+  }
+
+  // ── Committee notification menus (non-student only) ──
+  if (data.startsWith("notify_menu:") && userRecord?.role && userRecord.role !== "student") {
+    const menu = data.split(":")[1];
+    if (menu === "session") {
+      await sendCommitteeCategoryMenu(chatId, userRecord, "session");
+    } else if (menu === "masterplan") {
+      await sendCommitteeCategoryMenu(chatId, userRecord, "masterplan");
+    } else {
+      await sendCommitteeMenuMain(chatId, userRecord);
+    }
+    return;
+  }
+
+  if ((data.startsWith("set_briefing:") || data.startsWith("set_masterplan:")) && userRecord?.role && userRecord.role !== "student") {
+    const [kind, value] = data.split(":");
+    if (!["on", "off"].includes(value)) return;
+    const isBriefing = kind === "set_briefing";
+    const prefs = committeePrefs(userRecord);
+    const merged = { ...prefs, [isBriefing ? "briefing" : "masterplan"]: value };
+    try {
+      await updateUserRegistration(userRecord.telegram_id, { committee_prefs: merged });
+    } catch (err) {
+      console.error("Committee prefs update failed:", err?.message || err);
+      await richSend(chatId, [
+        richHeading("😓 Something went wrong"),
+        richParagraph("Please try again or contact the Mainboard team.")
+      ], { fallbackText: "😓 Something went wrong saving your settings. Please try again." });
+      return;
+    }
+    const label = isBriefing ? "Daily morning briefing" : "Masterplan reminders";
+    const state = value === "on" ? "turned ON" : "turned OFF";
+    const fallbackText = `✅ <b>${label} ${state}!</b>\n\nChange it again anytime with /notifications.`;
+    await richSend(chatId, [
+      richHeading(`✅ ${label} ${state}!`),
+      richParagraph(isBriefing
+        ? value === "on" ? "You'll get one short morning summary at 07:00." : "No morning briefing will be sent."
+        : value === "on" ? "You'll be pinged shortly before each assigned task is due." : "No due-time task pings will be sent."),
+      richParagraph("Change it again anytime with /notifications"),
+      richButtonsRow([richButton({ text: "← Back to settings", callbackData: "notify_menu:main", style: "link" })])
+    ], { fallbackText });
     return;
   }
 

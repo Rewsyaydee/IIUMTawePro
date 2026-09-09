@@ -22,70 +22,81 @@ type ScheduleTuple = [
 ];
 
 const rawSchedule: ScheduleTuple[] = [
-  // ── PREPARATION WEEK ──
-  ["2026-08-01", "Saturday", "preparation", "09:00", "16:00", "International Student Registration", "Main Hall, ICC", "Registration", "All", "Registration", "Saturday, 1 August 2026 - Sunday, 2 August 2026", "icc-main-hall"],
-  ["2026-08-01", "Saturday", "preparation", "09:00", "16:30", "Medical Check-up for International Students", "IIUM Sejahtera Clinic", "Programme", "All", "Welfare", "Saturday, 1 August 2026 - Sunday, 2 August 2026", "sejahtera-clinic"],
-  ["2026-08-02", "Sunday", "preparation", "09:00", "16:00", "Mahallah Registration for Former-CFS", "Respective Mahallah", "Registration", "All", "Registration", "Sunday, 2 August 2026", "mahallah-zone"],
-  ["2026-08-02", "Sunday", "preparation", "09:00", "12:00", "Registration for Direct Intake", "Respective Mahallah", "Registration", "All", "Registration", "Sunday, 2 August 2026", "mahallah-zone"],
-  ["2026-08-02", "Sunday", "preparation", "09:00", "11:00", "Medical Check-up for International Students", "IIUM Sejahtera Clinic", "Programme", "All", "Welfare", "Sunday, 2 August 2026", "sejahtera-clinic"],
-  ["2026-08-02", "Sunday", "preparation", "11:00", "12:30", "Briefing for International Students", "Mini Auditorium", "Briefing", "All", "Program Coordinator", "Sunday, 2 August 2026", "mini-auditorium"],
-  ["2026-08-02", "Sunday", "preparation", "14:30", "16:00", "Briefing by CELPAD", "Main Auditorium", "Briefing", "All", "Program Coordinator", "Sunday, 2 August 2026", "main-auditorium"],
-  ["2026-08-02", "Sunday", "preparation", "16:00", "17:00", "Briefing by CCC on FKT", "Main Auditorium", "Briefing", "All", "Program Coordinator", "Sunday, 2 August 2026", "main-auditorium"],
-  ["2026-08-02", "Sunday", "preparation", "09:00", "22:00", "Self-Management & Settling In", "TBC", "Programme", "All", "Program Coordinator", "Sunday, 2 August 2026 - Monday, 3 August 2026", "tbc"],
+  // ── PREPARATION: REAL programme 10-20 Sep 2026 (REAL TAWE SCHEDULE.md) ──
+  ["2026-09-10", "Thursday", "preparation", "09:00", "13:00", "Mahallah Registration (International Students)", "Wadi Budi", "Registration", "All", "Registration", "For international students.", ""],
+  ["2026-09-11", "Friday", "preparation", "09:00", "13:00", "Special Programme for International Student", "Experimental Hall", "Programme", "All", "Program Coordinator", "", ""],
+  ["2026-09-15", "Tuesday", "preparation", "09:00", "13:00", "Medical Checkup for International Students", "TBD", "Programme", "All", "Welfare", "Priority to International students of Pagoh and Kuantan Campus. Venue = TBD", "tbc"],
+  ["2026-09-15", "Tuesday", "preparation", "13:00", "14:00", "Break for Lunch and Zuhr", "Around Campus", "Break", "All", "Program Coordinator", "", ""],
+  ["2026-09-15", "Tuesday", "preparation", "14:00", "17:00", "Medical Checkup for International Students", "TBD", "Programme", "All", "Welfare", "Priority to International students of Pagoh and Kuantan Campus. Venue = TBD", "tbc"],
+  ["2026-09-17", "Thursday", "preparation", "09:00", "13:00", "Medical Checkup for International Students", "TBD", "Programme", "All", "Welfare", "Priority to International students of Pagoh and Kuantan Campus. Venue = TBD", "tbc"],
+  ["2026-09-17", "Thursday", "preparation", "13:00", "14:30", "Break for Lunch and Zuhr", "Around Campus", "Break", "All", "Program Coordinator", "", ""],
+  ["2026-09-17", "Thursday", "preparation", "14:30", "15:30", "Bus to Pagoh and Kuantan Campus", "Bus Stop", "Departure", "Students", "Special Task", "14:30 at bus stop. For direct intake International Students only.", "bus-stop"],
+  ["2026-09-18", "Friday", "preparation", "09:00", "13:00", "Mahallah Registration (Non-Former CFS students)", "Respective Mahallah", "Registration", "All", "Registration", "Direct Intake - UPU/Malaysian.", "mahallah-zone"],
+  ["2026-09-18", "Friday", "preparation", "13:00", "14:45", "Break for Lunch and Zuhr", "Around Campus", "Break", "All", "Program Coordinator", "", ""],
+  ["2026-09-18", "Friday", "preparation", "14:45", "16:30", "Briefing by CELPAD - On EPT, APT", "Online", "Briefing", "All", "Program Coordinator", "Broadcast.", "online"],
+  ["2026-09-18", "Friday", "preparation", "16:30", "17:00", "Briefing by CCC on Fardhu Ain Test (FAT)", "Online", "Briefing", "All", "Program Coordinator", "Broadcast.", "online"],
+  ["2026-09-19", "Saturday", "preparation", "09:00", "13:00", "Mahallah Registration for Former-CFS", "Respective Mahallah", "Registration", "All", "Registration", "List of Mahallahs: Aminah, Ruqayyah, Maryam, Asma, Sumayyah, Faruq, Bilal and Ali.", "mahallah-zone"],
+  ["2026-09-19", "Saturday", "preparation", "13:00", "14:00", "Break for Lunch and Zuhr", "Around Campus", "Break", "All", "Program Coordinator", "", ""],
+  ["2026-09-19", "Saturday", "preparation", "14:00", "16:00", "Mahallah Registration for Former-CFS", "Respective Mahallah", "Registration", "All", "Registration", "List of Mahallahs: Aminah, Ruqayyah, Maryam, Asma, Sumayyah, Faruq, Bilal and Ali.", "mahallah-zone"],
+  ["2026-09-19", "Saturday", "preparation", "08:30", "12:00", "English Proficiency Test (EPT)", "TBD", "Placement Test", "Students", "Program Coordinator", "KAED & KOE. Non-Former CFS students.", "tbc", false, undefined, undefined, true, "KAED & KOE"],
+  ["2026-09-19", "Saturday", "preparation", "12:00", "13:00", "Fardhu Ain Test (FAT)", "TBD", "Placement Test", "Students", "Program Coordinator", "KAED & KOE. For International Students only.", "tbc", false, undefined, undefined, true, "KAED & KOE"],
+  ["2026-09-19", "Saturday", "preparation", "14:30", "17:00", "Arabic Proficiency Test (APT)", "TBD", "Placement Test", "Students", "Program Coordinator", "KAED & KOE. Non-Former CFS students.", "tbc", false, undefined, undefined, true, "KAED & KOE"],
+  ["2026-09-20", "Sunday", "preparation", "09:00", "13:00", "Mahallah Registration - Former CFS", "Respective Mahallah", "Registration", "All", "Registration", "List of Mahallahs: Asiah, Halimah, Hafsah, Nusaibah, Safiyyah, Salahuddin, Uthman, Siddiq and Zubair.", "mahallah-zone"],
+  ["2026-09-20", "Sunday", "preparation", "13:00", "14:00", "Break for Lunch and Zuhr", "Around Campus", "Break", "All", "Program Coordinator", "", ""],
+  ["2026-09-20", "Sunday", "preparation", "14:00", "16:00", "Mahallah Registration - Former CFS", "Respective Mahallah", "Registration", "All", "Registration", "List of Mahallahs: Asiah, Halimah, Hafsah, Nusaibah, Safiyyah, Salahuddin, Uthman, Siddiq and Zubair.", "mahallah-zone"],
+  ["2026-09-20", "Sunday", "preparation", "17:00", "20:00", "Maghrib & Isya' Congregational Prayer", "Respective Mahallah", "Prayer", "All", "Program Coordinator", "", "mahallah-zone"],
+  ["2026-09-20", "Sunday", "preparation", "20:00", "21:00", "My Mahallah My Second Home", "Respective Mahallah", "Programme", "All", "Discipline", "", "mahallah-zone"],
+  ["2026-09-20", "Sunday", "preparation", "08:30", "12:00", "English Proficiency Test (EPT) (SPEAKING)", "TBD", "Placement Test", "Students", "Program Coordinator", "KAED & KOE. Non-Former CFS students.", "tbc", false, undefined, undefined, true, "KAED & KOE"],
+  ["2026-09-20", "Sunday", "preparation", "14:30", "17:00", "English Proficiency Test (EPT) (SPEAKING)", "TBD", "Placement Test", "Students", "Program Coordinator", "KAED & KOE. Non-Former CFS students.", "tbc", false, undefined, undefined, true, "KAED & KOE"],
 
-  // ── EVENT WEEK: Day 0 — Monday, 3 August 2026 ──
-  ["2026-08-03", "Monday", "event_week", "09:00", "10:00", "Video Presentation with relevant KCDIO: STADD", "Main Auditorium", "Programme", "All", "Multimedia", "Day 0: Monday, 3 August 2026", "main-auditorium", false, "before_break", "2026-08-03"],
-  ["2026-08-03", "Monday", "event_week", "10:30", "12:00", "Welcoming Session with Prof. Dato' Dr. Mohamad Fauzan Noordin", "Main Auditorium", "Programme", "All", "Program Coordinator", "Day 0: Monday, 3 August 2026", "main-auditorium", true, "before_break", "2026-08-03"],
-  ["2026-08-03", "Monday", "event_week", "12:00", "13:00", "Briefing on Ta'aruf Week", "Main Auditorium", "Briefing", "All", "Program Coordinator", "Day 0: Monday, 3 August 2026", "main-auditorium", false, "before_break", "2026-08-03"],
-  ["2026-08-03", "Monday", "event_week", "14:00", "15:00", "Murabbi Session", "IIUM SHAS Mosque", "Programme", "All", "Program Coordinator", "Day 0: Monday, 3 August 2026", "shas-mosque", true, "after_break", "2026-08-03"],
+  // ── EVENT WEEK: Monday, 21 September 2026 ──
+  ["2026-09-21", "Monday", "event_week", "08:30", "09:30", "Briefing from STADD", "Main Prayer Hall, SHAS Mosque", "Programme", "All", "Program Coordinator", "", "shas-mosque", false, "before_break", "2026-09-21"],
+  ["2026-09-21", "Monday", "event_week", "09:30", "10:30", "Welcoming Session with Prof. Dato' Dr. Mohamad Fauzan Noordin (Deputy Rector Student Development and Community Engagement)", "Main Prayer Hall, SHAS Mosque", "Programme", "All", "Program Coordinator", "(MY IIUM). Broadcast.", "shas-mosque", true, "before_break", "2026-09-21"],
+  ["2026-09-21", "Monday", "event_week", "10:30", "11:00", "Briefing on Ta'aruf Week", "Main Prayer Hall, SHAS Mosque", "Briefing", "All", "Program Coordinator", "", "shas-mosque", false, "before_break", "2026-09-21"],
+  ["2026-09-21", "Monday", "event_week", "11:00", "12:00", "Forum Session with KCDIO AMAD & CCC", "Main Prayer Hall, SHAS Mosque", "Programme", "All", "Program Coordinator", "", "shas-mosque", false, "before_break", "2026-09-21"],
+  ["2026-09-21", "Monday", "event_week", "12:00", "12:45", "Forum Session with KCDIO FINANCE Division & IIUM Endowment Fund", "Main Prayer Hall, SHAS Mosque", "Programme", "All", "Program Coordinator", "", "shas-mosque", false, "before_break", "2026-09-21"],
+  ["2026-09-21", "Monday", "event_week", "12:45", "14:00", "Break for Lunch and Zuhr", "Around Campus", "Break", "All", "Program Coordinator", "", ""],
+  ["2026-09-21", "Monday", "event_week", "14:00", "15:15", "Forum Session with KCDIO OLA, OSHBE, & OSEM", "Main Prayer Hall, SHAS Mosque", "Programme", "All", "Program Coordinator", "", "shas-mosque", true, "after_break", "2026-09-21"],
+  ["2026-09-21", "Monday", "event_week", "15:15", "16:15", "Forum Session with KCDIO RSD & ITD", "Main Prayer Hall, SHAS Mosque", "Programme", "All", "Program Coordinator", "", "shas-mosque", false, "after_break", "2026-09-21"],
+  ["2026-09-21", "Monday", "event_week", "16:15", "17:00", "Asr Congregational Prayer", "Respective Mahallah", "Prayer", "All", "Program Coordinator", "", "mahallah-zone"],
+  ["2026-09-21", "Monday", "event_week", "17:00", "18:00", "Murabbi Session", "IIUM SHAS Mosque", "Programme", "All", "Program Coordinator", "", "shas-mosque", false, "after_break", "2026-09-21"],
+  ["2026-09-21", "Monday", "event_week", "18:00", "20:00", "Maghrib & Isya' Congregational Prayer", "Respective Mahallah", "Prayer", "All", "Program Coordinator", "", "mahallah-zone"],
+  ["2026-09-21", "Monday", "event_week", "08:30", "17:00", "Booth Exhibition and Activation of RHB Card, ASNB Account & Note Book LM", "Foyer, SHAS Mosque", "Exhibition", "All", "Program Coordinator", "", "", false, undefined, undefined, true],
 
-  // ── EVENT WEEK: Day 1 — Tuesday, 4 August 2026 ──
-  ["2026-08-04", "Tuesday", "event_week", "08:30", "10:00", "My IIUM", "Main Auditorium", "Programme", "All", "Program Coordinator", "Day 1: Tuesday, 4 August 2026", "main-auditorium", true, "before_break", "2026-08-04"],
-  ["2026-08-04", "Tuesday", "event_week", "09:00", "12:00", "EPT (Former CFS)", "ICC", "Placement Test", "All", "Program Coordinator", "Day 1: Tuesday, 4 August 2026", "icc-main-hall", false, "before_break", "2026-08-04", false, "Former CFS"],
-  ["2026-08-04", "Tuesday", "event_week", "09:45", "12:45", "Tadarus Al-Quran (Former CFS)", "Main Hall, IIUM SHAS Mosque", "Programme", "All", "Discipline", "Day 1: Tuesday, 4 August 2026", "shas-mosque", false, "before_break", "2026-08-04", false, "Former CFS"],
-  ["2026-08-04", "Tuesday", "event_week", "12:00", "13:00", "Far'dhu Ain Test (Non-Former CFS)", "ICC", "Placement Test", "All", "Program Coordinator", "Day 1: Tuesday, 4 August 2026", "icc-main-hall", false, "before_break", "2026-08-04", false, "Non-Former CFS"],
-  ["2026-08-04", "Tuesday", "event_week", "14:00", "15:00", "Murabbi Session", "IIUM SHAS Mosque", "Programme", "All", "Program Coordinator", "Day 1: Tuesday, 4 August 2026", "shas-mosque", true, "after_break", "2026-08-04"],
-  ["2026-08-04", "Tuesday", "event_week", "14:30", "17:00", "APT (Non-Former CFS)", "ICC", "Placement Test", "All", "Program Coordinator", "Day 1: Tuesday, 4 August 2026", "icc-main-hall", false, "after_break", "2026-08-04", false, "Non-Former CFS"],
-  ["2026-08-04", "Tuesday", "event_week", "22:00", "23:00", "My Mahallah My Second Home", "Respective Mahallah", "Programme", "All", "Discipline", "Day 1: Tuesday, 4 August 2026", "mahallah-zone", true, "after_break", "2026-08-04"],
+  // ── EVENT WEEK: Tuesday, 22 September 2026 ──
+  ["2026-09-22", "Tuesday", "event_week", "08:30", "09:15", "Session with Leaders Prime Minister Office", "Main Prayer Hall, SHAS Mosque", "Programme", "All", "Program Coordinator", "", "shas-mosque", true, "before_break", "2026-09-22"],
+  ["2026-09-22", "Tuesday", "event_week", "09:15", "10:00", "KPT SLOT Akademi Kenegaraan Malaysia MADANI", "Main Prayer Hall, SHAS Mosque", "Programme", "All", "Program Coordinator", "Broadcast.", "shas-mosque", false, "before_break", "2026-09-22"],
+  ["2026-09-22", "Tuesday", "event_week", "10:00", "10:45", "KPT SLOT Literasi Undi 18", "Main Prayer Hall, SHAS Mosque", "Programme", "All", "Program Coordinator", "Broadcast.", "shas-mosque", false, "before_break", "2026-09-22"],
+  ["2026-09-22", "Tuesday", "event_week", "10:45", "11:45", "Forum Session with KCDIO DSU & STADD Welfare Unit", "Main Prayer Hall, SHAS Mosque", "Programme", "All", "Program Coordinator", "", "shas-mosque", false, "before_break", "2026-09-22"],
+  ["2026-09-22", "Tuesday", "event_week", "11:45", "12:45", "Forum Session with CCSC & ISC", "Main Prayer Hall, SHAS Mosque", "Programme", "All", "Program Coordinator", "", "shas-mosque", false, "before_break", "2026-09-22"],
+  ["2026-09-22", "Tuesday", "event_week", "12:45", "14:30", "Break for Lunch and Zuhr", "Around Campus", "Break", "All", "Program Coordinator", "", ""],
+  ["2026-09-22", "Tuesday", "event_week", "14:30", "15:15", "KPT SLOT Slot Literasi Artificial Intelligence", "Main Prayer Hall, SHAS Mosque", "Programme", "All", "Program Coordinator", "Broadcast.", "shas-mosque", true, "after_break", "2026-09-22"],
+  ["2026-09-22", "Tuesday", "event_week", "15:15", "16:00", "KPT SLOT Literasi Kewangan by ASNB", "Main Prayer Hall, SHAS Mosque", "Programme", "All", "Program Coordinator", "Broadcast.", "shas-mosque", false, "after_break", "2026-09-22"],
+  ["2026-09-22", "Tuesday", "event_week", "16:00", "17:00", "Break for Asr' Congregational Prayer", "Main Prayer Hall, SHAS Mosque", "Prayer", "All", "Program Coordinator", "Broadcast.", "shas-mosque"],
+  ["2026-09-22", "Tuesday", "event_week", "17:00", "17:30", "Forum Session with Student Union, Mahallah Representative and Kulliyyah Based Society", "Main Prayer Hall, SHAS Mosque", "Programme", "All", "Program Coordinator", "Broadcast.", "shas-mosque", false, "after_break", "2026-09-22"],
+  ["2026-09-22", "Tuesday", "event_week", "08:30", "17:00", "Booth Exhibition and Activation of RHB Card, ASNB Account & Note Book LM", "Foyer, SHAS Mosque", "Exhibition", "All", "Program Coordinator", "", "", false, undefined, undefined, true],
 
-  // ── EVENT WEEK: Day 2 — Wednesday, 5 August 2026 ──
-  ["2026-08-05", "Wednesday", "event_week", "08:30", "17:00", "Opening of ASNB Account", "Main Auditorium", "Programme", "All", "Program Coordinator", "Day 2: Wednesday, 5 August 2026", "main-auditorium", false, "concurrent", "2026-08-05", true],
-  ["2026-08-05", "Wednesday", "event_week", "08:30", "09:15", "Video Presentation with relevant KCDIO: AMAD", "Main Auditorium", "Programme", "All", "Multimedia", "Day 2: Wednesday, 5 August 2026", "main-auditorium", false, "before_break", "2026-08-05"],
-  ["2026-08-05", "Wednesday", "event_week", "09:15", "10:00", "Video Presentation with relevant KCDIO: CCC", "Main Auditorium", "Programme", "All", "Multimedia", "Day 2: Wednesday, 5 August 2026", "main-auditorium", false, "before_break", "2026-08-05"],
-  ["2026-08-05", "Wednesday", "event_week", "10:00", "10:45", "Video Presentation with relevant KCDIO: FINANCE", "Main Auditorium", "Programme", "All", "Multimedia", "Day 2: Wednesday, 5 August 2026", "main-auditorium", false, "before_break", "2026-08-05"],
-  ["2026-08-05", "Wednesday", "event_week", "10:45", "11:30", "Video Presentation with relevant KCDIO: OSEM", "Main Auditorium", "Programme", "All", "Multimedia", "Day 2: Wednesday, 5 August 2026", "main-auditorium", false, "before_break", "2026-08-05"],
-  ["2026-08-05", "Wednesday", "event_week", "11:30", "12:15", "Video Presentation with relevant KCDIO: RSD", "Main Auditorium", "Programme", "All", "Multimedia", "Day 2: Wednesday, 5 August 2026", "main-auditorium", true, "before_break", "2026-08-05"],
-  ["2026-08-05", "Wednesday", "event_week", "14:00", "14:30", "Session on Financial Literacy with ASNB", "Main Auditorium", "Programme", "All", "Program Coordinator", "Day 2: Wednesday, 5 August 2026", "main-auditorium", false, "after_break", "2026-08-05"],
-  ["2026-08-05", "Wednesday", "event_week", "14:30", "16:30", "Session with Counselling and Career Services Centre", "Main Auditorium", "Programme", "All", "Welfare", "Day 2: Wednesday, 5 August 2026", "main-auditorium", true, "after_break", "2026-08-05"],
-  ["2026-08-05", "Wednesday", "event_week", "20:00", "22:00", "Self-Management & Maghrib & Isya' Congregational Prayer", "TBC", "Prayer", "All", "Discipline", "Day 2: Wednesday, 5 August 2026", "tbc", false, "after_break", "2026-08-05"],
-  ["2026-08-05", "Wednesday", "event_week", "22:00", "23:00", "Mahallah Activities", "Respective Mahallah", "Programme", "All", "Discipline", "Day 2: Wednesday, 5 August 2026", "mahallah-zone", false, "after_break", "2026-08-05"],
+  // ── EVENT WEEK: Wednesday, 23 September 2026 ──
+  ["2026-09-23", "Wednesday", "event_week", "09:00", "12:30", "Insan Madani Session", "Respective Kulliyyah", "Programme", "All", "Program Coordinator", "", "kulliyyah-zone", true, "before_break", "2026-09-23"],
+  ["2026-09-23", "Wednesday", "event_week", "12:30", "14:30", "Break for Lunch and Zuhr", "Around Campus", "Break", "All", "Program Coordinator", "", ""],
+  ["2026-09-23", "Wednesday", "event_week", "14:30", "17:00", "Insan Madani Session", "Respective Kulliyyah", "Programme", "All", "Program Coordinator", "", "kulliyyah-zone", true, "after_break", "2026-09-23"],
+  ["2026-09-23", "Wednesday", "event_week", "17:00", "21:00", "Break for Asr' Congregational Prayer", "Main Prayer Hall, SHAS Mosque", "Prayer", "All", "Program Coordinator", "Broadcast.", "shas-mosque"],
+  ["2026-09-23", "Wednesday", "event_week", "21:00", "22:00", "Syarahan Madani Abad ke-21", "Main Prayer Hall, SHAS Mosque", "Programme", "All", "Program Coordinator", "", "shas-mosque"],
+  ["2026-09-23", "Wednesday", "event_week", "08:30", "17:00", "Booth Exhibition and Activation of RHB Card, ASNB Account & Note Book LM", "Foyer, SHAS Mosque", "Exhibition", "All", "Program Coordinator", "", "", false, undefined, undefined, true],
 
-  // ── EVENT WEEK: Day 3 — Thursday, 6 August 2026 ──
-  ["2026-08-06", "Thursday", "event_week", "08:30", "09:15", "Video Presentation with relevant KCDIO: OSHBE", "Main Auditorium", "Programme", "All", "Multimedia", "Day 3: Thursday, 6 August 2026", "main-auditorium", false, "before_break", "2026-08-06"],
-  ["2026-08-06", "Thursday", "event_week", "09:15", "10:00", "Video Presentation with relevant KCDIO: EDC", "Main Auditorium", "Programme", "All", "Multimedia", "Day 3: Thursday, 6 August 2026", "main-auditorium", false, "before_break", "2026-08-06"],
-  ["2026-08-06", "Thursday", "event_week", "10:00", "10:45", "Video Presentation with relevant KCDIO: ISC", "Main Auditorium", "Programme", "All", "Multimedia", "Day 3: Thursday, 6 August 2026", "main-auditorium", false, "before_break", "2026-08-06"],
-  ["2026-08-06", "Thursday", "event_week", "10:45", "11:30", "Video Presentation with relevant KCDIO: SDC", "Main Auditorium", "Programme", "All", "Multimedia", "Day 3: Thursday, 6 August 2026", "main-auditorium", false, "before_break", "2026-08-06"],
-  ["2026-08-06", "Thursday", "event_week", "11:30", "12:30", "Session with DSU", "Main Auditorium", "Programme", "All", "Program Coordinator", "Day 3: Thursday, 6 August 2026", "main-auditorium", true, "before_break", "2026-08-06"],
-  ["2026-08-06", "Thursday", "event_week", "14:30", "17:00", "Ihsan Madani Session", "Respective Kulliyyah", "Programme", "All", "Program Coordinator", "Day 3: Thursday, 6 August 2026", "kulliyyah-zone", true, "after_break", "2026-08-06"],
+  // ── EVENT WEEK: Thursday, 24 September 2026 ──
+  ["2026-09-24", "Thursday", "event_week", "09:00", "12:30", "Insan Madani Session", "Respective Kulliyyah", "Programme", "All", "Program Coordinator", "", "kulliyyah-zone", true, "before_break", "2026-09-24"],
+  ["2026-09-24", "Thursday", "event_week", "12:30", "14:30", "Break for Lunch and Zuhr", "Around Campus", "Break", "All", "Program Coordinator", "", ""],
+  ["2026-09-24", "Thursday", "event_week", "14:30", "17:00", "Insan Madani Session", "Respective Kulliyyah", "Programme", "All", "Program Coordinator", "", "kulliyyah-zone", true, "after_break", "2026-09-24"],
+  ["2026-09-24", "Thursday", "event_week", "08:30", "17:00", "Booth Exhibition and Activation of RHB Card, ASNB Account & Note Book LM", "Foyer, SHAS Mosque", "Exhibition", "All", "Program Coordinator", "", "", false, undefined, undefined, true],
 
-  // ── EVENT WEEK: Day 4 — Friday, 7 August 2026 (no blocks) ──
-  ["2026-08-07", "Friday", "event_week", "08:30", "09:15", "Video Presentation with relevant KCDIO: OSHBE", "Main Auditorium", "Programme", "All", "Multimedia", "Day 4: Friday, 7 August 2026", "main-auditorium"],
-  ["2026-08-07", "Friday", "event_week", "08:30", "14:00", "Ihsan Madani Session", "ADM LT1", "Programme", "All", "Program Coordinator", "Day 4: Friday, 7 August 2026", "adm-lt1"],
-  ["2026-08-07", "Friday", "event_week", "09:00", "12:30", "Ihsan Madani Session", "Respective Kulliyyah", "Programme", "All", "Program Coordinator", "Day 4: Friday, 7 August 2026", "kulliyyah-zone"],
-  ["2026-08-07", "Friday", "event_week", "12:30", "14:30", "Break, Zohor Prayer & Self-Management", "TBC", "Prayer", "All", "Discipline", "Day 4: Friday, 7 August 2026", "tbc"],
-  ["2026-08-07", "Friday", "event_week", "14:30", "17:00", "Ihsan Madani Session", "Respective Kulliyyah", "Programme", "All", "Program Coordinator", "Day 4: Friday, 7 August 2026", "kulliyyah-zone", true],
-  ["2026-08-07", "Friday", "event_week", "20:00", "22:00", "Self-Management & Maghrib & Isya' Congregational Prayer", "TBC", "Prayer", "All", "Discipline", "Day 4: Friday, 7 August 2026", "tbc"],
-
-  // ── EVENT WEEK: Day 5 — Saturday, 8 August 2026 (no blocks) ──
-  ["2026-08-08", "Saturday", "event_week", "08:30", "10:00", "Usrah at Mahallah", "Main Auditorium", "Programme", "All", "Discipline", "Day 5: Saturday, 8 August 2026", "main-auditorium"],
-  ["2026-08-08", "Saturday", "event_week", "08:30", "11:30", "Tilawah Proficiency Test", "Online", "Placement Test", "All", "Program Coordinator", "Day 5: Saturday, 8 August 2026", "online"],
-  ["2026-08-08", "Saturday", "event_week", "10:00", "10:30", "Session with Student Union", "Main Auditorium", "Programme", "All", "Program Coordinator", "Day 5: Saturday, 8 August 2026", "main-auditorium"],
-  ["2026-08-08", "Saturday", "event_week", "10:30", "12:00", "Bai'ah Rehearsal", "Main Auditorium", "Programme", "All", "Discipline", "Day 5: Saturday, 8 August 2026", "main-auditorium"],
-  ["2026-08-08", "Saturday", "event_week", "12:00", "14:30", "Friday Prayer Break & Self-Management", "TBC", "Prayer", "All", "Discipline", "Day 5: Saturday, 8 August 2026", "tbc"],
-  ["2026-08-08", "Saturday", "event_week", "14:30", "16:30", "Bai'ah Ceremony", "Main Auditorium", "Programme", "All", "Discipline", "Day 5: Saturday, 8 August 2026", "main-auditorium"],
-
-  // ── EVENT WEEK: Sunday, 9 August 2026 ──
-  ["2026-08-09", "Sunday", "event_week", "09:30", "10:30", "Bus to Pagoh and Kuantan Campus", "TBC", "Departure", "Students", "Special Task", "Sunday, 9 August 2026", "bus-stop"]
+  // ── EVENT WEEK: Friday, 25 September 2026 ──
+  ["2026-09-25", "Friday", "event_week", "08:30", "09:30", "KPT SLOT Cakna Pertahanan (MINDEF)", "Main Prayer Hall, SHAS Mosque", "Programme", "All", "Program Coordinator", "Broadcast.", "shas-mosque", true, "before_break", "2026-09-25"],
+  ["2026-09-25", "Friday", "event_week", "08:30", "09:30", "KPT SLOT MySiswa Place (YPS)", "Main Prayer Hall, SHAS Mosque", "Programme", "All", "Program Coordinator", "Broadcast.", "shas-mosque", false, "before_break", "2026-09-25"],
+  ["2026-09-25", "Friday", "event_week", "11:00", "11:45", "Bai'ah Rehearsal", "Main Prayer Hall, SHAS Mosque", "Programme", "All", "Discipline", "Broadcast.", "shas-mosque", false, "before_break", "2026-09-25"],
+  ["2026-09-25", "Friday", "event_week", "11:45", "15:00", "Break for Lunch and Zuhr", "Around Campus", "Break", "All", "Program Coordinator", "", ""],
+  ["2026-09-25", "Friday", "event_week", "15:00", "16:00", "Bai'ah Ceremony", "Main Prayer Hall, SHAS Mosque", "Programme", "All", "Discipline", "Broadcast.", "shas-mosque", true, "after_break", "2026-09-25"],
+  ["2026-09-25", "Friday", "event_week", "08:30", "17:00", "Exhibition and Activation of RHB Card & ASNB Account", "Foyer, SHAS Mosque", "Exhibition", "All", "Program Coordinator", "", "", false, undefined, undefined, true]
 ];
 
 export const realEventSchedule: ScheduleItem[] = rawSchedule.map(
