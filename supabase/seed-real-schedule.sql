@@ -16,7 +16,10 @@
 --     no end time exists in the source, so none is fabricated.
 --   * TBD venue -> venue_code 'tbc'. "TBD" end times are never invented.
 
-delete from public.schedule_items where date between '2026-09-10' and '2026-09-25';
+-- Removes any stale placeholder rows (old Aug template) plus the Sep range,
+-- then inserts the real programme. Safe to re-run.
+delete from public.schedule_items
+where date between '2026-08-01' and '2026-09-25';
 
 insert into public.schedule_items (date, day, week, scheduled_start_time, scheduled_end_time, title, venue, tag, audience, responsible_bureau, description, venue_code, is_attendance_required, block, block_group, is_concurrent, track, program_count) values
 -- ── PREPARATION ──────────────────────────────────────────────────────────────
@@ -25,11 +28,11 @@ insert into public.schedule_items (date, day, week, scheduled_start_time, schedu
 -- Friday, 11 Sep 2026
 ('2026-09-11', 'Friday', 'preparation', '09:00', '13:00', 'Special Programme for International Student', 'Experimental Hall', 'Programme', 'All', 'Program Coordinator', null, null, false, null, null, false, null, 1),
 -- Tuesday, 15 Sep 2026
-('2026-09-15', 'Tuesday', 'preparation', '09:00', '13:00', 'Medical Checkup for International Students', 'TBD', 'Programme', 'All', 'Welfare', 'Priority to International students of Pagoh and Kuantan Campus. Venue = TBD', 'tbc', false, null, null, false, null, 1),
+('2026-09-15', 'Tuesday', 'preparation', '09:00', '13:00', 'Medical Checkup for International Students', 'IIUM Sejahtera Clinic', 'Programme', 'All', 'Welfare', 'Priority to International students of Pagoh and Kuantan Campus. Venue = TBD', 'sejahtera-clinic', false, null, null, false, null, 1),
 ('2026-09-15', 'Tuesday', 'preparation', '13:00', '14:00', 'Break for Lunch and Zuhr', 'Around Campus', 'Break', 'All', null, null, null, false, null, null, false, null, 1),
-('2026-09-15', 'Tuesday', 'preparation', '14:00', '17:00', 'Medical Checkup for International Students', 'TBD', 'Programme', 'All', 'Welfare', 'Priority to International students of Pagoh and Kuantan Campus. Venue = TBD', 'tbc', false, null, null, false, null, 1),
+('2026-09-15', 'Tuesday', 'preparation', '14:00', '17:00', 'Medical Checkup for International Students', 'IIUM Sejahtera Clinic', 'Programme', 'All', 'Welfare', 'Priority to International students of Pagoh and Kuantan Campus. Venue = TBD', 'sejahtera-clinic', false, null, null, false, null, 1),
 -- Thursday, 17 Sep 2026
-('2026-09-17', 'Thursday', 'preparation', '09:00', '13:00', 'Medical Checkup for International Students', 'TBD', 'Programme', 'All', 'Welfare', 'Priority to International students of Pagoh and Kuantan Campus. Venue = TBD', 'tbc', false, null, null, false, null, 1),
+('2026-09-17', 'Thursday', 'preparation', '09:00', '13:00', 'Medical Checkup for International Students', 'IIUM Sejahtera Clinic', 'Programme', 'All', 'Welfare', 'Priority to International students of Pagoh and Kuantan Campus. Venue = TBD', 'sejahtera-clinic', false, null, null, false, null, 1),
 ('2026-09-17', 'Thursday', 'preparation', '13:00', '14:30', 'Break for Lunch and Zuhr', 'Around Campus', 'Break', 'All', null, null, null, false, null, null, false, null, 1),
 ('2026-09-17', 'Thursday', 'preparation', '14:30', '15:30', 'Bus to Pagoh and Kuantan Campus', 'Bus Stop', 'Departure', 'Students', 'Special Task', '14:30 at bus stop. For direct intake International Students only. Departure end time not stated in source.', 'bus-stop', false, null, null, false, null, 1),
 -- Friday, 18 Sep 2026
@@ -41,17 +44,17 @@ insert into public.schedule_items (date, day, week, scheduled_start_time, schedu
 ('2026-09-19', 'Saturday', 'preparation', '09:00', '13:00', 'Mahallah Registration for Former-CFS', 'Respective Mahallah', 'Registration', 'All', 'Registration', 'List of Mahallahs: Aminah, Ruqayyah, Maryam, Asma, Sumayyah, Faruq, Bilal and Ali.', 'mahallah-zone', false, null, null, false, null, 1),
 ('2026-09-19', 'Saturday', 'preparation', '13:00', '14:00', 'Break for Lunch and Zuhr', 'Around Campus', 'Break', 'All', null, null, null, false, null, null, false, null, 1),
 ('2026-09-19', 'Saturday', 'preparation', '14:00', '16:00', 'Mahallah Registration for Former-CFS', 'Respective Mahallah', 'Registration', 'All', 'Registration', 'List of Mahallahs: Aminah, Ruqayyah, Maryam, Asma, Sumayyah, Faruq, Bilal and Ali.', 'mahallah-zone', false, null, null, false, null, 1),
-('2026-09-19', 'Saturday', 'preparation', '08:30', '12:00', 'English Proficiency Test (EPT)', 'TBD', 'Placement Test', 'Students', 'Program Coordinator', 'KAED & KOE. Non-Former CFS students.', 'tbc', false, null, null, true, 'KAED & KOE', 1),
-('2026-09-19', 'Saturday', 'preparation', '12:00', '13:00', 'Fardhu Ain Test (FAT)', 'TBD', 'Placement Test', 'Students', 'Program Coordinator', 'KAED & KOE. For International Students only.', 'tbc', false, null, null, true, 'KAED & KOE', 1),
-('2026-09-19', 'Saturday', 'preparation', '14:30', '17:00', 'Arabic Proficiency Test (APT)', 'TBD', 'Placement Test', 'Students', 'Program Coordinator', 'KAED & KOE. Non-Former CFS students.', 'tbc', false, null, null, true, 'KAED & KOE', 1),
+('2026-09-19', 'Saturday', 'preparation', '08:30', '12:00', 'English Proficiency Test (EPT)', 'KAED & KOE', 'Placement Test', 'Students', 'Program Coordinator', 'KAED & KOE. Non-Former CFS students.', null, false, null, null, true, null, 1),
+('2026-09-19', 'Saturday', 'preparation', '12:00', '13:00', 'Fardhu Ain Test (FAT)', 'KAED & KOE', 'Placement Test', 'Students', 'Program Coordinator', 'KAED & KOE. For International Students only.', null, false, null, null, true, null, 1),
+('2026-09-19', 'Saturday', 'preparation', '14:30', '17:00', 'Arabic Proficiency Test (APT)', 'KAED & KOE', 'Placement Test', 'Students', 'Program Coordinator', 'KAED & KOE. Non-Former CFS students.', null, false, null, null, true, null, 1),
 -- Sunday, 20 Sep 2026
 ('2026-09-20', 'Sunday', 'preparation', '09:00', '13:00', 'Mahallah Registration - Former CFS', 'Respective Mahallah', 'Registration', 'All', 'Registration', 'List of Mahallahs: Asiah, Halimah, Hafsah, Nusaibah, Safiyyah, Salahuddin, Uthman, Siddiq and Zubair.', 'mahallah-zone', false, null, null, false, null, 1),
 ('2026-09-20', 'Sunday', 'preparation', '13:00', '14:00', 'Break for Lunch and Zuhr', 'Around Campus', 'Break', 'All', null, null, null, false, null, null, false, null, 1),
 ('2026-09-20', 'Sunday', 'preparation', '14:00', '16:00', 'Mahallah Registration - Former CFS', 'Respective Mahallah', 'Registration', 'All', 'Registration', 'List of Mahallahs: Asiah, Halimah, Hafsah, Nusaibah, Safiyyah, Salahuddin, Uthman, Siddiq and Zubair.', 'mahallah-zone', false, null, null, false, null, 1),
 ('2026-09-20', 'Sunday', 'preparation', '17:00', '20:00', 'Maghrib & Isya'' Congregational Prayer', 'Respective Mahallah', 'Prayer', 'All', null, null, 'mahallah-zone', false, null, null, false, null, 1),
 ('2026-09-20', 'Sunday', 'preparation', '20:00', '21:00', 'My Mahallah My Second Home', 'Respective Mahallah', 'Programme', 'All', 'Discipline', null, 'mahallah-zone', false, null, null, false, null, 1),
-('2026-09-20', 'Sunday', 'preparation', '08:30', '12:00', 'English Proficiency Test (EPT) (SPEAKING)', 'TBD', 'Placement Test', 'Students', 'Program Coordinator', 'KAED & KOE. Non-Former CFS students.', 'tbc', false, null, null, true, 'KAED & KOE', 1),
-('2026-09-20', 'Sunday', 'preparation', '14:30', '17:00', 'English Proficiency Test (EPT) (SPEAKING)', 'TBD', 'Placement Test', 'Students', 'Program Coordinator', 'KAED & KOE. Non-Former CFS students.', 'tbc', false, null, null, true, 'KAED & KOE', 1),
+('2026-09-20', 'Sunday', 'preparation', '08:30', '12:00', 'English Proficiency Test (EPT) (SPEAKING)', 'KAED & KOE', 'Placement Test', 'Students', 'Program Coordinator', 'KAED & KOE. Non-Former CFS students.', null, false, null, null, true, null, 1),
+('2026-09-20', 'Sunday', 'preparation', '14:30', '17:00', 'English Proficiency Test (EPT) (SPEAKING)', 'KAED & KOE', 'Placement Test', 'Students', 'Program Coordinator', 'KAED & KOE. Non-Former CFS students.', null, false, null, null, true, null, 1),
 
 -- ── EVENT WEEK ───────────────────────────────────────────────────────────────
 -- Monday, 21 Sep 2026

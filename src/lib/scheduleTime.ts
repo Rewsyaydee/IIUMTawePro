@@ -12,8 +12,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // Inside this window the app clock is the REAL date (identity mode) and the
 // schedule rows are the real 10-25 Sep programme. Outside, the 7-day loop stays
 // for previews.
-const PROGRAMME_START = "2026-09-10";
-const PROGRAMME_END = "2026-09-25";
+export const PROGRAMME_START_ISO = "2026-09-10";
+export const PROGRAMME_END_ISO = "2026-09-25";
 
 function localIsoDate(date: Date): string {
   const y = date.getFullYear();
@@ -22,9 +22,12 @@ function localIsoDate(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+export function isProgrammeDateIso(iso: string): boolean {
+  return String(iso || "") >= PROGRAMME_START_ISO && String(iso || "") <= PROGRAMME_END_ISO;
+}
+
 export function isInProgrammeWindow(now: Date = new Date()): boolean {
-  const iso = localIsoDate(now);
-  return iso >= PROGRAMME_START && iso <= PROGRAMME_END;
+  return isProgrammeDateIso(localIsoDate(now));
 }
 
 function startOfDay(date: Date): number {

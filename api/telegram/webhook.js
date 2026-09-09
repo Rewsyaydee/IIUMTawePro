@@ -610,13 +610,50 @@ async function handleUnlock(chatId, userRecord, codeText) {
   const code = codeText.trim();
 
   if (!code) {
-    const fallbackText = `🔓 <b>Unlock Committee Access</b>\n\nSend your access code like this:\n<code>/unlock YOUR_CODE_HERE</code>\n\nIf you don't have a code yet, please contact the Mainboard team.`;
+    const fallbackText = `🔓 <b>Unlock Committee Access</b>\n\nSend your access code like this:\n<code>/unlock YOUR_CODE_HERE</code>\n\nCommittee members can switch back to the student view anytime with:\n<code>/unlock student</code>\n\nIf you don't have a code yet, please contact the Mainboard team.`;
     await richSend(chatId, [
       richHeading("🔓 Unlock Committee Access"),
       richParagraph("Send your access code like this:"),
       richPre("/unlock YOUR_CODE_HERE"),
+      richParagraph("Committee members can switch back to the student view anytime with:"),
+      richPre("/unlock student"),
       richParagraph("If you don't have a code yet, please contact the Mainboard team.")
     ], { fallbackText });
+    return;
+  }
+
+  // ── /unlock student: non-students return to the student view ──
+  if (/^student$/i.test(code)) {
+    if (!userRecord || userRecord.role === "student") {
+      await richSend(chatId, [
+        richHeading("You're already in student view 🎓"),
+        richParagraph("Type /start to see your student profile.")
+      ], { fallbackText: "You're already in student view. Type /start to see your profile." });
+      return;
+    }
+    try {
+      await updateUserRegistration(userRecord.telegram_id, { registration_step: "student_downgrade" });
+    } catch (err) {
+      console.error("student_downgrade step failed:", err?.message || err);
+      await richSend(chatId, [
+        richHeading("😓 Something went wrong"),
+        richParagraph("Please try again or contact the Mainboard team.")
+      ], { fallbackText: "😓 Sorry, something went wrong. Please try again." });
+      return;
+    }
+    const fallbackText = `🎓 <b>Switch back to Student view, ${html(name)}?</b>\n\nYour profile (matric, kulliyyah, mahallah) will be kept. You'll stop receiving committee notifications.`;
+    const fallbackReplyMarkup = {
+      inline_keyboard: [
+        [{ text: "✅ Yes, switch to Student", callback_data: "student_downgrade:yes" }],
+        [{ text: "❌ Cancel", callback_data: "student_downgrade:cancel" }]
+      ]
+    };
+    await richSend(chatId, [
+      richHeading(`🎓 Switch back to Student view, ${name}?`),
+      richParagraph("Your profile (matric, kulliyyah, mahallah) will be kept. You'll stop receiving committee notifications."),
+      richButtonsRow([richButton({ text: "✅ Yes, switch to Student", callbackData: "student_downgrade:yes", style: "danger" })]),
+      richButtonsRow([richButton({ text: "❌ Cancel", callbackData: "student_downgrade:cancel", style: "link" })])
+    ], { fallbackText, fallbackReplyMarkup });
     return;
   }
 
@@ -817,6 +854,47 @@ async function handleCallback(chatId, userRecord, data, fromId) {
         richHeading("😓 Something went wrong"),
         richParagraph("Please try again.")
       ], { fallbackText: "😓 Something went wrong. Please try again." }).catch(() => {});
+    }
+    return;
+  }
+
+  // ── /unlock student confirmation (only while step = student_downgrade) ──
+  if (data.startsWith("student_downgrade:") && userRecord?.registration_step === "student_downgrade" && userRecord?.role && userRecord.role !== "student") {
+    const choice = data.split(":")[1];
+    if (choice === "cancel") {
+      await updateUserRegistration(userRecord.telegram_id, { registration_step: null });
+      const rLabel = roleLabel(userRecord.role, userRecord.bureau);
+      const fallbackText = `No problem, ${html(name)}! You're staying as <b>${html(rLabel)}</b>.`;
+      await richSend(chatId, [
+        richHeading(`No problem, ${name}!`),
+        richParagraph(`You're staying as ${rLabel}.`),
+        ...changeRowsForRole(userRecord.role)
+      ], { fallbackText, fallbackReplyMarkup: changeKeyboard(userRecord.role) });
+      return;
+    }
+    if (choice === "yes") {
+      try {
+        await updateUserRegistration(userRecord.telegram_id, {
+          role: "student",
+          bureau: null,
+          registration_step: null,
+          committee_prefs: { briefing: "off", masterplan: "off" }
+        });
+      } catch (err) {
+        console.error("student downgrade failed:", err?.message || err);
+        await richSend(chatId, [
+          richHeading("😓 Something went wrong"),
+          richParagraph("Please try again or contact the Mainboard team.")
+        ], { fallbackText: "😓 Sorry, something went wrong. Please try again." });
+        return;
+      }
+      const fallbackText = `🎓 <b>Done, ${html(name)}!</b> You're back in <b>Student view</b>.\n\nYour matric, kulliyyah and mahallah are unchanged. Committee notifications are now off.`;
+      await richSend(chatId, [
+        richHeading(`🎓 Done, ${name}! You're back in Student view.`),
+        richParagraph("Your matric, kulliyyah and mahallah are unchanged. Committee notifications are now off."),
+        ...studentChangeRows()
+      ], { fallbackText, fallbackReplyMarkup: changeKeyboard("student") });
+      return;
     }
     return;
   }
@@ -1136,12 +1214,13 @@ export default async function handler(req, res) {
 
     // /help command
     if (text.startsWith("/help")) {
-      const fallbackText = `🤖 <b>Bot Commands</b>\n\n<b>/start</b> — View your profile & dashboard\n<b>/unlock CODE</b> — Unlock committee access\n<b>/notifications</b> — Subscribe to session reminders\n<b>/review</b> — Rate your Ta'aruf Week experience\n\nYou can also:\n• Tap the buttons below any message to open the app\n• Update your matric number or kulliyyah anytime\n• Check your attendance progress\n\n📢 Join our community: https://t.me/taweprohelp`;
+      const fallbackText = `🤖 <b>Bot Commands</b>\n\n<b>/start</b> — View your profile & dashboard\n<b>/unlock CODE</b> — Unlock committee access\n<b>/unlock student</b> — Switch back to student view (committee)\n<b>/notifications</b> — Subscribe to session reminders\n<b>/review</b> — Rate your Ta'aruf Week experience\n\nYou can also:\n• Tap the buttons below any message to open the app\n• Update your matric number or kulliyyah anytime\n• Check your attendance progress\n\n📢 Join our community: https://t.me/taweprohelp`;
       await richSend(chatId, [
         richHeading("🤖 Bot Commands"),
         richList([
           { blocks: [richParagraph([{ type: "code", text: "/start" }, " — View your profile & dashboard"])] },
           { blocks: [richParagraph([{ type: "code", text: "/unlock CODE" }, " — Unlock committee access"])] },
+          { blocks: [richParagraph([{ type: "code", text: "/unlock student" }, " — Switch back to student view (committee)"])] },
           { blocks: [richParagraph([{ type: "code", text: "/notifications" }, " — Subscribe to session reminders"])] },
           { blocks: [richParagraph([{ type: "code", text: "/review" }, " — Rate your Ta'aruf Week experience"])] }
         ]),

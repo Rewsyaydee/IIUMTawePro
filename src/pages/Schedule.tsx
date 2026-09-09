@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Check, MapPin, Clock3, PenLine, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { formatScheduleClock, getScheduleClock, getScheduleStatus, scheduleDateTime, buildBlockId } from "../lib/scheduleTime";
+import { formatScheduleClock, getScheduleClock, getScheduleStatus, isProgrammeDateIso, scheduleDateTime, buildBlockId } from "../lib/scheduleTime";
 import { hapticError, hapticImpact, hapticSuccess } from "../lib/telegram";
 import { playSfx } from "../lib/sfx";
 import { ColorSweepText } from "../components/ColorSweepText";
@@ -18,7 +18,9 @@ type SelectedView = "main" | "concurrent";
 type DateNav = { iso: string; day: string; label: string };
 
 function buildDateNav(items: ScheduleItem[]): DateNav[] {
-  const dates = [...new Set(items.map((s) => s.date))].sort();
+  // Only real programme dates (10-25 Sep) ever appear in the nav — stale or
+  // stray rows can't pollute the selector.
+  const dates = [...new Set(items.map((s) => s.date))].filter((iso) => isProgrammeDateIso(iso)).sort();
   return dates.map((iso) => {
     const date = new Date(`${iso}T00:00:00`);
     return {
@@ -82,7 +84,7 @@ function Schedule() {
 
   const beforeBreakItems = dayItems.filter((s) => s.block === "before_break");
   const afterBreakItems = dayItems.filter((s) => s.block === "after_break");
-  const noBlockItems = dayItems.filter((s) => !s.block);
+  const noBlockItems = dayItems.filter((s) => !s.block && !s.isConcurrent);
   const concurrentItems = dayItems.filter((s) => s.isConcurrent);
 
   const isBlockAttended = (blockType: "before_break" | "after_break"): boolean => {
