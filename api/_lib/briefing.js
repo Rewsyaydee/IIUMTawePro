@@ -17,6 +17,7 @@ import {
   richParagraph
 } from "./rich-messages.js";
 import { getAppBaseUrl } from "./telegram-bot.js";
+import { buildPoaBriefingBlocks, buildPoaBriefingFallback, bureauTagline } from "./poa-notify.js";
 
 const MAX_EVENTS = 8;
 const MAX_TASKS = 5;
@@ -43,15 +44,18 @@ export async function fetchDaySchedule(dateIso) {
 
 export async function fetchUserTasksDue(dateIso, user) {
   // Assigned via assigned_to_ids (uuid[]) or legacy assigned_to display name.
+  // PIC-label tasks (no individual assignees) reach every member of that bureau.
   const rows = await supabaseRequest(
-    `/poa_tasks?due_date=eq.${encodeURIComponent(dateIso)}&status=neq.done&select=id,bureau,title,due_time,assigned_to,assigned_to_ids&order=due_time.asc&limit=50`
+    `/poa_tasks?due_date=eq.${encodeURIComponent(dateIso)}&status=neq.done&select=id,bureau,title,description,status,due_time,assigned_to,assigned_to_ids&order=due_time.asc&limit=100`
   );
   const list = Array.isArray(rows) ? rows : [];
   return list.filter((task) => {
-    if (Array.isArray(task.assigned_to_ids)) {
-      if (task.assigned_to_ids.some((id) => String(id) === String(user.id))) return true;
-    }
-    return String(task.assigned_to || "").toLowerCase().includes(String(user.name || "").toLowerCase());
+    const ids = Array.isArray(task.assigned_to_ids) ? task.assigned_to_ids.map(String) : [];
+    if (ids.includes(String(user.id))) return true;
+    const assignedText = String(task.assigned_to || "").toLowerCase();
+    if (assignedText.includes(String(user.name || "").toLowerCase())) return true;
+    if (user.bureau && task.bureau === user.bureau && ids.length === 0) return true;
+    return false;
   });
 }
 
@@ -64,6 +68,15 @@ export function composeBriefing({ user, dateIso, dayEvents, tasks }) {
   const events = [...main, ...concurrent].slice(0, MAX_EVENTS);
   const eventTotal = main.length + concurrent.length;
   const truncatedEvents = eventTotal > MAX_EVENTS;
+
+  // Bureau POA slots (PIC-label tasks, no individual assignees) render in the
+  // operational POA card style; everything else stays in the personal list.
+  const hasTagline = Boolean(bureauTagline(user.bureau));
+  const poaTasks = hasTagline
+    ? tasks.filter((t) => t.bureau === user.bureau && !(Array.isArray(t.assigned_to_ids) && t.assigned_to_ids.length > 0))
+    : [];
+  const poaIds = new Set(poaTasks.map((t) => t.id));
+  const personalTasks = tasks.filter((t) => !poaIds.has(t.id));
 
   if (events.length === 0 && tasks.length === 0 && ambient.length === 0) return null;
 
@@ -109,33 +122,43 @@ export function composeBriefing({ user, dateIso, dayEvents, tasks }) {
     fallbackLines.push(`Also today: ${ambientTitles} (${ambient[0].venue || "All day"}).`);
   }
 
-  if (tasks.length > 0) {
-    const visibleTasks = tasks.slice(0, MAX_TASKS);
+  if (poaTasks.length > 0) {
+    blocks.push(...buildPoaBriefingBlocks({ bureau: user.bureau, dateLabel: prettyDate(dateIso), tasks: poaTasks }));
+    fallbackLines.push("", buildPoaBriefingFallback({ bureau: user.bureau, dateLabel: prettyDate(dateIso), tasks: poaTasks }));
+  }
+
+  if (personalTasks.length > 0) {
+    const visibleTasks = personalTasks.slice(0, MAX_TASKS);
     blocks.push(richHeading("Your tasks today", 3));
     blocks.push(richList(visibleTasks.map((task) => ({
       blocks: [
         richParagraph([{ type: "bold", text: task.title }]),
-        richParagraph(`🏢 ${task.bureau}${task.due_time ? ` · ⏰ ${task.due_time.slice(0, 5)}` : ""}`)
+        richParagraph(`🏢 ${task.bureau}${task.due_time ? ` · ⏰ ${String(task.due_time).slice(0, 5)}` : ""}`)
       ],
       hasCheckbox: true,
       isChecked: false
     }))));
     fallbackLines.push("", "✅ <b>Your tasks today</b>");
     for (const task of visibleTasks) {
-      fallbackLines.push(`• ${task.title} (${task.bureau}${task.due_time ? `, ${task.due_time.slice(0, 5)}` : ""})`);
+      fallbackLines.push(`• ${task.title} (${task.bureau}${task.due_time ? `, ${String(task.due_time).slice(0, 5)}` : ""})`);
     }
-    if (tasks.length > MAX_TASKS) {
-      blocks.push(richParagraph(`…and ${tasks.length - MAX_TASKS} more in /tasks.`));
-      fallbackLines.push(`…and ${tasks.length - MAX_TASKS} more in /tasks.`);
+    if (personalTasks.length > MAX_TASKS) {
+      blocks.push(richParagraph(`…and ${personalTasks.length - MAX_TASKS} more in /tasks.`));
+      fallbackLines.push(`…and ${personalTasks.length - MAX_TASKS} more in /tasks.`);
     }
-  } else if (clusters.length === 0 && ambient.length === 0) {
+  } else if (clusters.length === 0 && ambient.length === 0 && poaTasks.length === 0) {
     return null;
   }
 
-  blocks.push(
-    richButtonsRow([richButton({ text: "📋 Open Tasks", webApp: `${getAppBaseUrl()}/tasks` })]),
-    richButtonsRow([richButton({ text: "📅 Open Schedule", webApp: `${getAppBaseUrl()}/schedule` })])
-  );
+  // POA section carries its own "Open TawePro & Check In" button.
+  if (poaTasks.length > 0) {
+    blocks.push(richButtonsRow([richButton({ text: "📅 Open Schedule", webApp: `${getAppBaseUrl()}/schedule` })]));
+  } else {
+    blocks.push(
+      richButtonsRow([richButton({ text: "📋 Open Tasks", webApp: `${getAppBaseUrl()}/tasks` })]),
+      richButtonsRow([richButton({ text: "📅 Open Schedule", webApp: `${getAppBaseUrl()}/schedule` })])
+    );
+  }
   fallbackLines.push("", "👉 Open TawePro to manage tasks: t.me/iiumtaweprobot");
 
   return {

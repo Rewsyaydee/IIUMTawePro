@@ -6004,3 +6004,8 @@ textarea {
 .launch-checklist-status {
   flex-wrap: wrap;
 }
+
+/* POA task descriptions keep their bullet line breaks */
+.task-card .muted {
+  white-space: pre-line;
+}
