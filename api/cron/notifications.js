@@ -237,11 +237,12 @@ export default async function handler(req, res) {
     console.log(`[notify-check] live "${s.title}" sent: ${batchSent}/${ids.length} (key ${liveKey})`);
   }
 
-  // ── Committee morning briefing: daily at 07:00 KL (±15 min window) ──
+  // ── Committee morning briefing: daily at 07:00 KL (30 min window so the
+  //    07:00 Vercel daily cron and any pinger hit in 07:00-07:30 both land) ──
   // Targeted single-user test override: &briefing_for=<telegram_id> forces the
   // briefing for that one user (bypasses dedup + window, like testMode).
   const briefingFor = url.searchParams.get("briefing_for") || null;
-  const briefingMatch = inWindow(nowMin, 7, 0) || Boolean(briefingFor);
+  const briefingMatch = inWindow(nowMin, 7, 0, 30) || Boolean(briefingFor);
   if (briefingMatch) {
     const briefingDate = testDate || date;
     if (briefingFor) {
