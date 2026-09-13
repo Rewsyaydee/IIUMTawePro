@@ -14,7 +14,7 @@
 // seeded with notify_minutes_before = 0, so no per-slot pings are sent).
 
 import { getAppBaseUrl } from "./telegram-bot.js";
-import { richButton, richButtonsRow, richHeading, richList, richParagraph } from "./rich-messages.js";
+import { richButton, richButtonsRow, richHeading, richParagraph, richTable } from "./rich-messages.js";
 
 export const BUREAU_TAGLINES = {
   PrepTech: "#techkitojangeypecoh"
@@ -62,21 +62,35 @@ export function buildPoaBriefingBlocks({ bureau, dateLabel, tasks }) {
     ? `🔔 ${String(bureau).toUpperCase()} POA REMINDER · ${tagline}`
     : `🔔 ${bureau} POA`;
 
-  const blocks = [
-    richHeading(heading),
-    richParagraph(`📅 ${dateLabel}`)
+  // Compact 3-column table: Time | Task (bullets inline) | PIC.
+  // Full details always live in /tasks; long task cells are truncated.
+  const rows = [
+    [
+      { text: "Time", is_header: true },
+      { text: "Task", is_header: true },
+      { text: "PIC", is_header: true }
+    ],
+    ...tasks.map((task) => {
+      const bullets = taskBullets(task);
+      let detail = bullets.join(" • ");
+      if (detail.length > 160) detail = `${detail.slice(0, 157)}…`;
+      const taskCell = detail
+        ? { text: [{ type: "bold", text: task.title }, ` — ${detail}`] }
+        : { text: [{ type: "bold", text: task.title }] };
+      return [
+        { text: formatPoaTime(task.due_time) },
+        taskCell,
+        { text: task.assigned_to || "ALL" }
+      ];
+    })
   ];
 
-  blocks.push(richList(tasks.map((task) => ({
-    blocks: [
-      richParagraph([{ type: "bold", text: `${formatPoaTime(task.due_time)} — ${task.title}` }]),
-      ...taskBullets(task).map((bullet) => richParagraph(`• ${bullet}`)),
-      richParagraph(`👥 PIC: ${task.assigned_to || "ALL"} · 📍 ${poaStatusLabel(task.status)}`)
-    ]
-  }))));
-
-  blocks.push(richButtonsRow([richButton({ text: "Open TawePro & Check In", webApp: `${getAppBaseUrl()}/tasks` })]));
-  return blocks;
+  return [
+    richHeading(heading),
+    richParagraph(`📅 ${dateLabel}`),
+    richTable(rows, { compact: true, bordered: true, striped: true }),
+    richButtonsRow([richButton({ text: "Open TawePro & Check In", webApp: `${getAppBaseUrl()}/tasks` })])
+  ];
 }
 
 export function buildPoaBriefingFallback({ bureau, dateLabel, tasks }) {
