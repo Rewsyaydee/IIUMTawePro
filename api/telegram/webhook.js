@@ -787,8 +787,31 @@ async function handleCallback(chatId, userRecord, data, fromId) {
       return;
     }
     try {
-      if (data === "baiah:on" || data === "baiah:off") {
-        await setBaiahActive(userRecord, data === "baiah:on");
+      if (data === "baiah:on") {
+        // Two-step confirm: activating reaches EVERYONE and cancels any
+        // scheduled time, so never fire it from a single stray tap.
+        await richSend(chatId, [
+          richHeading("⚠️ Activate for everyone now?"),
+          richParagraph("This instantly shows the takeover to all users, re-announces on Telegram, and cancels any scheduled time."),
+          richButtonsRow([
+            richButton({ text: "✅ Yes, activate now", callbackData: "baiah:on_confirm", style: "success" }),
+            richButton({ text: "❌ Cancel", callbackData: "baiah:status", style: "link" })
+          ])
+        ], {
+          fallbackText: "⚠️ Activate the Baiah takeover for everyone now? This cancels any scheduled time.",
+          fallbackReplyMarkup: {
+            inline_keyboard: [[
+              { text: "✅ Yes, activate now", callback_data: "baiah:on_confirm" },
+              { text: "❌ Cancel", callback_data: "baiah:status" }
+            ]]
+          }
+        });
+        return;
+      }
+      if (data === "baiah:on_confirm") {
+        await setBaiahActive(userRecord, true);
+      } else if (data === "baiah:off") {
+        await setBaiahActive(userRecord, false);
       }
       await sendBaiahMenu(chatId, userRecord);
     } catch (err) {

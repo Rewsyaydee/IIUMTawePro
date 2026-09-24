@@ -240,7 +240,7 @@ server-computed current virtual date/cycle, then enforces
 `pick_bureau:`, `pick_kulliyyah:`, `pick_mahallah:`, `change_matric`, `change_kulliyyah`,
 `change_mahallah`, `unlock_prompt`, `set_notify:`, `notify_menu:`, `set_briefing:`,
 `set_masterplan:`, `review_name:`, `review_rating:`, `review_cancel`,
-`review_approve:` / `review_reject:`, `student_downgrade:`, `baiah:on|off|status`.
+`review_approve:` / `review_reject:`, `student_downgrade:`, `baiah:on|on_confirm|off|status`.
 
 ### 6.3 Rich Messages (Bot API 10.3)
 
