@@ -46,6 +46,7 @@ const appUrl = (process.env.TELEGRAM_WEB_APP_URL || "https://iium-tawe-pro.verce
 function usage() {
   console.log(`Baiah takeover console — commands:
   status                              show current app_settings row
+  progress                            announcement fan-out progress (claims sent)
   audience                            count active users by role (announcement reach)
   admin                               make telegram id ${TEST_TELEGRAM_ID} a mainboard admin
   notify on|off                       toggle the Telegram announcement for the next run
@@ -126,6 +127,16 @@ async function clearBaiahSendState() {
 switch (command) {
   case "status": {
     printSettings(await readSettings());
+    break;
+  }
+
+  case "progress": {
+    const settings = await readSettings();
+    const stateRows = await supabaseRequest("/ops_settings?key=eq.baiah_announce_state&select=value&limit=1");
+    const state = Array.isArray(stateRows) && stateRows[0]?.value ? stateRows[0].value : {};
+    const claims = await supabaseRequest("/notification_sends?send_key=like.baiah-user:*&select=send_key&limit=10000");
+    const claimCount = Array.isArray(claims) ? claims.length : 0;
+    console.log(`Takeover: ${settings?.is_baiah_active ? "LIVE" : "off"} · Announcement done: ${state.done === true} · Claimed/sent: ${claimCount}`);
     break;
   }
 
