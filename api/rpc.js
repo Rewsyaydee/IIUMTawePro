@@ -680,6 +680,8 @@ export default async function handler(req, res) {
       }
       case "baiah.set": {
         if (user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
+        const existingRows = await supabaseRequest("/app_settings?id=eq.1&select=is_baiah_active&limit=1");
+        const alreadyLive = Array.isArray(existingRows) ? Boolean(existingRows[0]?.is_baiah_active) : false;
         const patch = { updated_at: new Date().toISOString(), baiah_updated_by: user.name || "mainboard" };
         const notes = [];
 
@@ -727,9 +729,16 @@ export default async function handler(req, res) {
         if (body.active !== undefined) {
           patch.is_baiah_active = Boolean(body.active);
           if (patch.is_baiah_active) {
-            patch.baiah_activated_at = new Date().toISOString();
-            patch.baiah_start_at = null;
-            notes.push("takeover ACTIVATED");
+            if (alreadyLive) {
+              // Never create a second epoch for an already-live takeover —
+              // that would re-blast the announcement to everyone.
+              delete patch.is_baiah_active;
+              notes.push("already live (no re-announce)");
+            } else {
+              patch.baiah_activated_at = new Date().toISOString();
+              patch.baiah_start_at = null;
+              notes.push("takeover ACTIVATED");
+            }
           } else {
             patch.baiah_start_at = null;
             notes.push("takeover deactivated");

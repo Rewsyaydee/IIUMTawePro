@@ -1334,6 +1334,12 @@ async function fetchBaiahRow() {
 }
 
 async function setBaiahActive(userRecord, active) {
+  if (active) {
+    // Idempotent: tapping "Activate now" on an already-live takeover must not
+    // create a new epoch, which would re-blast the announcement to everyone.
+    const current = await fetchBaiahRow();
+    if (current?.is_baiah_active) return;
+  }
   const nowIso = new Date().toISOString();
   const body = active
     ? {

@@ -137,9 +137,16 @@ switch (command) {
     const stateRows = await supabaseRequest("/ops_settings?key=eq.baiah_announce_state&select=value&limit=1");
     const state = Array.isArray(stateRows) && stateRows[0]?.value ? stateRows[0].value : {};
     const claims = await supabaseRequest("/notification_sends?send_key=like.baiah-user:*&select=send_key&limit=20000");
-    const claimCount = Array.isArray(claims) ? claims.length : 0;
+    const list = Array.isArray(claims) ? claims : [];
+    const byEpoch = {};
+    for (const row of list) {
+      const parts = String(row.send_key).split(":");
+      const epoch = parts.slice(1, -1).join(":");
+      byEpoch[epoch] = (byEpoch[epoch] || 0) + 1;
+    }
     const epoch = state.epoch || state.activatedAt || "—";
-    console.log(`Takeover: ${settings?.is_baiah_active ? "LIVE" : "off"} · Announcement done: ${state.done === true} · Claimed/sent: ${claimCount} · Epoch: ${epoch}`);
+    console.log(`Takeover: ${settings?.is_baiah_active ? "LIVE" : "off"} · Announcement done: ${state.done === true} · Claimed/sent: ${list.length} · Epoch: ${epoch}`);
+    console.log("Claims by epoch:", JSON.stringify(byEpoch, null, 2));
     break;
   }
 
