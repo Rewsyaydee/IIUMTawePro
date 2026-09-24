@@ -5,6 +5,11 @@
       "schedule": "0 23 * * *"
     }
   ],
+  "functions": {
+    "api/cron/notifications.js": {
+      "maxDuration": 60
+    }
+  },
   "headers": [
     {
       "source": "/assets/maps/(.*)",
@@ -17,6 +22,15 @@
           "key": "Access-Control-Allow-Methods",
           "value": "GET, HEAD, OPTIONS"
         },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/audio/(.*)",
+      "headers": [
         {
           "key": "Cache-Control",
           "value": "public, max-age=31536000, immutable"

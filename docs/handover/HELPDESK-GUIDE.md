@@ -192,7 +192,14 @@ select * from pg_publication_tables where pubname = 'supabase_realtime' and tabl
 ```
 
 If that returns 0 rows, re-run `supabase/baiah-takeover.sql` Section 4. Mainboard can always
-activate manually from Bureau Ops → Live → Baiah takeover.
+activate manually from Bureau Ops → Live → Baiah takeover, or with the bot remote `/baiah`.
+
+**User-side controls:** every user gets a **Skip** button (hides it for that activation;
+`baiah_skip_enabled = false` removes it) and a sound mute toggle. Music plays from
+`/audio/baiah.mp3` (or `baiah_song_url`); when mobile autoplay is blocked the user sees a
+"🔊 Tap for sound" chip — this is normal, not a bug. At event scale (Supabase Free = 200
+concurrent Realtime connections) most devices get the takeover via the local scheduled
+trigger + 10s poll, so a few seconds of skew is expected.
 
 ---
 

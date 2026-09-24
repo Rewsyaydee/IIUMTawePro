@@ -92,6 +92,8 @@ function BureauOps() {
   const [baiah, setBaiah] = useState<BaiahSettings | null>(null);
   const [baiahAt, setBaiahAt] = useState("");
   const [baiahMsg, setBaiahMsg] = useState("");
+  const [baiahLead, setBaiahLead] = useState(2);
+  const [baiahSongUrl, setBaiahSongUrl] = useState("");
   const [applyingBaiah, setApplyingBaiah] = useState(false);
   const baiahLoadedRef = useRef(false);
 
@@ -185,6 +187,8 @@ function BureauOps() {
             baiahLoadedRef.current = true;
             setBaiahMsg(next.baiahMessage);
             setBaiahAt(toKlInputValue(next.baiahStartAt));
+            setBaiahLead(next.baiahNotifyLeadMinutes);
+            setBaiahSongUrl(next.baiahSongUrl || "");
           }
         })
         .catch(() => {});
@@ -440,6 +444,60 @@ function BureauOps() {
                   onChange={(event) => applyBaiah({ notify: event.target.checked })}
                 />
                 Also announce on Telegram (pulls in students who don&apos;t have the app open)
+              </label>
+              <div className="baiah-control-row">
+                <label className="baiah-inline-field">
+                  Announce
+                  <input
+                    type="number"
+                    min={0}
+                    max={60}
+                    value={baiahLead}
+                    onChange={(event) => setBaiahLead(Number(event.target.value))}
+                  />
+                  min before
+                </label>
+                <button
+                  type="button"
+                  disabled={applyingBaiah || !baiah || baiahLead === baiah.baiahNotifyLeadMinutes}
+                  onClick={() => applyBaiah({ notifyLeadMinutes: baiahLead })}
+                >
+                  Save
+                </button>
+              </div>
+              <div className="baiah-control-row">
+                <input
+                  type="text"
+                  value={baiahSongUrl}
+                  placeholder="/audio/baiah.mp3"
+                  aria-label="Celebration song URL"
+                  onChange={(event) => setBaiahSongUrl(event.target.value)}
+                />
+                <button
+                  type="button"
+                  disabled={applyingBaiah || !baiah || (baiahSongUrl.trim() || null) === baiah.baiahSongUrl}
+                  onClick={() => applyBaiah({ songUrl: baiahSongUrl.trim() || null })}
+                >
+                  Set song
+                </button>
+              </div>
+              <label className="baiah-notify-toggle">
+                <input
+                  type="checkbox"
+                  checked={baiah?.baiahSongEnabled === true}
+                  disabled={applyingBaiah || !baiah}
+                  onChange={(event) => applyBaiah({ songEnabled: event.target.checked })}
+                />
+                Play music during the takeover (default file: /audio/baiah.mp3 — starts on first tap where autoplay is blocked)
+              </label>
+              <label className="baiah-notify-toggle">
+                <input
+                  type="checkbox"
+                  checked={baiah?.baiahSkipEnabled !== false}
+                  disabled={applyingBaiah || !baiah}
+                  onChange={(event) => applyBaiah({ skipEnabled: event.target.checked })}
+                />
+                Show the Skip button to users
               </label>
               <div className="baiah-actions">
                 <button

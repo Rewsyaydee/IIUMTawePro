@@ -232,6 +232,7 @@ server-computed current virtual date/cycle, then enforces
 | `/unlock student` | Committee/head/mainboard returns to student view (with confirmation) |
 | `/notifications` | Students: tier menu. Committee+: Session Notifications vs Masterplan Reminders |
 | `/review` | Multi-step anonymous review (name choice → text → stars) |
+| `/baiah` | Mainboard only: Baiah takeover remote (Activate now / Deactivate / Refresh / open controls) |
 | `/help` | Command list + community link |
 
 ### 6.2 Callback data namespaces
@@ -239,7 +240,7 @@ server-computed current virtual date/cycle, then enforces
 `pick_bureau:`, `pick_kulliyyah:`, `pick_mahallah:`, `change_matric`, `change_kulliyyah`,
 `change_mahallah`, `unlock_prompt`, `set_notify:`, `notify_menu:`, `set_briefing:`,
 `set_masterplan:`, `review_name:`, `review_rating:`, `review_cancel`,
-`review_approve:` / `review_reject:`, `student_downgrade:`.
+`review_approve:` / `review_reject:`, `student_downgrade:`, `baiah:on|off|status`.
 
 ### 6.3 Rich Messages (Bot API 10.3)
 
@@ -347,6 +348,7 @@ cp .env.example .env
 #    supabase/fix-schedule.sql              # venue + stale-row cleanup
 #    supabase/seed-preptech-poa.sql         # (optional) Preptech POA data
 #    supabase/baiah-takeover.sql            # Baiah Realtime confetti takeover
+#    supabase/baiah-takeover-v2.sql         # song, announcement lead time, skip button
 #    supabase/baiah-pg-cron.sql             # (optional) exact-minute scheduled activation
 
 # 4. Run the app (1 min)

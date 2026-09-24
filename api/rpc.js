@@ -126,8 +126,12 @@ function mapBaiahSettings(row) {
     baiahStartAt: row.baiah_start_at || null,
     baiahMessage: row.baiah_message || "BAIAH 2026: WELCOME TO IIUM",
     baiahNotify: row.baiah_notify !== false,
+    baiahNotifyLeadMinutes: Number.isFinite(Number(row.baiah_notify_lead_minutes)) ? Number(row.baiah_notify_lead_minutes) : 2,
     baiahActivatedAt: row.baiah_activated_at || null,
     baiahUpdatedBy: row.baiah_updated_by || null,
+    baiahSongUrl: row.baiah_song_url || null,
+    baiahSongEnabled: row.baiah_song_enabled === true,
+    baiahSkipEnabled: row.baiah_skip_enabled !== false,
     updatedAt: row.updated_at || null
   };
 }
@@ -688,6 +692,25 @@ export default async function handler(req, res) {
         if (body.notify !== undefined) {
           patch.baiah_notify = Boolean(body.notify);
           notes.push(`Telegram announcement ${patch.baiah_notify ? "enabled" : "disabled"}`);
+        }
+        if (body.notifyLeadMinutes !== undefined) {
+          const lead = Number(body.notifyLeadMinutes);
+          if (!Number.isFinite(lead) || lead < 0 || lead > 60) return sendJson(res, 400, { error: "Announcement lead must be between 0 and 60 minutes." });
+          patch.baiah_notify_lead_minutes = Math.round(lead);
+          notes.push(`announcement lead ${patch.baiah_notify_lead_minutes} min`);
+        }
+        if (body.songUrl !== undefined) {
+          const songUrl = body.songUrl === null ? null : String(body.songUrl).trim().slice(0, 300);
+          patch.baiah_song_url = songUrl || null;
+          notes.push(songUrl ? `song URL set to ${songUrl}` : "song URL cleared");
+        }
+        if (body.songEnabled !== undefined) {
+          patch.baiah_song_enabled = Boolean(body.songEnabled);
+          notes.push(`music ${patch.baiah_song_enabled ? "enabled" : "disabled"}`);
+        }
+        if (body.skipEnabled !== undefined) {
+          patch.baiah_skip_enabled = Boolean(body.skipEnabled);
+          notes.push(`skip button ${patch.baiah_skip_enabled ? "enabled" : "hidden"}`);
         }
         if (body.scheduledAt !== undefined) {
           if (body.scheduledAt === null || body.scheduledAt === "") {

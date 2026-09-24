@@ -1,21 +1,48 @@
 import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 import type { CreateTypes } from "canvas-confetti";
-import { RealtimeChannel, RealtimeClient } from "@supabase/realtime-js";
+import { RealtimeChannel } from "@supabase/realtime-js";
 import { hapticImpact } from "../lib/telegram";
-import { fetchBaiahSettings, type BaiahSettings } from "../lib/baiahApi";
+import { acquireRealtimeClient, releaseRealtimeClient } from "../lib/supabaseRealtime";
+import { DEFAULT_BAIAH_SONG_URL, fetchBaiahSettingsDirect, type BaiahSettings } from "../lib/baiahApi";
 
 // Per-user safety cap: even if the mainboard forgets to deactivate, the
 // overlay hides itself this long after activation.
 const AUTO_HIDE_MS = 30 * 60 * 1000;
+// Local schedule trigger only arms within this horizon (re-armed by polls).
+const LOCAL_ARM_HORIZON_MS = 30 * 60 * 1000;
+
+const DISMISS_KEY = "baiah-dismissed-epoch";
+const SOUND_KEY = "baiah-sound";
 
 const CONFETTI_COLORS = ["#E5D3B3", "#f7e7c3", "#c9a95f", "#22a879", "#3db99a", "#ffffff", "#ffd166"];
 
+const ANDROID_VIBRATE = (() => {
+  try {
+    return /Android/i.test(navigator.userAgent) && typeof navigator.vibrate === "function";
+  } catch {
+    return false;
+  }
+})();
+
+const PERF_LOW = (() => {
+  try {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return true;
+    const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+    if (typeof memory === "number" && memory <= 4) return true;
+    if (typeof navigator.hardwareConcurrency === "number" && navigator.hardwareConcurrency <= 4) return true;
+  } catch {
+    undefined;
+  }
+  return false;
+})();
+
 function hasRealtimeEnv() {
-  return Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
+  return Boolean(import.meta.env.VITE_SUPABASE_URL);
 }
 
 function supportsWorker() {
+  if (PERF_LOW) return false;
   try {
     return (
       typeof Worker !== "undefined" &&
@@ -47,14 +74,41 @@ function isExpired(settings: BaiahSettings | null) {
   return Date.now() - activatedAt > AUTO_HIDE_MS;
 }
 
+function epochFor(settings: BaiahSettings | null): string | null {
+  if (!settings) return null;
+  if (settings.isBaiahActive) return `active:${settings.baiahActivatedAt || "on"}`;
+  if (settings.baiahStartAt) return `sched:${settings.baiahStartAt}`;
+  return null;
+}
+
+function mergeRealtimeRow(prev: BaiahSettings | null, row: Record<string, unknown>): BaiahSettings {
+  const pick = <T,>(value: T | undefined, fallback: T): T => (value === undefined ? fallback : value);
+  return {
+    isBaiahActive: Boolean(row.is_baiah_active),
+    baiahStartAt: pick(row.baiah_start_at as string | null | undefined, prev?.baiahStartAt ?? null),
+    baiahMessage: (row.baiah_message as string) || prev?.baiahMessage || "BAIAH 2026: WELCOME TO IIUM",
+    baiahNotify: row.baiah_notify !== false,
+    baiahNotifyLeadMinutes: Number.isFinite(Number(row.baiah_notify_lead_minutes))
+      ? Number(row.baiah_notify_lead_minutes)
+      : prev?.baiahNotifyLeadMinutes ?? 2,
+    baiahActivatedAt: pick(row.baiah_activated_at as string | null | undefined, prev?.baiahActivatedAt ?? null),
+    baiahUpdatedBy: pick(row.baiah_updated_by as string | null | undefined, prev?.baiahUpdatedBy ?? null),
+    baiahSongUrl: pick(row.baiah_song_url as string | null | undefined, prev?.baiahSongUrl ?? null),
+    baiahSongEnabled: row.baiah_song_enabled === undefined ? prev?.baiahSongEnabled ?? false : row.baiah_song_enabled === true,
+    baiahSkipEnabled: row.baiah_skip_enabled === undefined ? prev?.baiahSkipEnabled !== false : row.baiah_skip_enabled !== false,
+    updatedAt: (row.updated_at as string) || prev?.updatedAt || null
+  };
+}
+
 // The full pyrotechnics: corner cannons + follow-up waves, with rolling
-// haptics through the whole sequence so it feels like thunder, not one tap.
-// Returns the timer ids so the caller can cancel when the overlay goes away.
-function fireCannons(instance: CreateTypes, timers: number[]) {
+// haptics through the whole sequence (unless Android's native vibration
+// pattern is already carrying the rumble). Returns timer ids for cleanup.
+function fireCannons(instance: CreateTypes, timers: number[], { light = false, waveHaptics = true } = {}) {
   const colors = CONFETTI_COLORS;
+  const scale = light ? 0.55 : 1;
   const corner = (x: number, angle: number, overrides: Record<string, unknown> = {}) =>
     instance({
-      particleCount: 90,
+      particleCount: Math.round(90 * scale),
       angle,
       spread: 70,
       startVelocity: 62,
@@ -81,8 +135,8 @@ function fireCannons(instance: CreateTypes, timers: number[]) {
       delay: 480,
       haptic: "medium",
       run: () => {
-        corner(0.05, 72, { particleCount: 60, startVelocity: 72, scalar: 0.9 });
-        corner(0.95, 108, { particleCount: 60, startVelocity: 72, scalar: 0.9 });
+        corner(0.05, 72, { particleCount: Math.round(60 * scale), startVelocity: 72, scalar: 0.9 });
+        corner(0.95, 108, { particleCount: Math.round(60 * scale), startVelocity: 72, scalar: 0.9 });
       }
     },
     {
@@ -91,22 +145,24 @@ function fireCannons(instance: CreateTypes, timers: number[]) {
       run: () => {
         corner(0, 45);
         corner(1, 135);
-        instance({
-          particleCount: 120,
-          spread: 170,
-          startVelocity: 48,
-          ticks: 260,
-          origin: { x: 0.5, y: 1 },
-          colors
-        });
+        if (!light) {
+          instance({
+            particleCount: 120,
+            spread: 170,
+            startVelocity: 48,
+            ticks: 260,
+            origin: { x: 0.5, y: 1 },
+            colors
+          });
+        }
       }
     },
     {
       delay: 1350,
       haptic: "medium",
       run: () => {
-        corner(0.15, 62, { particleCount: 70, scalar: 1.15 });
-        corner(0.85, 118, { particleCount: 70, scalar: 1.15 });
+        corner(0.15, 62, { particleCount: Math.round(70 * scale), scalar: 1.15 });
+        corner(0.85, 118, { particleCount: Math.round(70 * scale), scalar: 1.15 });
       }
     },
     {
@@ -119,13 +175,16 @@ function fireCannons(instance: CreateTypes, timers: number[]) {
     }
   ];
 
-  for (const wave of waves) {
+  const activeWaves = light ? waves.filter((wave) => wave.delay < 1300) : waves;
+  for (const wave of activeWaves) {
     timers.push(
       window.setTimeout(() => {
-        try {
-          hapticImpact(wave.haptic);
-        } catch {
-          undefined;
+        if (waveHaptics) {
+          try {
+            hapticImpact(wave.haptic);
+          } catch {
+            undefined;
+          }
         }
         wave.run();
       }, wave.delay)
@@ -137,20 +196,38 @@ function BaiahTakeover() {
   const [settings, setSettings] = useState<BaiahSettings | null>(null);
   const [visible, setVisible] = useState(false);
   const [realtimeOk, setRealtimeOk] = useState(false);
+  const [localTrigger, setLocalTrigger] = useState<{ startAt: string; firedAt: number } | null>(null);
+  const [dismissedEpoch, setDismissedEpoch] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(DISMISS_KEY);
+    } catch {
+      return null;
+    }
+  });
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    try {
+      return localStorage.getItem(SOUND_KEY) !== "off";
+    } catch {
+      return true;
+    }
+  });
+  const [needsTapForSound, setNeedsTapForSound] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const confettiRef = useRef<CreateTypes | null>(null);
   const waveTimersRef = useRef<number[]>([]);
   const hapticEpochRef = useRef<string | null>(null);
   const lastTapRef = useRef(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Initial state — matters for users who open the app mid-takeover.
+  // Initial read — direct REST so it works before sign-in and costs no
+  // Vercel invocation.
   useEffect(() => {
     if (!hasRealtimeEnv()) return;
     let cancelled = false;
-    fetchBaiahSettings()
+    fetchBaiahSettingsDirect()
       .then((next) => {
-        if (!cancelled) setSettings(next);
+        if (!cancelled && next) setSettings(next);
       })
       .catch(() => {});
     return () => {
@@ -158,19 +235,17 @@ function BaiahTakeover() {
     };
   }, []);
 
-  // Realtime: watch is_baiah_active flip on the single app_settings row.
+  // Realtime (best-effort — Supabase caps concurrent connections, so this is
+  // a bonus path for as many devices as the plan allows).
   useEffect(() => {
     if (!hasRealtimeEnv()) return;
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+    const client = acquireRealtimeClient();
+    if (!client) return;
 
     let cancelled = false;
-    let client: RealtimeClient | null = null;
     let channel: RealtimeChannel | null = null;
 
     try {
-      const wsUrl = `${supabaseUrl.replace(/\/$/, "").replace(/^http/, "ws")}/realtime/v1`;
-      client = new RealtimeClient(wsUrl, { params: { apikey: anonKey }, timeout: 10000 });
       channel = client.channel("baiah-takeover");
       channel.on(
         "postgres_changes",
@@ -178,15 +253,7 @@ function BaiahTakeover() {
         (payload: { new?: Record<string, unknown> }) => {
           const row = payload?.new;
           if (!row) return;
-          setSettings((prev) => ({
-            isBaiahActive: Boolean(row.is_baiah_active),
-            baiahStartAt: (row.baiah_start_at as string | null) ?? prev?.baiahStartAt ?? null,
-            baiahMessage: (row.baiah_message as string) || prev?.baiahMessage || "BAIAH 2026: WELCOME TO IIUM",
-            baiahNotify: row.baiah_notify !== false,
-            baiahActivatedAt: (row.baiah_activated_at as string | null) ?? prev?.baiahActivatedAt ?? null,
-            baiahUpdatedBy: (row.baiah_updated_by as string | null) ?? prev?.baiahUpdatedBy ?? null,
-            updatedAt: (row.updated_at as string) ?? prev?.updatedAt ?? null
-          }));
+          setSettings((prev) => mergeRealtimeRow(prev, row));
         }
       );
       channel.subscribe((status) => {
@@ -200,66 +267,154 @@ function BaiahTakeover() {
 
     return () => {
       cancelled = true;
-      try {
-        channel?.unsubscribe();
-      } catch {
-        undefined;
-      }
-      try {
-        client?.disconnect();
-      } catch {
-        undefined;
-      }
+      try { channel?.unsubscribe(); } catch { undefined; }
+      try { if (channel) client.removeChannel(channel); } catch { undefined; }
+      releaseRealtimeClient();
     };
   }, []);
 
-  // Fallback poll (only while Realtime is unhealthy) + resync on tab focus.
+  // Poll fallback: 10s when Realtime is unavailable, 30s as a safety net when
+  // it is. Skips hidden tabs; refreshes instantly when the tab wakes.
   useEffect(() => {
     if (!hasRealtimeEnv()) return;
     let cancelled = false;
-    const refresh = () => {
-      fetchBaiahSettings()
+    const intervalMs = realtimeOk ? 30000 : 10000;
+    const tick = () => {
+      if (document.visibilityState !== "visible") return;
+      fetchBaiahSettingsDirect()
         .then((next) => {
-          if (!cancelled) setSettings(next);
+          if (!cancelled && next) setSettings(next);
         })
         .catch(() => {});
     };
-    const handleVisible = () => {
-      if (document.visibilityState === "visible") refresh();
+    const timer = window.setInterval(tick, intervalMs);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") tick();
     };
-    document.addEventListener("visibilitychange", handleVisible);
-    const timer = realtimeOk ? null : window.setInterval(refresh, 45000);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       cancelled = true;
-      document.removeEventListener("visibilitychange", handleVisible);
-      if (timer) window.clearInterval(timer);
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [realtimeOk]);
 
-  // State machine: active + not expired => visible. Heavy haptic fires once
-  // per activation epoch, the instant the change lands.
+  // Local scheduled trigger: every device fires at the scheduled wall-clock
+  // second, then the poll confirms (or cancels) within seconds.
   useEffect(() => {
-    if (!settings) return;
-    if (settings.isBaiahActive && !isExpired(settings)) {
-      setVisible(true);
-      const epoch = settings.baiahActivatedAt || "active";
-      if (hapticEpochRef.current !== epoch) {
-        hapticEpochRef.current = epoch;
-        hapticImpact("heavy");
-      }
-    } else {
-      setVisible(false);
+    if (!settings || settings.isBaiahActive) return;
+    const startAt = settings.baiahStartAt;
+    if (!startAt) return;
+    const epoch = `sched:${startAt}`;
+    if (epoch === dismissedEpoch) return;
+    const target = new Date(startAt).getTime();
+    if (Number.isNaN(target)) return;
+    const delay = target - Date.now();
+    if (delay <= 0) {
+      setLocalTrigger({ startAt, firedAt: Date.now() });
+      return;
     }
-  }, [settings]);
+    if (delay > LOCAL_ARM_HORIZON_MS) return;
+    const timer = window.setTimeout(() => setLocalTrigger({ startAt, firedAt: Date.now() }), delay);
+    return () => window.clearTimeout(timer);
+  }, [settings, dismissedEpoch]);
+
+  // Confirmation guard: if the schedule changed or was cancelled, drop the
+  // local trigger; if the server activated, hand over to the real state.
+  useEffect(() => {
+    if (!localTrigger) return;
+    if (settings?.isBaiahActive) {
+      setLocalTrigger(null);
+      return;
+    }
+    if (settings && settings.baiahStartAt !== localTrigger.startAt) {
+      setLocalTrigger(null);
+      return;
+    }
+    const safety = window.setTimeout(() => setLocalTrigger(null), 5 * 60 * 1000);
+    return () => window.clearTimeout(safety);
+  }, [localTrigger, settings]);
+
+  // Visibility state machine + heavy haptic on each new activation epoch.
+  useEffect(() => {
+    const active = Boolean(settings?.isBaiahActive && !isExpired(settings));
+    const activeEpoch = active ? epochFor(settings) : null;
+    const localEpoch = localTrigger ? `sched:${localTrigger.startAt}` : null;
+    const show = (active && activeEpoch !== dismissedEpoch) || (localEpoch !== null && localEpoch !== dismissedEpoch);
+
+    setVisible(show);
+    if (!show) return;
+    const epoch = active ? activeEpoch : localEpoch;
+    if (epoch && hapticEpochRef.current !== epoch) {
+      hapticEpochRef.current = epoch;
+      if (ANDROID_VIBRATE) {
+        try {
+          navigator.vibrate([150, 70, 180, 80, 240, 90, 320, 110, 420]);
+        } catch {
+          undefined;
+        }
+      }
+      hapticImpact("heavy");
+    }
+  }, [settings, localTrigger, dismissedEpoch]);
 
   // Auto-hide cap per user.
   useEffect(() => {
-    if (!visible || !settings) return;
-    const startedAt = settings.baiahActivatedAt ? new Date(settings.baiahActivatedAt).getTime() : Date.now();
+    if (!visible) return;
+    const startedAt = settings?.isBaiahActive && settings.baiahActivatedAt
+      ? new Date(settings.baiahActivatedAt).getTime()
+      : localTrigger?.firedAt ?? Date.now();
     const remaining = Math.max(0, startedAt + AUTO_HIDE_MS - Date.now());
     const timer = window.setTimeout(() => setVisible(false), remaining);
     return () => window.clearTimeout(timer);
-  }, [visible, settings]);
+  }, [visible, settings, localTrigger]);
+
+  // Music: only fetched/played while the takeover is on screen.
+  const songUrl = settings?.baiahSongUrl || DEFAULT_BAIAH_SONG_URL;
+  const songWanted = visible && soundEnabled && settings?.baiahSongEnabled === true;
+
+  useEffect(() => {
+    if (!songWanted) {
+      try {
+        audioRef.current?.pause();
+      } catch {
+        undefined;
+      }
+      return;
+    }
+    let audio = audioRef.current;
+    if (!audio || !audio.src.endsWith(songUrl)) {
+      try {
+        audio?.pause();
+      } catch {
+        undefined;
+      }
+      audio = new Audio(songUrl);
+      audio.loop = true;
+      audio.volume = 1;
+      audioRef.current = audio;
+    }
+    try {
+      const promise = audio.play();
+      if (promise) {
+        promise.then(() => setNeedsTapForSound(false)).catch(() => setNeedsTapForSound(true));
+      }
+    } catch {
+      setNeedsTapForSound(true);
+    }
+  }, [songWanted, songUrl]);
+
+  useEffect(
+    () => () => {
+      try {
+        audioRef.current?.pause();
+      } catch {
+        undefined;
+      }
+      audioRef.current = null;
+    },
+    []
+  );
 
   // Mount the confetti canvas with the overlay and launch the cannons.
   useEffect(() => {
@@ -275,7 +430,7 @@ function BaiahTakeover() {
       }
     }
     confettiRef.current = instance;
-    if (instance) fireCannons(instance, waveTimersRef.current);
+    if (instance) fireCannons(instance, waveTimersRef.current, { light: PERF_LOW, waveHaptics: !ANDROID_VIBRATE });
 
     return () => {
       for (const id of waveTimersRef.current) window.clearTimeout(id);
@@ -292,8 +447,21 @@ function BaiahTakeover() {
   if (!visible) return null;
 
   const [lineOne, lineTwo] = splitMessage(settings?.baiahMessage || "");
+  const skipEnabled = settings?.baiahSkipEnabled !== false;
+  const currentEpoch = settings?.isBaiahActive ? epochFor(settings) : localTrigger ? `sched:${localTrigger.startAt}` : null;
+
+  const ensureSound = () => {
+    if (!soundEnabled) return;
+    const audio = audioRef.current;
+    if (!audio || !audio.paused) return;
+    audio
+      .play()
+      .then(() => setNeedsTapForSound(false))
+      .catch(() => setNeedsTapForSound(true));
+  };
 
   const handleTap = (event: React.PointerEvent<HTMLDivElement>) => {
+    ensureSound();
     const instance = confettiRef.current;
     if (!instance) return;
     const now = performance.now();
@@ -304,9 +472,8 @@ function BaiahTakeover() {
     const x = event.clientX / Math.max(window.innerWidth, 1);
     const y = event.clientY / Math.max(window.innerHeight, 1);
 
-    // Small burst at the finger…
     instance({
-      particleCount: 40,
+      particleCount: PERF_LOW ? 24 : 40,
       spread: 62,
       startVelocity: 34,
       scalar: 0.95,
@@ -314,16 +481,56 @@ function BaiahTakeover() {
       origin: { x, y },
       colors: CONFETTI_COLORS
     });
-    // …plus a sparkle ring for extra joy.
-    instance({
-      particleCount: 18,
-      spread: 360,
-      startVelocity: 16,
-      scalar: 0.7,
-      ticks: 140,
-      origin: { x, y },
-      colors: CONFETTI_COLORS
-    });
+    if (!PERF_LOW) {
+      instance({
+        particleCount: 18,
+        spread: 360,
+        startVelocity: 16,
+        scalar: 0.7,
+        ticks: 140,
+        origin: { x, y },
+        colors: CONFETTI_COLORS
+      });
+    }
+  };
+
+  const handleSkip = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    if (currentEpoch) {
+      setDismissedEpoch(currentEpoch);
+      try {
+        localStorage.setItem(DISMISS_KEY, currentEpoch);
+      } catch {
+        undefined;
+      }
+    }
+    setVisible(false);
+    try {
+      audioRef.current?.pause();
+    } catch {
+      undefined;
+    }
+    hapticImpact("light");
+  };
+
+  const toggleSound = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    try {
+      localStorage.setItem(SOUND_KEY, next ? "on" : "off");
+    } catch {
+      undefined;
+    }
+    if (!next) {
+      try {
+        audioRef.current?.pause();
+      } catch {
+        undefined;
+      }
+    } else {
+      ensureSound();
+    }
   };
 
   return (
@@ -336,6 +543,27 @@ function BaiahTakeover() {
     >
       <div className="baiah-rays" aria-hidden="true" />
       <div className="baiah-vignette" aria-hidden="true" />
+      {skipEnabled && (
+        <button
+          type="button"
+          className="baiah-skip"
+          aria-label="Skip celebration"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={handleSkip}
+        >
+          Skip ✕
+        </button>
+      )}
+      {settings?.baiahSongEnabled === true && (
+        <button
+          type="button"
+          className={`baiah-sound ${soundEnabled ? "" : "off"}`}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={toggleSound}
+        >
+          {!soundEnabled ? "🔇 Muted" : needsTapForSound ? "🔊 Tap for sound" : "🔊 Sound"}
+        </button>
+      )}
       <div className="baiah-content">
         <span className="baiah-kicker">IIUM Ta&apos;aruf Week 2026</span>
         <h1 className="baiah-title">

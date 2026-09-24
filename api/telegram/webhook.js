@@ -1,5 +1,5 @@
 import { readJson, sendJson, resolveAccessCode } from "../_lib/auth-utils.js";
-import { getUserRecordByTelegramId, supabaseRequest } from "../_lib/supabase.js";
+import { createAuditLog, getUserRecordByTelegramId, supabaseRequest } from "../_lib/supabase.js";
 import {
   richBlockquote,
   richButton,
@@ -777,6 +777,30 @@ async function handleCallback(chatId, userRecord, data, fromId) {
   // Single source of truth for Telegram identity: the update's from.id.
   const telegramId = fromId || userRecord?.telegram_id || "";
 
+  // ── Baiah takeover remote (mainboard only) ──
+  if (data.startsWith("baiah:")) {
+    if (userRecord?.role !== "mainboard") {
+      await richSend(chatId, [
+        richHeading("⛔ Mainboard only"),
+        richParagraph("The Baiah takeover remote is limited to the mainboard role.")
+      ], { fallbackText: "⛔ The Baiah takeover remote is limited to the mainboard role." });
+      return;
+    }
+    try {
+      if (data === "baiah:on" || data === "baiah:off") {
+        await setBaiahActive(userRecord, data === "baiah:on");
+      }
+      await sendBaiahMenu(chatId, userRecord);
+    } catch (err) {
+      console.error("[baiah] remote action failed", err?.message || err);
+      await richSend(chatId, [
+        richHeading("⚠️ Action failed"),
+        richParagraph("Could not update the Baiah takeover. Try /baiah again.")
+      ], { fallbackText: "⚠️ Failed to update the Baiah takeover. Try /baiah again." }).catch(() => {});
+    }
+    return;
+  }
+
   // ── /review flow ──
   if (data === "review_name:use" || data === "review_name:anon") {
     const displayName = data === "review_name:anon" ? "Anonymous" : userRecord?.name || "Anonymous";
@@ -1212,6 +1236,16 @@ export default async function handler(req, res) {
       return sendJson(res, 200, { ok: true, handled: "review" });
     }
 
+    // /baiah command — mainboard remote control for the celebration takeover
+    if (text.startsWith("/baiah")) {
+      let userRecord = await getUserRecordByTelegramId(telegramId);
+      if (!userRecord) {
+        userRecord = await upsertUser(telegramId, from.first_name, from.last_name, from.username);
+      }
+      await sendBaiahMenu(chatId, userRecord);
+      return sendJson(res, 200, { ok: true, handled: "baiah" });
+    }
+
     // /help command
     if (text.startsWith("/help")) {
       const fallbackText = `🤖 <b>Bot Commands</b>\n\n<b>/start</b> — View your profile & dashboard\n<b>/unlock CODE</b> — Unlock committee access\n<b>/unlock student</b> — Switch back to student view (committee)\n<b>/notifications</b> — Subscribe to session reminders\n<b>/review</b> — Rate your Ta'aruf Week experience\n\nYou can also:\n• Tap the buttons below any message to open the app\n• Update your matric number or kulliyyah anytime\n• Check your attendance progress\n\n📢 Join our community: https://t.me/taweprohelp`;
@@ -1275,4 +1309,121 @@ export default async function handler(req, res) {
     console.error("Webhook failed", error);
     return sendJson(res, 200, { ok: true, error: "Internal webhook error" });
   }
+}
+
+// ── Baiah takeover remote (mainboard) ──
+function formatBaiahKl(iso) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString("en-MY", {
+      timeZone: "Asia/Kuala_Lumpur",
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true
+    });
+  } catch {
+    return "—";
+  }
+}
+
+async function fetchBaiahRow() {
+  const rows = await supabaseRequest("/app_settings?id=eq.1&select=*&limit=1");
+  return Array.isArray(rows) ? rows[0] : null;
+}
+
+async function setBaiahActive(userRecord, active) {
+  const nowIso = new Date().toISOString();
+  const body = active
+    ? {
+        is_baiah_active: true,
+        baiah_activated_at: nowIso,
+        baiah_start_at: null,
+        baiah_updated_by: userRecord?.name || "mainboard",
+        updated_at: nowIso
+      }
+    : {
+        is_baiah_active: false,
+        baiah_start_at: null,
+        baiah_updated_by: userRecord?.name || "mainboard",
+        updated_at: nowIso
+      };
+  await supabaseRequest("/app_settings?id=eq.1", {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body
+  });
+  try {
+    await createAuditLog({
+      actor: userRecord,
+      action: active ? "activated_baiah_takeover" : "deactivated_baiah_takeover",
+      tableName: "app_settings",
+      recordId: "1",
+      details: `Baiah takeover ${active ? "ACTIVATED" : "deactivated"} via bot remote.`
+    });
+  } catch {
+    undefined;
+  }
+}
+
+async function sendBaiahMenu(chatId, userRecord) {
+  if (userRecord?.role !== "mainboard") {
+    await richSend(chatId, [
+      richHeading("⛔ Mainboard only"),
+      richParagraph("The Baiah takeover remote is limited to the mainboard role.")
+    ], { fallbackText: "⛔ The Baiah takeover remote is limited to the mainboard role." });
+    return;
+  }
+
+  let row = null;
+  try {
+    row = await fetchBaiahRow();
+  } catch {
+    undefined;
+  }
+  if (!row) {
+    await richSend(chatId, [
+      richHeading("⚠️ app_settings missing"),
+      richParagraph("Run supabase/baiah-takeover.sql, then try /baiah again.")
+    ], { fallbackText: "⚠️ app_settings row missing. Run supabase/baiah-takeover.sql first." });
+    return;
+  }
+
+  const status = row.is_baiah_active ? "🔴 LIVE now" : row.baiah_start_at ? "🗓️ Scheduled" : "⚪ Off";
+  const detail = row.is_baiah_active
+    ? `Live since ${formatBaiahKl(row.baiah_activated_at)}${row.baiah_updated_by ? ` · by ${row.baiah_updated_by}` : ""}`
+    : row.baiah_start_at
+      ? `Starts ${formatBaiahKl(row.baiah_start_at)} (MYT) · announcement ${Number(row.baiah_notify_lead_minutes ?? 2)} min before`
+      : "Nothing scheduled. Use the app panel to set a time, or tap Activate now.";
+
+  const fallbackReplyMarkup = {
+    inline_keyboard: [
+      [
+        { text: "🎉 Activate now", callback_data: "baiah:on" },
+        { text: "🛑 Deactivate", callback_data: "baiah:off" }
+      ],
+      [
+        { text: "🔄 Refresh", callback_data: "baiah:status" },
+        { text: "⚙️ Open controls", web_app: { url: `${appBaseUrl()}/bureau` } }
+      ]
+    ]
+  };
+
+  await richSend(chatId, [
+    richHeading("🎊 Baiah takeover remote"),
+    richParagraph(`Status: ${status}`),
+    richParagraph(detail),
+    richParagraph(
+      `Announcement: ${row.baiah_notify === false ? "off" : "on"} · Music: ${row.baiah_song_enabled === true ? "on" : "off"} · Skip button: ${row.baiah_skip_enabled === false ? "hidden" : "shown"}`
+    ),
+    richButtonsRow([
+      richButton({ text: "🎉 Activate now", callbackData: "baiah:on", style: "success" }),
+      richButton({ text: "🛑 Deactivate", callbackData: "baiah:off", style: "danger" })
+    ]),
+    richButtonsRow([
+      richButton({ text: "🔄 Refresh", callbackData: "baiah:status" }),
+      richButton({ text: "⚙️ Open controls", webApp: `${appBaseUrl()}/bureau` })
+    ])
+  ], { fallbackText: `🎊 Baiah takeover: ${status}\n${detail}`, fallbackReplyMarkup });
 }

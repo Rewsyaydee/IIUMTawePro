@@ -50,6 +50,8 @@ function usage() {
   audience                            count active users by role (announcement reach)
   admin                               make telegram id ${TEST_TELEGRAM_ID} a mainboard admin
   notify on|off                       toggle the Telegram announcement for the next run
+  lead <minutes>                      announcement lead time before the scheduled start
+  song on|off|set <url>               custom music (default path: /audio/baiah.mp3)
   activate [--no-notify]              turn the takeover on now
   deactivate                          turn it off
   schedule "YYYY-MM-DDTHH:mm"         schedule (Malaysia time)
@@ -134,9 +136,10 @@ switch (command) {
     const settings = await readSettings();
     const stateRows = await supabaseRequest("/ops_settings?key=eq.baiah_announce_state&select=value&limit=1");
     const state = Array.isArray(stateRows) && stateRows[0]?.value ? stateRows[0].value : {};
-    const claims = await supabaseRequest("/notification_sends?send_key=like.baiah-user:*&select=send_key&limit=10000");
+    const claims = await supabaseRequest("/notification_sends?send_key=like.baiah-user:*&select=send_key&limit=20000");
     const claimCount = Array.isArray(claims) ? claims.length : 0;
-    console.log(`Takeover: ${settings?.is_baiah_active ? "LIVE" : "off"} · Announcement done: ${state.done === true} · Claimed/sent: ${claimCount}`);
+    const epoch = state.epoch || state.activatedAt || "—";
+    console.log(`Takeover: ${settings?.is_baiah_active ? "LIVE" : "off"} · Announcement done: ${state.done === true} · Claimed/sent: ${claimCount} · Epoch: ${epoch}`);
     break;
   }
 
@@ -189,6 +192,39 @@ switch (command) {
     }
     const row = await patchSettings({ baiah_notify: value === "on", baiah_updated_by: "test console" });
     printSettings(row);
+    break;
+  }
+
+  case "lead": {
+    const minutes = Number(process.argv[3]);
+    if (!Number.isFinite(minutes) || minutes < 0 || minutes > 60) {
+      console.error("Usage: lead <minutes 0-60>");
+      process.exit(1);
+    }
+    const row = await patchSettings({ baiah_notify_lead_minutes: Math.round(minutes), baiah_updated_by: "test console" });
+    printSettings(row);
+    break;
+  }
+
+  case "song": {
+    const value = (process.argv[3] || "").toLowerCase();
+    if (value === "on" || value === "off") {
+      const row = await patchSettings({ baiah_song_enabled: value === "on", baiah_updated_by: "test console" });
+      printSettings(row);
+      break;
+    }
+    if (value === "set") {
+      const url = process.argv[4];
+      if (!url) {
+        console.error("Usage: song set <url>   (or: song on | song off)");
+        process.exit(1);
+      }
+      const row = await patchSettings({ baiah_song_url: url, baiah_song_enabled: true, baiah_updated_by: "test console" });
+      printSettings(row);
+      break;
+    }
+    console.error("Usage: song on | song off | song set <url>");
+    process.exit(1);
     break;
   }
 
@@ -255,6 +291,10 @@ switch (command) {
       baiah_activated_at: null,
       baiah_message: "BAIAH 2026: WELCOME TO IIUM",
       baiah_notify: true,
+      baiah_notify_lead_minutes: 2,
+      baiah_song_url: null,
+      baiah_song_enabled: false,
+      baiah_skip_enabled: true,
       baiah_updated_by: "test reset"
     });
     await clearBaiahSendState();

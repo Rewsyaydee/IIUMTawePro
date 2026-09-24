@@ -35,9 +35,18 @@ function App() {
     // Stealth presence tracking — silent, zero UI footprint.
     const stopPresence = initPresenceTracker();
 
-    // Ping notification checker — runs every time someone opens the app
+    // Ping notification checker — throttled per device so event-scale app
+    // opens don't stampede the dispatcher function.
     const apiBase = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-    fetch(`${apiBase}/api/cron/notifications`, { method: "GET" }).catch(() => {});
+    try {
+      const lastPing = Number(localStorage.getItem("tawepro-last-cron-ping") || 0);
+      if (Date.now() - lastPing > 3 * 60 * 1000) {
+        localStorage.setItem("tawepro-last-cron-ping", String(Date.now()));
+        fetch(`${apiBase}/api/cron/notifications`, { method: "GET" }).catch(() => {});
+      }
+    } catch {
+      fetch(`${apiBase}/api/cron/notifications`, { method: "GET" }).catch(() => {});
+    }
 
     return () => {
       window.clearTimeout(timer);

@@ -1,12 +1,10 @@
-import { RealtimeChannel, RealtimeClient } from "@supabase/realtime-js";
+import { RealtimeChannel } from "@supabase/realtime-js";
 import { getTelegramWebApp } from "./telegram";
+import { acquireRealtimeClient, releaseRealtimeClient } from "./supabaseRealtime";
 
 // Stealth presence tracker: subscribes to the "online-users" channel with zero
 // UI footprint. Presence keys are hashed so other subscribers never see raw
-// Telegram IDs.
-
-let client: RealtimeClient | null = null;
-let channel: RealtimeChannel | null = null;
+// Telegram IDs. Rides the shared Realtime socket.
 
 function djb2(str: string): string {
   let hash = 5381;
@@ -17,9 +15,8 @@ function djb2(str: string): string {
 }
 
 export function initPresenceTracker(): () => void {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
-  if (!supabaseUrl || !anonKey) return () => {};
+  const client = acquireRealtimeClient();
+  if (!client) return () => {};
 
   const telegramId = getTelegramWebApp()?.initDataUnsafe?.user?.id;
   const presenceKey =
@@ -27,13 +24,8 @@ export function initPresenceTracker(): () => void {
       ? `u_${djb2(String(telegramId))}`
       : `a_${Math.random().toString(36).slice(2, 12)}`;
 
+  let channel: RealtimeChannel | null = null;
   try {
-    const wsUrl = `${supabaseUrl.replace(/\/$/, "").replace(/^http/, "ws")}/realtime/v1`;
-    client = new RealtimeClient(wsUrl, {
-      params: { apikey: anonKey },
-      timeout: 10000
-    });
-
     channel = client.channel("online-users", {
       config: { presence: { key: presenceKey } }
     });
@@ -49,9 +41,7 @@ export function initPresenceTracker(): () => void {
 
   return () => {
     try { channel?.untrack(); } catch {}
-    try { if (channel) client?.removeChannel(channel); } catch {}
-    try { client?.disconnect(); } catch {}
-    client = null;
-    channel = null;
+    try { if (channel) client.removeChannel(channel); } catch {}
+    releaseRealtimeClient();
   };
 }

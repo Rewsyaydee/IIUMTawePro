@@ -2,7 +2,7 @@ import { supabaseRequest } from "../_lib/supabase.js";
 import { sendJson } from "../_lib/auth-utils.js";
 import { buildEveningRichMessage, buildMorningRichMessage, buildSessionStartingRichMessage, sendRichWithFallback, richButton, richButtonsRow, richHeading, richParagraph } from "../_lib/rich-messages.js";
 import { composeBriefing, fetchDaySchedule, fetchUserTasksDue } from "../_lib/briefing.js";
-import { getAppBaseUrl, sendTelegramMessage } from "../_lib/telegram-bot.js";
+import { getAppBaseUrl } from "../_lib/telegram-bot.js";
 
 // Set to null in production to use real date.
 const DEMO_DATE = null;
@@ -165,24 +165,24 @@ async function saveBaiahState(epoch, lastId, done) {
   await supabaseRequest("/ops_settings?on_conflict=key", {
     method: "POST",
     headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-    body: [{ key: "baiah_announce_state", value: { activatedAt: epoch, lastId, done }, updated_at: new Date().toISOString() }]
+    body: [{ key: "baiah_announce_state", value: { epoch, lastId, done }, updated_at: new Date().toISOString() }]
   });
 }
 
-async function sendConcurrent(telegramIds, text) {
+async function sendConcurrent(telegramIds, message) {
   let sent = 0;
   for (let i = 0; i < telegramIds.length; i += BAIAH_ANNOUNCE_CONCURRENCY) {
     const chunk = telegramIds.slice(i, i + BAIAH_ANNOUNCE_CONCURRENCY);
     const outcomes = await Promise.all(
       chunk.map(async (id) => {
         try {
-          await sendTelegramMessage(id, text);
-          return true;
+          const outcome = await sendRichWithFallback(id, message);
+          return outcome.used !== "none";
         } catch {
           try {
             await new Promise((resolve) => setTimeout(resolve, BAIAH_ANNOUNCE_RETRY_MS));
-            await sendTelegramMessage(id, text);
-            return true;
+            const outcome = await sendRichWithFallback(id, message);
+            return outcome.used !== "none";
           } catch {
             return false;
           }
@@ -197,17 +197,39 @@ async function sendConcurrent(telegramIds, text) {
 async function maybeAnnounceBaiah() {
   try {
     const settings = await fetchBaiahSettings();
-    if (!settings?.is_baiah_active || settings.baiah_notify === false) return null;
-    const epoch = String(settings.baiah_activated_at || "");
+    if (!settings || settings.baiah_notify === false) return null;
+
+    const leadMinutes = Number.isFinite(Number(settings.baiah_notify_lead_minutes))
+      ? Number(settings.baiah_notify_lead_minutes)
+      : 2;
+    const scheduledMs = settings.baiah_start_at ? new Date(settings.baiah_start_at).getTime() : null;
+    const announceDue =
+      scheduledMs !== null && Number.isFinite(scheduledMs) && Date.now() >= scheduledMs - leadMinutes * 60000;
+    if (!settings.is_baiah_active && !announceDue) return null;
+
+    // Epoch is stable pre- and post-flip for a scheduled run (start_at is
+    // kept through activation), so the T-lead announcement and the activation
+    // never double-send. Manual activations fall back to activated_at.
+    const epoch = String(settings.baiah_start_at || settings.baiah_activated_at || "");
     if (!epoch) return null;
 
     const stateRows = await supabaseRequest("/ops_settings?key=eq.baiah_announce_state&select=value&limit=1");
     const state = Array.isArray(stateRows) && stateRows[0]?.value && typeof stateRows[0].value === "object" ? stateRows[0].value : {};
-    if (state.activatedAt === epoch && state.done === true) return { skipped: "already announced" };
+    if (state.epoch === epoch && state.done === true) return { skipped: "already announced" };
 
-    let cursor = state.activatedAt === epoch ? String(state.lastId || "") : "";
+    let cursor = state.epoch === epoch ? String(state.lastId || "") : "";
     const appUrl = getAppBaseUrl();
-    const text = `🎊 <b>BAIAH 2026 IS LIVE!</b>\n\n<b>WELCOME TO IIUM</b> 🎉\nOpen TawePro now for the celebration!\n\n👉 ${appUrl}`;
+    const richMessage = {
+      blocks: [
+        richHeading("🎊 BAIAH 2026"),
+        richParagraph([{ type: "bold", text: "WELCOME TO IIUM" }]),
+        richParagraph("The celebration is starting — open TawePro now! 🎉"),
+        richButtonsRow([richButton({ text: "🎉 Open TawePro", webApp: appUrl })])
+      ]
+    };
+    const fallbackText = `🎊 <b>BAIAH 2026</b>\n\n<b>WELCOME TO IIUM</b> 🎉\nThe celebration is starting — open TawePro now!`;
+    const fallbackReplyMarkup = { inline_keyboard: [[{ text: "🎉 Open TawePro", web_app: { url: appUrl } }]] };
+
     const deadline = Date.now() + BAIAH_ANNOUNCE_BUDGET_MS;
     let sent = 0;
     let attempted = 0;
@@ -228,7 +250,7 @@ async function maybeAnnounceBaiah() {
       const targets = list
         .filter((row) => claimedSet.has(String(row.id)) && row.telegram_id)
         .map((row) => String(row.telegram_id));
-      sent += await sendConcurrent(targets, text);
+      sent += await sendConcurrent(targets, { richMessage, fallbackText, fallbackReplyMarkup });
       attempted += list.length;
       cursor = String(list[list.length - 1].id);
       await saveBaiahState(epoch, cursor, false);
