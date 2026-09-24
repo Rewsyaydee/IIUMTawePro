@@ -269,6 +269,53 @@ async function maybeAnnounceBaiah() {
   }
 }
 
+// Nudge the mainboard 45 minutes into a live takeover: deactivate and re-arm
+// the next session so every activation is a fresh epoch (fresh announcement,
+// fresh confetti). Deduped per activation epoch.
+const BAIAH_REARM_AFTER_MS = 45 * 60 * 1000;
+
+async function maybeSendBaiahRearmReminder() {
+  try {
+    const settings = await fetchBaiahSettings();
+    if (!settings?.is_baiah_active || !settings.baiah_activated_at) return null;
+    const activatedAt = new Date(settings.baiah_activated_at).getTime();
+    if (!Number.isFinite(activatedAt) || Date.now() - activatedAt < BAIAH_REARM_AFTER_MS) return null;
+
+    const claimed = await claimSend(`baiah-rearm:${settings.baiah_activated_at}`);
+    if (!claimed) return null;
+
+    const rows = await supabaseRequest("/users?role=eq.mainboard&status=eq.active&select=telegram_id&limit=20");
+    const ids = (Array.isArray(rows) ? rows : []).map((row) => String(row.telegram_id || "")).filter(Boolean);
+    if (ids.length === 0) return { sent: 0 };
+
+    const appUrl = getAppBaseUrl();
+    const richMessage = {
+      blocks: [
+        richHeading("⏰ Baiah takeover still live"),
+        richParagraph("It has been live for 45 minutes. Deactivate it and schedule the next session so each activation feels fresh."),
+        richButtonsRow([richButton({ text: "🎛 Open controls", webApp: `${appUrl}/bureau` })])
+      ]
+    };
+    const fallbackText = "⏰ Baiah takeover has been live for 45 minutes. Deactivate it and schedule the next session.";
+    const fallbackReplyMarkup = { inline_keyboard: [[{ text: "🎛 Open controls", web_app: { url: `${appUrl}/bureau` } }]] };
+
+    let sent = 0;
+    for (const id of ids) {
+      try {
+        const outcome = await sendRichWithFallback(id, { richMessage, fallbackText, fallbackReplyMarkup });
+        if (outcome.used !== "none") sent++;
+      } catch {
+        undefined;
+      }
+    }
+    console.log(`[notify-check] baiah re-arm reminder sent to ${sent}/${ids.length} mainboard`);
+    return { sent };
+  } catch (err) {
+    console.error("[notify-check] baiah re-arm reminder failed", err?.message || err);
+    return null;
+  }
+}
+
 function morningTriggerTime(sessions) {
   if (!sessions || sessions.length === 0) return null;
   const firstStart = sessions[0].scheduled_start_time;
@@ -312,9 +359,10 @@ export default async function handler(req, res) {
   // the "no sessions today" early return. Skipped during test/dry-run hits.
   const baiahActivated = testMode ? false : await maybeActivateScheduledBaiah();
   const baiahAnnounce = testMode ? null : await maybeAnnounceBaiah();
+  const baiahRearm = testMode ? null : await maybeSendBaiahRearmReminder();
 
   if (sessions.length === 0) {
-    return sendJson(res, 200, { ok: true, message: "No sessions today.", baiah: { activated: baiahActivated, announce: baiahAnnounce } });
+    return sendJson(res, 200, { ok: true, message: "No sessions today.", baiah: { activated: baiahActivated, announce: baiahAnnounce, rearm: baiahRearm } });
   }
 
   let sent = 0;
@@ -551,6 +599,7 @@ export default async function handler(req, res) {
       force,
       baiahActivated,
       baiahAnnounce,
+      baiahRearm,
       usersDaily: results.find((r) => r.tier === "morning")?.queued || 0,
       usersSession: results.find((r) => r.tier === "session")?.queued || 0,
       usersLive: results.filter((r) => r.tier === "live").reduce((sum, r) => sum + r.queued, 0)
