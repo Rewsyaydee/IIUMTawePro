@@ -46,11 +46,15 @@ const appUrl = (process.env.TELEGRAM_WEB_APP_URL || "https://iium-tawe-pro.verce
 function usage() {
   console.log(`Baiah takeover console — commands:
   status                              show current app_settings row
+  audience                            count active users by role (announcement reach)
+  admin                               make telegram id ${TEST_TELEGRAM_ID} a mainboard admin
+  notify on|off                       toggle the Telegram announcement for the next run
   activate [--no-notify]              turn the takeover on now
   deactivate                          turn it off
   schedule "YYYY-MM-DDTHH:mm"         schedule (Malaysia time)
   schedule --in <minutes>             schedule relative to now
-  reset                               back to defaults (off, cleared schedule)
+  unstick                             clear fan-out cursor + per-user claims (restart announcement)
+  reset                               back to defaults (off, cleared schedule, cleared claims)
   tick                                invoke the production dispatcher once
   ping                                DM ${TEST_TELEGRAM_ID} a "Open TawePro" button
   announce-test                       send the announcement text to ${TEST_TELEGRAM_ID}`);
@@ -106,9 +110,74 @@ function printSettings(row) {
   console.log(`Notify: ${row.baiah_notify !== false ? "on" : "off"} · Message: ${row.baiah_message}`);
 }
 
+async function clearBaiahSendState() {
+  for (const filter of ["key=eq.baiah_announce_state"]) {
+    try {
+      await supabaseRequest(`/ops_settings?${filter}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+    } catch {}
+  }
+  for (const filter of ["send_key=like.baiah-user:*", "send_key=like.baiah-chunk:*"]) {
+    try {
+      await supabaseRequest(`/notification_sends?${filter}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+    } catch {}
+  }
+}
+
 switch (command) {
   case "status": {
     printSettings(await readSettings());
+    break;
+  }
+
+  case "audience": {
+    const rows = await supabaseRequest("/users?status=eq.active&select=role,telegram_id&limit=10000");
+    const list = Array.isArray(rows) ? rows : [];
+    const byRole = {};
+    let reachable = 0;
+    for (const row of list) {
+      byRole[row.role] = (byRole[row.role] || 0) + 1;
+      if (row.telegram_id) reachable++;
+    }
+    console.log(`Active users: ${list.length} · reachable via Telegram: ${reachable}`);
+    console.log(JSON.stringify(byRole, null, 2));
+    break;
+  }
+
+  case "admin": {
+    const rows = await supabaseRequest(`/users?telegram_id=eq.${encodeURIComponent(TEST_TELEGRAM_ID)}&select=*`, {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: { role: "mainboard", bureau: null, status: "active" }
+    });
+    const row = Array.isArray(rows) ? rows[0] : null;
+    if (!row) {
+      console.error(`No user with telegram_id ${TEST_TELEGRAM_ID}. Open the Mini App once first.`);
+      process.exit(1);
+    }
+    await supabaseRequest("/audit_log", {
+      method: "POST",
+      headers: { Prefer: "return=minimal" },
+      body: [{
+        actor_id: row.id,
+        actor_name: row.name,
+        action: "granted_mainboard_admin",
+        table_name: "users",
+        record_id: row.id,
+        details: `Telegram ${TEST_TELEGRAM_ID} promoted to mainboard via test console.`
+      }]
+    });
+    console.log(`${row.name} (${row.telegram_id}) is now mainboard.`);
+    break;
+  }
+
+  case "notify": {
+    const value = (process.argv[3] || "").toLowerCase();
+    if (!["on", "off"].includes(value)) {
+      console.error("Usage: notify on|off");
+      process.exit(1);
+    }
+    const row = await patchSettings({ baiah_notify: value === "on", baiah_updated_by: "test console" });
+    printSettings(row);
     break;
   }
 
@@ -160,6 +229,14 @@ switch (command) {
     break;
   }
 
+  case "unstick": {
+    await clearBaiahSendState();
+    const row = await readSettings();
+    printSettings(row);
+    console.log("\nFan-out cursor and per-user claims cleared. The next dispatcher hit restarts the announcement.");
+    break;
+  }
+
   case "reset": {
     const row = await patchSettings({
       is_baiah_active: false,
@@ -169,14 +246,9 @@ switch (command) {
       baiah_notify: true,
       baiah_updated_by: "test reset"
     });
-    try {
-      await supabaseRequest("/ops_settings?key=eq.baiah_announce_state", {
-        method: "DELETE",
-        headers: { Prefer: "return=minimal" }
-      });
-    } catch {}
+    await clearBaiahSendState();
     printSettings(row);
-    console.log("\nReset complete (announcement cursor cleared too).");
+    console.log("\nReset complete (announcement cursor + claims cleared too).");
     break;
   }
 

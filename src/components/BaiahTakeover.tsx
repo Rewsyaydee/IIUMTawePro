@@ -47,8 +47,9 @@ function isExpired(settings: BaiahSettings | null) {
   return Date.now() - activatedAt > AUTO_HIDE_MS;
 }
 
-// The full pyrotechnics: corner cannons + follow-up waves. Returns the timer
-// ids so the caller can cancel when the overlay goes away.
+// The full pyrotechnics: corner cannons + follow-up waves, with rolling
+// haptics through the whole sequence so it feels like thunder, not one tap.
+// Returns the timer ids so the caller can cancel when the overlay goes away.
 function fireCannons(instance: CreateTypes, timers: number[]) {
   const colors = CONFETTI_COLORS;
   const corner = (x: number, angle: number, overrides: Record<string, unknown> = {}) =>
@@ -67,9 +68,10 @@ function fireCannons(instance: CreateTypes, timers: number[]) {
   corner(0, 60);
   corner(1, 120);
 
-  const waves: Array<{ delay: number; run: () => void }> = [
+  const waves: Array<{ delay: number; haptic: "light" | "medium" | "heavy"; run: () => void }> = [
     {
       delay: 200,
+      haptic: "heavy",
       run: () => {
         corner(0, 55);
         corner(1, 125);
@@ -77,6 +79,7 @@ function fireCannons(instance: CreateTypes, timers: number[]) {
     },
     {
       delay: 480,
+      haptic: "medium",
       run: () => {
         corner(0.05, 72, { particleCount: 60, startVelocity: 72, scalar: 0.9 });
         corner(0.95, 108, { particleCount: 60, startVelocity: 72, scalar: 0.9 });
@@ -84,6 +87,7 @@ function fireCannons(instance: CreateTypes, timers: number[]) {
     },
     {
       delay: 850,
+      haptic: "heavy",
       run: () => {
         corner(0, 45);
         corner(1, 135);
@@ -99,6 +103,7 @@ function fireCannons(instance: CreateTypes, timers: number[]) {
     },
     {
       delay: 1350,
+      haptic: "medium",
       run: () => {
         corner(0.15, 62, { particleCount: 70, scalar: 1.15 });
         corner(0.85, 118, { particleCount: 70, scalar: 1.15 });
@@ -106,6 +111,7 @@ function fireCannons(instance: CreateTypes, timers: number[]) {
     },
     {
       delay: 1900,
+      haptic: "heavy",
       run: () => {
         corner(0, 60);
         corner(1, 120);
@@ -114,7 +120,16 @@ function fireCannons(instance: CreateTypes, timers: number[]) {
   ];
 
   for (const wave of waves) {
-    timers.push(window.setTimeout(wave.run, wave.delay));
+    timers.push(
+      window.setTimeout(() => {
+        try {
+          hapticImpact(wave.haptic);
+        } catch {
+          undefined;
+        }
+        wave.run();
+      }, wave.delay)
+    );
   }
 }
 

@@ -134,11 +134,40 @@ async function maybeActivateScheduledBaiah() {
   return false;
 }
 
-// Announcement fan-out to students, chunked with a DB cursor so no single
-// invocation blows the serverless timeout. One atomic claim per cursor
-// position keeps concurrent pinger/app-open invocations from double-sending.
-const BAIAH_ANNOUNCE_CHUNK = 200;
-const BAIAH_ANNOUNCE_CONCURRENCY = 8;
+// Announcement fan-out to EVERYONE (students + committee + head + mainboard).
+// Progress is a DB cursor so no single invocation blows the serverless
+// timeout; each user is claimed atomically in notification_sends before their
+// DM is sent, so concurrent pinger/app-open invocations can never
+// double-send — only one invocation wins each user's claim.
+const BAIAH_ANNOUNCE_BATCH = 100;
+const BAIAH_ANNOUNCE_CONCURRENCY = 6;
+const BAIAH_ANNOUNCE_BUDGET_MS = 6500;
+const BAIAH_ANNOUNCE_RETRY_MS = 400;
+const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
+
+async function claimBaiahSends(epoch, userIds) {
+  if (userIds.length === 0) return [];
+  try {
+    const rows = await supabaseRequest("/notification_sends?on_conflict=send_key&select=send_key", {
+      method: "POST",
+      headers: { Prefer: "resolution=ignore-duplicates,return=representation" },
+      body: userIds.map((id) => ({ send_key: `baiah-user:${epoch}:${id}`, sent_at: new Date().toISOString() }))
+    });
+    const claimed = new Set((Array.isArray(rows) ? rows : []).map((row) => String(row.send_key)));
+    return userIds.filter((id) => claimed.has(`baiah-user:${epoch}:${id}`));
+  } catch (err) {
+    console.error("[notify-check] baiah claim batch failed", err?.message || err);
+    return [];
+  }
+}
+
+async function saveBaiahState(epoch, lastId, done) {
+  await supabaseRequest("/ops_settings?on_conflict=key", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: [{ key: "baiah_announce_state", value: { activatedAt: epoch, lastId, done }, updated_at: new Date().toISOString() }]
+  });
+}
 
 async function sendConcurrent(telegramIds, text) {
   let sent = 0;
@@ -150,7 +179,13 @@ async function sendConcurrent(telegramIds, text) {
           await sendTelegramMessage(id, text);
           return true;
         } catch {
-          return false;
+          try {
+            await new Promise((resolve) => setTimeout(resolve, BAIAH_ANNOUNCE_RETRY_MS));
+            await sendTelegramMessage(id, text);
+            return true;
+          } catch {
+            return false;
+          }
         }
       })
     );
@@ -170,38 +205,42 @@ async function maybeAnnounceBaiah() {
     const state = Array.isArray(stateRows) && stateRows[0]?.value && typeof stateRows[0].value === "object" ? stateRows[0].value : {};
     if (state.activatedAt === epoch && state.done === true) return { skipped: "already announced" };
 
-    const cursor = state.activatedAt === epoch ? String(state.lastId || "") : "";
-    const claimed = await claimSend(`baiah-chunk:${epoch}:${cursor || "start"}`);
-    if (!claimed) return { skipped: "chunk claimed by another invocation" };
-
-    const users = await supabaseRequest(
-      `/users?role=eq.student&status=eq.active&id=gt.${encodeURIComponent(cursor || "00000000-0000-0000-0000-000000000000")}&select=id,telegram_id&order=id.asc&limit=${BAIAH_ANNOUNCE_CHUNK}`
-    );
-    const list = Array.isArray(users) ? users : [];
-
-    if (list.length === 0) {
-      await supabaseRequest("/ops_settings?on_conflict=key", {
-        method: "POST",
-        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-        body: [{ key: "baiah_announce_state", value: { activatedAt: epoch, lastId: cursor, done: true }, updated_at: new Date().toISOString() }]
-      });
-      return { done: true, sent: 0 };
-    }
-
+    let cursor = state.activatedAt === epoch ? String(state.lastId || "") : "";
     const appUrl = getAppBaseUrl();
     const text = `🎊 <b>BAIAH 2026 IS LIVE!</b>\n\n<b>WELCOME TO IIUM</b> 🎉\nOpen TawePro now for the celebration!\n\n👉 ${appUrl}`;
-    const ids = list.map((row) => String(row.telegram_id || "")).filter(Boolean);
-    const sent = await sendConcurrent(ids, text);
-    const newLast = String(list[list.length - 1].id);
-    const done = list.length < BAIAH_ANNOUNCE_CHUNK;
+    const deadline = Date.now() + BAIAH_ANNOUNCE_BUDGET_MS;
+    let sent = 0;
+    let attempted = 0;
+    let done = false;
 
-    await supabaseRequest("/ops_settings?on_conflict=key", {
-      method: "POST",
-      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-      body: [{ key: "baiah_announce_state", value: { activatedAt: epoch, lastId: newLast, done }, updated_at: new Date().toISOString() }]
-    });
-    console.log(`[notify-check] baiah announcement chunk: ${sent}/${list.length} sent (cursor ${newLast}, done=${done})`);
-    return { sent, done };
+    while (Date.now() < deadline) {
+      const users = await supabaseRequest(
+        `/users?status=eq.active&id=gt.${encodeURIComponent(cursor || ZERO_UUID)}&select=id,telegram_id&order=id.asc&limit=${BAIAH_ANNOUNCE_BATCH}`
+      );
+      const list = Array.isArray(users) ? users : [];
+      if (list.length === 0) {
+        done = true;
+        break;
+      }
+
+      const claimedIds = await claimBaiahSends(epoch, list.map((row) => String(row.id)));
+      const claimedSet = new Set(claimedIds);
+      const targets = list
+        .filter((row) => claimedSet.has(String(row.id)) && row.telegram_id)
+        .map((row) => String(row.telegram_id));
+      sent += await sendConcurrent(targets, text);
+      attempted += list.length;
+      cursor = String(list[list.length - 1].id);
+      await saveBaiahState(epoch, cursor, false);
+      if (list.length < BAIAH_ANNOUNCE_BATCH) {
+        done = true;
+        break;
+      }
+    }
+
+    if (done) await saveBaiahState(epoch, cursor, true);
+    console.log(`[notify-check] baiah announcement: sent=${sent} attempted=${attempted} done=${done}`);
+    return { sent, attempted, done };
   } catch (err) {
     console.error("[notify-check] baiah announcement failed", err?.message || err);
     return null;
