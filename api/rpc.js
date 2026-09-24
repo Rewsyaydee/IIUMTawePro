@@ -120,6 +120,30 @@ function mapLaunchItem(row) {
   };
 }
 
+function mapBaiahSettings(row) {
+  return {
+    isBaiahActive: Boolean(row.is_baiah_active),
+    baiahStartAt: row.baiah_start_at || null,
+    baiahMessage: row.baiah_message || "BAIAH 2026: WELCOME TO IIUM",
+    baiahNotify: row.baiah_notify !== false,
+    baiahActivatedAt: row.baiah_activated_at || null,
+    baiahUpdatedBy: row.baiah_updated_by || null,
+    updatedAt: row.updated_at || null
+  };
+}
+
+// Accepts ISO ("2026-09-24T21:00:00+08:00") or bare KL wall-clock
+// ("2026-09-24T21:00" / "2026-09-24T21:00:00") and returns a UTC ISO string.
+function parseKlDateTime(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const hasZone = /[zZ]$|[+-]\d{2}:?\d{2}$/.test(raw);
+  const withSeconds = raw.length === 16 ? `${raw}:00` : raw;
+  const date = new Date(hasZone ? withSeconds : `${withSeconds}+08:00`);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
+
 function mapStudentAttendance(row) {
   return {
     id: row.id,
@@ -216,7 +240,7 @@ export default async function handler(req, res) {
     return sendJson(res, 429, { error: "Too many requests. Please slow down." });
   }
 
-  const publicActions = new Set(["schedule.list", "announcements.list", "leaderboard.fetch"]);
+  const publicActions = new Set(["schedule.list", "announcements.list", "leaderboard.fetch", "baiah.get"]);
   let user;
   if (!publicActions.has(action)) {
     user = await resolveUser(req);
@@ -641,6 +665,70 @@ export default async function handler(req, res) {
           broadcastToTargets({ targetRole: "committee", text }).catch(() => {});
         }
         return sendJson(res, 200, { settings: { sessionDelayMinutes: delayMinutes } });
+      }
+
+      // ── BAIAH REALTIME CONFETTI TAKEOVER ──
+      case "baiah.get": {
+        const rows = await supabaseRequest("/app_settings?id=eq.1&select=*&limit=1");
+        const row = Array.isArray(rows) ? rows[0] : undefined;
+        if (!row) return sendJson(res, 404, { error: "app_settings row missing. Run supabase/baiah-takeover.sql." });
+        return sendJson(res, 200, { settings: mapBaiahSettings(row) });
+      }
+      case "baiah.set": {
+        if (user.role !== "mainboard") return sendJson(res, 403, { error: "Mainboard only." });
+        const patch = { updated_at: new Date().toISOString(), baiah_updated_by: user.name || "mainboard" };
+        const notes = [];
+
+        if (body.message !== undefined) {
+          const message = String(body.message).trim().slice(0, 140);
+          if (!message) return sendJson(res, 400, { error: "Message cannot be empty." });
+          patch.baiah_message = message;
+          notes.push(`message set to "${message}"`);
+        }
+        if (body.notify !== undefined) {
+          patch.baiah_notify = Boolean(body.notify);
+          notes.push(`Telegram announcement ${patch.baiah_notify ? "enabled" : "disabled"}`);
+        }
+        if (body.scheduledAt !== undefined) {
+          if (body.scheduledAt === null || body.scheduledAt === "") {
+            patch.baiah_start_at = null;
+            notes.push("schedule cleared");
+          } else {
+            const parsed = parseKlDateTime(body.scheduledAt);
+            if (!parsed) return sendJson(res, 400, { error: "Invalid schedule time. Use YYYY-MM-DDTHH:mm in Malaysia time." });
+            patch.baiah_start_at = parsed;
+            patch.is_baiah_active = false;
+            notes.push(`scheduled for ${parsed}`);
+          }
+        }
+        if (body.active !== undefined) {
+          patch.is_baiah_active = Boolean(body.active);
+          if (patch.is_baiah_active) {
+            patch.baiah_activated_at = new Date().toISOString();
+            patch.baiah_start_at = null;
+            notes.push("takeover ACTIVATED");
+          } else {
+            patch.baiah_start_at = null;
+            notes.push("takeover deactivated");
+          }
+        }
+        if (notes.length === 0) return sendJson(res, 400, { error: "No changes provided." });
+
+        const rows = await supabaseRequest("/app_settings?id=eq.1&select=*", {
+          method: "PATCH",
+          headers: { Prefer: "return=representation" },
+          body: patch
+        });
+        const row = Array.isArray(rows) ? rows[0] : undefined;
+        if (!row) return sendJson(res, 404, { error: "app_settings row missing. Run supabase/baiah-takeover.sql." });
+        await createAuditLog({
+          actor: user,
+          action: "updated_baiah_takeover",
+          tableName: "app_settings",
+          recordId: "1",
+          details: `Baiah takeover: ${notes.join(", ")}.`
+        });
+        return sendJson(res, 200, { settings: mapBaiahSettings(row) });
       }
 
       // ── OPS LIVE (real-time check-in counts per venue) ──

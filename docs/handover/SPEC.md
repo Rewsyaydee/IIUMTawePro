@@ -196,7 +196,7 @@ Representative policy matrix:
 | `/api/prepare-share` | POST | JWT | Prepare share payloads |
 | `/api/donate` | POST | JWT | Telegram Stars invoice (XTR) |
 
-### 5.2 `rpc.js` actions (46)
+### 5.2 `rpc.js` actions (48)
 
 | Group | Actions |
 |---|---|
@@ -209,6 +209,7 @@ Representative policy matrix:
 | Guides CMS | `guides.emergency.list/create/update/delete`, `guides.coupon.list/create/update/delete` |
 | Launch | `launch.list`, `launch.update` |
 | Audit/Users | `audit.list`, `users.list`, `users.update`, `users.revoke`, `user.onboard` |
+| Baiah takeover | `baiah.get` (public read), `baiah.set` (mainboard: activate/deactivate/schedule/message/notify) |
 | Attendance | `attendance.submit`, `attendance.student.list`, `attendance.mainboard.list`, `attendance.review` |
 | Leaderboard | `leaderboard.fetch` |
 
@@ -345,6 +346,8 @@ cp .env.example .env
 #    supabase/committee-notify.sql
 #    supabase/fix-schedule.sql              # venue + stale-row cleanup
 #    supabase/seed-preptech-poa.sql         # (optional) Preptech POA data
+#    supabase/baiah-takeover.sql            # Baiah Realtime confetti takeover
+#    supabase/baiah-pg-cron.sql             # (optional) exact-minute scheduled activation
 
 # 4. Run the app (1 min)
 npm run dev            # http://127.0.0.1:5173  (mock mode, no Telegram needed)

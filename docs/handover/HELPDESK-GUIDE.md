@@ -170,6 +170,30 @@ update public.users set role = 'committee', bureau = '<Bureau>' where telegram_i
 ```
 Ask them to send `/notifications` again.
 
+### 2.15 Baiah confetti takeover stuck on (or won't appear)
+The takeover is driven by the single row `public.app_settings` (`is_baiah_active`).
+Each user's overlay auto-hides 30 minutes after activation, so this is rarely blocking —
+but to force it off for everyone immediately:
+```sql
+update public.app_settings
+set is_baiah_active = false, baiah_start_at = null, updated_at = now()
+where id = 1;
+
+insert into public.audit_log (actor_id, actor_name, action, table_name, record_id, details)
+values (null, 'ITD Helpdesk', 'force_baiah_off', 'app_settings', '1',
+        'Forced Baiah takeover off via helpdesk SQL');
+```
+If it **won't appear** at a scheduled time: check the row (`select * from app_settings where id = 1;`),
+confirm the pg_cron job exists (`select * from cron.job where jobname = 'baiah-auto-activate';`),
+and verify the Realtime publication includes the table:
+
+```sql
+select * from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'app_settings';
+```
+
+If that returns 0 rows, re-run `supabase/baiah-takeover.sql` Section 4. Mainboard can always
+activate manually from Bureau Ops → Live → Baiah takeover.
+
 ---
 
 ## 3. Manual Overrides

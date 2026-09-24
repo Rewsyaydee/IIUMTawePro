@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
-import { BellRing, ClipboardCheck, ExternalLink, Grid3X3, ShieldCheck, TimerReset } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BellRing, ClipboardCheck, ExternalLink, Grid3X3, PartyPopper, ShieldCheck, TimerReset } from "lucide-react";
 import { EmptyState } from "../components/EmptyState";
 import { StatusBadge } from "../components/StatusBadge";
 import { BUREAUS, bureauShortLabels } from "../constants";
 import { authSessionChangedEvent, shouldUseApiAuth } from "../lib/apiAuth";
 import { listBureauOperations, updateBureauOperationStatus as updateOpsStatusApi } from "../lib/bureauOpsApi";
+import { fetchBaiahSettings, updateBaiahSettings, type BaiahSettings, type BaiahUpdateInput } from "../lib/baiahApi";
 import { fetchOpsLive, getOpsSettings, setOpsSettings, type OpsLiveData } from "../lib/guidesApi";
 import { sendBureauAlert } from "../lib/notifyApi";
 import { hapticError, hapticImpact, hapticSuccess } from "../lib/telegram";
@@ -42,6 +43,37 @@ function qrLinkFor(operation: BureauOperation) {
   return `https://t.me/IIUMTaarufBot?start=${operation.tool}-${slug}`;
 }
 
+function toKlInputValue(iso: string | null): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kuala_Lumpur",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value || "00";
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
+}
+
+function formatKlDateTime(iso: string | null): string {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString("en-MY", {
+    timeZone: "Asia/Kuala_Lumpur",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true
+  });
+}
+
 function BureauOps() {
   const { user } = useMockUser();
   const { bureauOperations, sendBureauOperationAlert, updateBureauOperationStatus } = useMockData();
@@ -57,6 +89,11 @@ function BureauOps() {
   const [delayMinutes, setDelayMinutes] = useState(0);
   const [applyingDelay, setApplyingDelay] = useState(false);
   const [liveError, setLiveError] = useState("");
+  const [baiah, setBaiah] = useState<BaiahSettings | null>(null);
+  const [baiahAt, setBaiahAt] = useState("");
+  const [baiahMsg, setBaiahMsg] = useState("");
+  const [applyingBaiah, setApplyingBaiah] = useState(false);
+  const baiahLoadedRef = useRef(false);
 
   const isMainboard = user.role === "mainboard";
   const activeOps = apiMode ? remoteOperations : bureauOperations;
@@ -131,6 +168,51 @@ function BureauOps() {
       playSfx("error");
     } finally {
       setApplyingDelay(false);
+    }
+  };
+
+  // Baiah takeover status — polled so a scheduled (pg_cron) activation shows
+  // up in this panel without a reload.
+  useEffect(() => {
+    if (!apiMode || !isMainboard) return;
+    let cancelled = false;
+    const loadBaiah = () => {
+      fetchBaiahSettings()
+        .then((next) => {
+          if (cancelled) return;
+          setBaiah(next);
+          if (!baiahLoadedRef.current) {
+            baiahLoadedRef.current = true;
+            setBaiahMsg(next.baiahMessage);
+            setBaiahAt(toKlInputValue(next.baiahStartAt));
+          }
+        })
+        .catch(() => {});
+    };
+    loadBaiah();
+    const timer = window.setInterval(loadBaiah, 15000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [apiMode, isMainboard, authRefreshTick]);
+
+  const applyBaiah = async (patch: BaiahUpdateInput) => {
+    if (applyingBaiah) return;
+    setApplyingBaiah(true);
+    setLiveError("");
+    try {
+      const updated = await updateBaiahSettings(patch);
+      setBaiah(updated);
+      setBaiahAt(toKlInputValue(updated.baiahStartAt));
+      hapticSuccess();
+      playSfx(patch.active === true ? "send" : "success");
+    } catch (error) {
+      setLiveError(error instanceof Error ? error.message : "Failed to update Baiah takeover.");
+      hapticError();
+      playSfx("error");
+    } finally {
+      setApplyingBaiah(false);
     }
   };
 
@@ -299,6 +381,86 @@ function BureauOps() {
               ))}
             </div>
           </div>
+
+          {apiMode && (
+            <div className="baiah-control">
+              <span className="delay-control-label">
+                <PartyPopper size={15} aria-hidden="true" />
+                Baiah takeover {baiah ? (baiah.isBaiahActive ? "· LIVE" : baiah.baiahStartAt ? "· scheduled" : "· off") : "· …"}
+              </span>
+              <p className="muted">
+                {baiah?.isBaiahActive
+                  ? `Live since ${formatKlDateTime(baiah.baiahActivatedAt)}${baiah.baiahUpdatedBy ? ` · by ${baiah.baiahUpdatedBy}` : ""}. Each user's overlay auto-hides after 30 minutes; Deactivate ends it immediately for everyone.`
+                  : baiah?.baiahStartAt
+                    ? `Scheduled for ${formatKlDateTime(baiah.baiahStartAt)} (Malaysia time). Fires automatically.`
+                    : "Off. When activated, everyone with the app open gets a full-screen confetti takeover."}
+              </p>
+              <div className="baiah-control-row">
+                <input
+                  type="text"
+                  value={baiahMsg}
+                  maxLength={140}
+                  placeholder="BAIAH 2026: WELCOME TO IIUM"
+                  aria-label="Takeover message"
+                  onChange={(event) => setBaiahMsg(event.target.value)}
+                />
+                <button
+                  type="button"
+                  disabled={applyingBaiah || !baiahMsg.trim() || baiahMsg.trim() === (baiah?.baiahMessage || "")}
+                  onClick={() => applyBaiah({ message: baiahMsg })}
+                >
+                  Save
+                </button>
+              </div>
+              <div className="baiah-control-row">
+                <input
+                  type="datetime-local"
+                  value={baiahAt}
+                  aria-label="Schedule time (Malaysia)"
+                  onChange={(event) => setBaiahAt(event.target.value)}
+                />
+                <button
+                  type="button"
+                  disabled={applyingBaiah || !baiahAt}
+                  onClick={() => applyBaiah({ scheduledAt: baiahAt })}
+                >
+                  Schedule
+                </button>
+                {baiah?.baiahStartAt && (
+                  <button type="button" disabled={applyingBaiah} onClick={() => applyBaiah({ scheduledAt: null })}>
+                    Clear
+                  </button>
+                )}
+              </div>
+              <label className="baiah-notify-toggle">
+                <input
+                  type="checkbox"
+                  checked={baiah?.baiahNotify !== false}
+                  disabled={applyingBaiah || !baiah}
+                  onChange={(event) => applyBaiah({ notify: event.target.checked })}
+                />
+                Also announce on Telegram (pulls in students who don&apos;t have the app open)
+              </label>
+              <div className="baiah-actions">
+                <button
+                  type="button"
+                  className="primary"
+                  disabled={applyingBaiah || !baiah || baiah.isBaiahActive}
+                  onClick={() => applyBaiah({ active: true })}
+                >
+                  🎉 Activate now
+                </button>
+                <button
+                  type="button"
+                  className="danger"
+                  disabled={applyingBaiah || !baiah?.isBaiahActive}
+                  onClick={() => applyBaiah({ active: false })}
+                >
+                  Deactivate
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       )}
 

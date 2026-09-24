@@ -6009,3 +6009,296 @@ textarea {
 .task-card .muted {
   white-space: pre-line;
 }
+
+/* ── Baiah Realtime Confetti Takeover ─────────────────────────── */
+.baiah-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50000;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 50% 110%, rgba(34, 168, 121, 0.35) 0%, rgba(10, 46, 35, 0) 60%),
+    radial-gradient(90% 70% at 50% -10%, rgba(229, 211, 179, 0.18) 0%, rgba(10, 46, 35, 0) 55%),
+    linear-gradient(180deg, #04150f 0%, #0a2e23 45%, #061c14 100%);
+  animation: baiahOverlayIn 260ms ease-out both;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.baiah-rays {
+  position: absolute;
+  inset: -40%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(229, 211, 179, 0.16) 0deg 10deg,
+    transparent 10deg 30deg,
+    rgba(34, 168, 121, 0.14) 30deg 38deg,
+    transparent 38deg 60deg,
+    rgba(229, 211, 179, 0.1) 60deg 68deg,
+    transparent 68deg 90deg,
+    rgba(34, 168, 121, 0.12) 90deg 100deg,
+    transparent 100deg 130deg,
+    rgba(229, 211, 179, 0.14) 130deg 140deg,
+    transparent 140deg 180deg,
+    rgba(34, 168, 121, 0.12) 180deg 190deg,
+    transparent 190deg 220deg,
+    rgba(229, 211, 179, 0.12) 220deg 230deg,
+    transparent 230deg 270deg,
+    rgba(34, 168, 121, 0.14) 270deg 280deg,
+    transparent 280deg 320deg,
+    rgba(229, 211, 179, 0.14) 320deg 330deg,
+    transparent 330deg 360deg
+  );
+  animation: baiahSpin 16s linear infinite;
+  opacity: 0.85;
+}
+
+.baiah-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(85% 70% at 50% 45%, transparent 45%, rgba(0, 0, 0, 0.6) 100%);
+}
+
+.baiah-content {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.1rem;
+  padding: 2rem 1.2rem;
+  text-align: center;
+}
+
+.baiah-content::before,
+.baiah-content::after {
+  content: "";
+  position: absolute;
+  width: min(76vw, 520px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid rgba(229, 211, 179, 0.35);
+  animation: baiahRing 2.6s ease-out infinite;
+}
+
+.baiah-content::after {
+  animation-delay: 1.3s;
+}
+
+.baiah-content > * {
+  position: relative;
+  z-index: 1;
+}
+
+.baiah-kicker {
+  font-size: 0.78rem;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: rgba(229, 211, 179, 0.85);
+  animation: baiahRise 600ms 120ms cubic-bezier(0.2, 0.9, 0.25, 1.2) both;
+}
+
+.baiah-title {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.baiah-line {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 900;
+  text-transform: uppercase;
+  line-height: 0.98;
+  letter-spacing: 0.02em;
+  background: linear-gradient(100deg, #fff6df 0%, #e5d3b3 25%, #f8e9c8 50%, #c9a95f 72%, #fff2d4 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 6px 30px rgba(229, 211, 179, 0.35));
+  animation:
+    baiahStamp 700ms cubic-bezier(0.16, 1.2, 0.3, 1) both,
+    baiahSheen 3.4s linear 0.6s infinite;
+}
+
+.baiah-line-one {
+  font-size: clamp(2.9rem, 15vw, 6.8rem);
+}
+
+.baiah-line-two {
+  font-size: clamp(1.55rem, 7.4vw, 3.2rem);
+  animation-delay: 240ms, 0.95s;
+}
+
+.baiah-hint {
+  margin-top: 0.6rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+  animation: baiahHintPulse 1.8s ease-in-out infinite;
+}
+
+.baiah-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+@keyframes baiahOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes baiahSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes baiahRise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes baiahStamp {
+  0% { opacity: 0; transform: scale(2.4) rotate(-4deg); filter: blur(18px); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); filter: blur(0); }
+}
+
+@keyframes baiahSheen {
+  from { background-position: 220% 0; }
+  to { background-position: -120% 0; }
+}
+
+@keyframes baiahRing {
+  0% { opacity: 0.55; transform: scale(0.6); }
+  100% { opacity: 0; transform: scale(1.35); }
+}
+
+@keyframes baiahHintPulse {
+  0%, 100% { opacity: 0.5; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .baiah-rays,
+  .baiah-content::before,
+  .baiah-content::after,
+  .baiah-kicker,
+  .baiah-hint {
+    animation: none;
+  }
+  .baiah-line {
+    animation: baiahRise 300ms ease-out both;
+    background-position: 40% 0;
+  }
+}
+
+/* Mainboard admin card (Bureau Ops → Live panel) */
+.baiah-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  border-top: 1px dashed var(--line);
+  margin-top: 0.65rem;
+  padding-top: 0.9rem;
+}
+
+.baiah-control .muted {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.baiah-control-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.baiah-control input[type="text"],
+.baiah-control input[type="datetime-local"] {
+  flex: 1 1 12rem;
+  min-width: 0;
+  background: var(--glass-bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text-primary);
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+}
+
+.baiah-control input[type="text"]:focus,
+.baiah-control input[type="datetime-local"]:focus {
+  outline: 2px solid var(--gold-accent);
+  outline-offset: 1px;
+}
+
+.baiah-control-row button {
+  border-radius: 10px;
+  padding: 0.55rem 0.9rem;
+  font-weight: 700;
+  border: 1px solid var(--line);
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.baiah-control-row button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.baiah-notify-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--tg-subtitle-text-color);
+}
+
+.baiah-notify-toggle input {
+  accent-color: var(--gold-accent);
+}
+
+.baiah-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.baiah-actions button {
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+  font-weight: 800;
+  border: 1px solid var(--line);
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.baiah-actions button.primary {
+  background: var(--gold-accent);
+  border-color: var(--gold-accent);
+  color: #0a2e23;
+}
+
+.baiah-actions button.danger {
+  border-color: rgba(255, 107, 107, 0.6);
+  color: var(--red);
+}
+
+.baiah-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

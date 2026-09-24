@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { LoadingScreen } from "./components/LoadingScreen";
+import BaiahTakeover from "./components/BaiahTakeover";
 import { setupTelegramShell } from "./lib/telegram";
 import { initPresenceTracker } from "./lib/presenceTracker";
 import { initSfx } from "./lib/sfx";
@@ -180,6 +181,7 @@ function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <BaiahTakeover />
     </>
   );
 }

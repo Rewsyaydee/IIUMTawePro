@@ -2,7 +2,7 @@ import { supabaseRequest } from "../_lib/supabase.js";
 import { sendJson } from "../_lib/auth-utils.js";
 import { buildEveningRichMessage, buildMorningRichMessage, buildSessionStartingRichMessage, sendRichWithFallback, richButton, richButtonsRow, richHeading, richParagraph } from "../_lib/rich-messages.js";
 import { composeBriefing, fetchDaySchedule, fetchUserTasksDue } from "../_lib/briefing.js";
-import { getAppBaseUrl } from "../_lib/telegram-bot.js";
+import { getAppBaseUrl, sendTelegramMessage } from "../_lib/telegram-bot.js";
 
 // Set to null in production to use real date.
 const DEMO_DATE = null;
@@ -99,6 +99,115 @@ async function getTodaySessions(dateStr) {
   return Array.isArray(rows) ? rows : [];
 }
 
+// ── Baiah takeover: scheduled activation + Telegram pull-in ──
+async function fetchBaiahSettings() {
+  const rows = await supabaseRequest("/app_settings?id=eq.1&select=*&limit=1");
+  return Array.isArray(rows) ? rows[0] : null;
+}
+
+// Idempotent: flips the flag only if the scheduled time has passed and the
+// takeover is not already on. pg_cron does the same at DB level; whichever
+// runs first wins, the other becomes a no-op.
+async function maybeActivateScheduledBaiah() {
+  try {
+    const nowIso = new Date().toISOString();
+    const rows = await supabaseRequest(
+      `/app_settings?id=eq.1&is_baiah_active=is.false&baiah_start_at=not.is.null&baiah_start_at=lte.${encodeURIComponent(nowIso)}&select=id`,
+      {
+        method: "PATCH",
+        headers: { Prefer: "return=representation" },
+        body: {
+          is_baiah_active: true,
+          baiah_activated_at: nowIso,
+          baiah_updated_by: "system (dispatcher)",
+          updated_at: nowIso
+        }
+      }
+    );
+    if (Array.isArray(rows) && rows.length > 0) {
+      console.log("[notify-check] baiah takeover auto-activated (scheduled time reached)");
+      return true;
+    }
+  } catch (err) {
+    console.error("[notify-check] baiah auto-activate failed", err?.message || err);
+  }
+  return false;
+}
+
+// Announcement fan-out to students, chunked with a DB cursor so no single
+// invocation blows the serverless timeout. One atomic claim per cursor
+// position keeps concurrent pinger/app-open invocations from double-sending.
+const BAIAH_ANNOUNCE_CHUNK = 200;
+const BAIAH_ANNOUNCE_CONCURRENCY = 8;
+
+async function sendConcurrent(telegramIds, text) {
+  let sent = 0;
+  for (let i = 0; i < telegramIds.length; i += BAIAH_ANNOUNCE_CONCURRENCY) {
+    const chunk = telegramIds.slice(i, i + BAIAH_ANNOUNCE_CONCURRENCY);
+    const outcomes = await Promise.all(
+      chunk.map(async (id) => {
+        try {
+          await sendTelegramMessage(id, text);
+          return true;
+        } catch {
+          return false;
+        }
+      })
+    );
+    sent += outcomes.filter(Boolean).length;
+  }
+  return sent;
+}
+
+async function maybeAnnounceBaiah() {
+  try {
+    const settings = await fetchBaiahSettings();
+    if (!settings?.is_baiah_active || settings.baiah_notify === false) return null;
+    const epoch = String(settings.baiah_activated_at || "");
+    if (!epoch) return null;
+
+    const stateRows = await supabaseRequest("/ops_settings?key=eq.baiah_announce_state&select=value&limit=1");
+    const state = Array.isArray(stateRows) && stateRows[0]?.value && typeof stateRows[0].value === "object" ? stateRows[0].value : {};
+    if (state.activatedAt === epoch && state.done === true) return { skipped: "already announced" };
+
+    const cursor = state.activatedAt === epoch ? String(state.lastId || "") : "";
+    const claimed = await claimSend(`baiah-chunk:${epoch}:${cursor || "start"}`);
+    if (!claimed) return { skipped: "chunk claimed by another invocation" };
+
+    const users = await supabaseRequest(
+      `/users?role=eq.student&status=eq.active&id=gt.${encodeURIComponent(cursor || "00000000-0000-0000-0000-000000000000")}&select=id,telegram_id&order=id.asc&limit=${BAIAH_ANNOUNCE_CHUNK}`
+    );
+    const list = Array.isArray(users) ? users : [];
+
+    if (list.length === 0) {
+      await supabaseRequest("/ops_settings?on_conflict=key", {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: [{ key: "baiah_announce_state", value: { activatedAt: epoch, lastId: cursor, done: true }, updated_at: new Date().toISOString() }]
+      });
+      return { done: true, sent: 0 };
+    }
+
+    const appUrl = getAppBaseUrl();
+    const text = `🎊 <b>BAIAH 2026 IS LIVE!</b>\n\n<b>WELCOME TO IIUM</b> 🎉\nOpen TawePro now for the celebration!\n\n👉 ${appUrl}`;
+    const ids = list.map((row) => String(row.telegram_id || "")).filter(Boolean);
+    const sent = await sendConcurrent(ids, text);
+    const newLast = String(list[list.length - 1].id);
+    const done = list.length < BAIAH_ANNOUNCE_CHUNK;
+
+    await supabaseRequest("/ops_settings?on_conflict=key", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: [{ key: "baiah_announce_state", value: { activatedAt: epoch, lastId: newLast, done }, updated_at: new Date().toISOString() }]
+    });
+    console.log(`[notify-check] baiah announcement chunk: ${sent}/${list.length} sent (cursor ${newLast}, done=${done})`);
+    return { sent, done };
+  } catch (err) {
+    console.error("[notify-check] baiah announcement failed", err?.message || err);
+    return null;
+  }
+}
+
 function morningTriggerTime(sessions) {
   if (!sessions || sessions.length === 0) return null;
   const firstStart = sessions[0].scheduled_start_time;
@@ -138,8 +247,13 @@ export default async function handler(req, res) {
   const eveningMatch = inWindow(nowMin, 13, 40);
   console.log(`[notify-check] KL: ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}, realDate: ${date}, lookupDate: ${lookupDate}, sessions: ${sessions.length}, morningTrigger: ${mt ? `${mt.hour}:${mt.minute}` : "none"}, triggers: morning=${morningMatch}, evening=${eveningMatch}, testMode=${testMode}, force=${force}`);
 
+  // Baiah takeover is independent of the day's sessions — handle it before
+  // the "no sessions today" early return. Skipped during test/dry-run hits.
+  const baiahActivated = testMode ? false : await maybeActivateScheduledBaiah();
+  const baiahAnnounce = testMode ? null : await maybeAnnounceBaiah();
+
   if (sessions.length === 0) {
-    return sendJson(res, 200, { ok: true, message: "No sessions today." });
+    return sendJson(res, 200, { ok: true, message: "No sessions today.", baiah: { activated: baiahActivated, announce: baiahAnnounce } });
   }
 
   let sent = 0;
@@ -374,6 +488,8 @@ export default async function handler(req, res) {
       eveningMatch,
       testMode,
       force,
+      baiahActivated,
+      baiahAnnounce,
       usersDaily: results.find((r) => r.tier === "morning")?.queued || 0,
       usersSession: results.find((r) => r.tier === "session")?.queued || 0,
       usersLive: results.filter((r) => r.tier === "live").reduce((sum, r) => sum + r.queued, 0)
